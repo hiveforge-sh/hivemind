@@ -14,9 +14,9 @@ import {
 } from './types/index.js';
 import { VaultReader } from './vault/reader.js';
 import { VaultWatcher } from './vault/watcher.js';
-import { MarkdownParser } from './parser/markdown.js';
 import { HivemindDatabase } from './graph/database.js';
 import { GraphBuilder } from './graph/builder.js';
+import { SearchEngine } from './search/engine.js';
 import { join } from 'path';
 
 export class HivemindServer {
@@ -24,9 +24,9 @@ export class HivemindServer {
   private config: HivemindConfig;
   private vaultReader: VaultReader;
   private vaultWatcher: VaultWatcher;
-  private markdownParser: MarkdownParser;
   private database: HivemindDatabase;
   private graphBuilder: GraphBuilder;
+  private searchEngine: SearchEngine;
   private isIndexed: boolean = false;
 
   constructor(config: HivemindConfig) {
@@ -34,12 +34,12 @@ export class HivemindServer {
     
     this.vaultReader = new VaultReader(config.vault);
     this.vaultWatcher = new VaultWatcher(config.vault);
-    this.markdownParser = new MarkdownParser();
     
     // Initialize database
     const dbPath = join(config.vault.path, '.hivemind', 'vault.db');
     this.database = new HivemindDatabase({ path: dbPath });
     this.graphBuilder = new GraphBuilder(this.database);
+    this.searchEngine = new SearchEngine(this.database);
     
     this.server = new Server(
       {
@@ -225,109 +225,115 @@ export class HivemindServer {
   private async handleQueryCharacter(args: { id: string }) {
     await this.ensureIndexed();
 
-    // Try to find character by ID or name
-    const note = this.findNoteByIdOrName(args.id, 'character');
+    // Use search engine to get node with relationships
+    const result = await this.searchEngine.getNodeWithRelationships(args.id);
 
-    if (!note) {
-      return {
-        content: [
-          {
+    if (!result) {
+      // Try fuzzy search
+      const searchResults = await this.searchEngine.search(args.id, { 
+        limit: 5,
+        filters: { type: ['character'] }
+      });
+
+      if (searchResults.nodes.length === 0) {
+        return {
+          content: [{
             type: 'text',
-            text: `Character not found: ${args.id}\n\nAvailable characters: ${this.getAvailableNotes('character').join(', ')}`,
-          },
-        ],
+            text: `Character not found: "${args.id}"\n\nTry searching with: search_vault`,
+          }],
+        };
+      }
+
+      // Return suggestions
+      const suggestions = searchResults.nodes.map(n => `- ${n.title} (${n.id})`).join('\n');
+      return {
+        content: [{
+          type: 'text',
+          text: `Character "${args.id}" not found. Did you mean:\n\n${suggestions}`,
+        }],
       };
     }
 
-    // Parse the full note content
-    const fullPath = join(this.config.vault.path, note.filePath);
-    const parsedNote = await this.markdownParser.parseFile(fullPath);
-
-    // Format response
-    const response = this.formatCharacterResponse(parsedNote);
+    // Format comprehensive response with relationships
+    const response = this.formatCharacterWithRelationships(result);
 
     return {
-      content: [
-        {
-          type: 'text',
-          text: response,
-        },
-      ],
+      content: [{
+        type: 'text',
+        text: response,
+      }],
     };
   }
 
   private async handleQueryLocation(args: { id: string }) {
     await this.ensureIndexed();
 
-    // Try to find location by ID or name
-    const note = this.findNoteByIdOrName(args.id, 'location');
+    // Use search engine to get node with relationships
+    const result = await this.searchEngine.getNodeWithRelationships(args.id);
 
-    if (!note) {
-      return {
-        content: [
-          {
+    if (!result) {
+      // Try fuzzy search
+      const searchResults = await this.searchEngine.search(args.id, { 
+        limit: 5,
+        filters: { type: ['location'] }
+      });
+
+      if (searchResults.nodes.length === 0) {
+        return {
+          content: [{
             type: 'text',
-            text: `Location not found: ${args.id}\n\nAvailable locations: ${this.getAvailableNotes('location').join(', ')}`,
-          },
-        ],
+            text: `Location not found: "${args.id}"\n\nTry searching with: search_vault`,
+          }],
+        };
+      }
+
+      // Return suggestions
+      const suggestions = searchResults.nodes.map(n => `- ${n.title} (${n.id})`).join('\n');
+      return {
+        content: [{
+          type: 'text',
+          text: `Location "${args.id}" not found. Did you mean:\n\n${suggestions}`,
+        }],
       };
     }
 
-    // Parse the full note content
-    const fullPath = join(this.config.vault.path, note.filePath);
-    const parsedNote = await this.markdownParser.parseFile(fullPath);
-
-    // Format response
-    const response = this.formatLocationResponse(parsedNote);
+    // Format comprehensive response with relationships
+    const response = this.formatLocationWithRelationships(result);
 
     return {
-      content: [
-        {
-          type: 'text',
-          text: response,
-        },
-      ],
+      content: [{
+        type: 'text',
+        text: response,
+      }],
     };
   }
 
   private async handleSearchVault(args: { query: string; filters?: any; limit?: number }) {
     await this.ensureIndexed();
 
-    const limit = args.limit || 10;
-    const query = args.query;
-
-    // Use database full-text search
-    const searchResults = this.database.search(query, limit);
-    
-    // Get full node details for results
-    const results = searchResults.map(result => {
-      const node = this.database.getNode(result.id);
-      return node;
-    }).filter(node => node !== undefined);
-
-    // Apply filters if provided
-    const filteredResults = results.filter(node => {
-      if (!node) return false;
-      
-      if (args.filters) {
-        if (args.filters.type && !args.filters.type.includes(node.type)) {
-          return false;
-        }
-        if (args.filters.status && !args.filters.status.includes(node.status)) {
-          return false;
-        }
-      }
-      
-      return true;
+    // Use enhanced search engine
+    const results = await this.searchEngine.search(args.query, {
+      limit: args.limit || 10,
+      includeRelationships: true,
+      filters: args.filters,
     });
 
-    return {
-      content: [
-        {
+    if (results.nodes.length === 0) {
+      return {
+        content: [{
           type: 'text',
-          text: this.formatDatabaseSearchResults(filteredResults, query, searchResults.length),
-        },
-      ],
+          text: `No results found for: "${args.query}"\n\nTry different keywords or check spelling.`,
+        }],
+      };
+    }
+
+    const response = this.formatSearchResults(results);
+
+    return {
+      content: [{
+        type: 'text',
+        text: response,
+      }],
     };
   }
 
@@ -339,6 +345,8 @@ export class HivemindServer {
       // Re-index on changes
       if (event === 'add' || event === 'change') {
         await this.vaultReader.scanVault();
+        const allNotes = this.vaultReader.getAllNotes();
+        this.graphBuilder.buildGraph(allNotes);
       }
     });
   }
@@ -346,93 +354,116 @@ export class HivemindServer {
   private async ensureIndexed(): Promise<void> {
     if (!this.isIndexed) {
       await this.vaultReader.scanVault();
+      const allNotes = this.vaultReader.getAllNotes();
+      this.graphBuilder.buildGraph(allNotes);
       this.isIndexed = true;
     }
   }
 
-  private findNoteByIdOrName(idOrName: string, type?: string): any {
-    const normalized = idOrName.toLowerCase().replace(/\s+/g, '-');
-    
-    // Try exact ID match first
-    let note = this.vaultReader.getNote(normalized);
-    
-    // Try searching all notes
-    if (!note) {
-      const allNotes = this.vaultReader.getAllNotes();
-      note = allNotes.find(n => 
-        n.id === normalized || 
-        n.id.includes(normalized) ||
-        n.fileName.toLowerCase().includes(idOrName.toLowerCase())
-      );
+  private formatCharacterWithRelationships(result: any): string {
+    const { node, relatedNodes } = result;
+    const props = node.properties;
+
+    let response = `# ${node.title}\n\n`;
+    response += `**Type**: Character | **Status**: ${node.status} | **ID**: \`${node.id}\`\n\n`;
+
+    // Basic info
+    if (props.age) response += `**Age**: ${props.age} | `;
+    if (props.gender) response += `**Gender**: ${props.gender} | `;
+    if (props.race) response += `**Race**: ${props.race}`;
+    response += `\n\n`;
+
+    // Appearance
+    if (props.appearance) {
+      response += `## Appearance\n`;
+      if (typeof props.appearance === 'object') {
+        for (const [key, value] of Object.entries(props.appearance)) {
+          response += `- **${key}**: ${value}\n`;
+        }
+      } else {
+        response += `${props.appearance}\n`;
+      }
+      response += `\n`;
     }
 
-    // Filter by type if specified
-    if (note && type && note.frontmatter.type !== type) {
-      return undefined;
+    // Personality
+    if (props.personality) {
+      response += `## Personality\n`;
+      if (typeof props.personality === 'object') {
+        for (const [key, value] of Object.entries(props.personality)) {
+          response += `- **${key}**: ${JSON.stringify(value)}\n`;
+        }
+      } else {
+        response += `${props.personality}\n`;
+      }
+      response += `\n`;
     }
 
-    return note;
-  }
-
-  private getAvailableNotes(type: string): string[] {
-    const notes = this.vaultReader.getNotesByType(type);
-    return notes.map(n => n.frontmatter.title || n.fileName).slice(0, 10);
-  }
-
-  private formatCharacterResponse(note: any): string {
-    const fm = note.frontmatter;
-    
-    return `# ${fm.name || fm.title || note.fileName}
-
-**Type**: Character
-**Status**: ${fm.status}
-**ID**: ${fm.id}
-
-${fm.age ? `**Age**: ${fm.age}\n` : ''}${fm.gender ? `**Gender**: ${fm.gender}\n` : ''}${fm.race ? `**Race**: ${fm.race}\n` : ''}
-${fm.appearance ? `## Appearance\n${JSON.stringify(fm.appearance, null, 2)}\n` : ''}
-${fm.personality ? `## Personality\n${JSON.stringify(fm.personality, null, 2)}\n` : ''}
-${note.links.length > 0 ? `## Related Notes\n${note.links.map((l: string) => `- [[${l}]]`).join('\n')}\n` : ''}
-## Content
-
-${note.content.substring(0, 1000)}${note.content.length > 1000 ? '...' : ''}
-
----
-*Source: ${note.filePath}*
-*Last modified: ${note.stats.modified}*`;
-  }
-
-  private formatLocationResponse(note: any): string {
-    const fm = note.frontmatter;
-    
-    return `# ${fm.name || fm.title || note.fileName}
-
-**Type**: Location
-**Status**: ${fm.status}
-**ID**: ${fm.id}
-
-${fm.region ? `**Region**: ${fm.region}\n` : ''}${fm.category ? `**Category**: ${fm.category}\n` : ''}${fm.climate ? `**Climate**: ${fm.climate}\n` : ''}
-${note.links.length > 0 ? `## Connected Locations\n${note.links.map((l: string) => `- [[${l}]]`).join('\n')}\n` : ''}
-## Description
-
-${note.content.substring(0, 1000)}${note.content.length > 1000 ? '...' : ''}
-
----
-*Source: ${note.filePath}*
-*Last modified: ${note.stats.modified}*`;
-  }
-
-  private formatDatabaseSearchResults(results: any[], query: string, totalMatches: number): string {
-    if (results.length === 0) {
-      return `No results found for: "${query}"`;
+    // Relationships (from graph)
+    if (relatedNodes.length > 0) {
+      response += `## Relationships\n`;
+      const characters = relatedNodes.filter((n: any) => n.type === 'character');
+      const locations = relatedNodes.filter((n: any) => n.type === 'location');
+      
+      if (characters.length > 0) {
+        response += `**Characters**: ${characters.map((c: any) => c.title).join(', ')}\n`;
+      }
+      if (locations.length > 0) {
+        response += `**Locations**: ${locations.map((l: any) => l.title).join(', ')}\n`;
+      }
+      response += `\n`;
     }
 
-    let response = `# Search Results for "${query}"\n\nFound ${totalMatches} matches (showing ${results.length}):\n\n`;
+    response += `---\n*Source: ${node.filePath}*\n`;
+    response += `*Last updated: ${new Date(node.updated).toLocaleString()}*`;
 
-    for (const node of results) {
+    return response;
+  }
+
+  private formatLocationWithRelationships(result: any): string {
+    const { node, relatedNodes } = result;
+    const props = node.properties;
+
+    let response = `# ${node.title}\n\n`;
+    response += `**Type**: Location | **Status**: ${node.status} | **ID**: \`${node.id}\`\n\n`;
+
+    // Basic info
+    if (props.region) response += `**Region**: ${props.region} | `;
+    if (props.category) response += `**Category**: ${props.category} | `;
+    if (props.climate) response += `**Climate**: ${props.climate}`;
+    response += `\n\n`;
+
+    // Connected entities (from graph)
+    if (relatedNodes.length > 0) {
+      response += `## Connected Entities\n`;
+      const characters = relatedNodes.filter((n: any) => n.type === 'character');
+      const locations = relatedNodes.filter((n: any) => n.type === 'location');
+      
+      if (characters.length > 0) {
+        response += `**Inhabitants**: ${characters.map((c: any) => c.title).join(', ')}\n`;
+      }
+      if (locations.length > 0) {
+        response += `**Connected Locations**: ${locations.map((l: any) => l.title).join(', ')}\n`;
+      }
+      response += `\n`;
+    }
+
+    response += `---\n*Source: ${node.filePath}*\n`;
+    response += `*Last updated: ${new Date(node.updated).toLocaleString()}*`;
+
+    return response;
+  }
+
+  private formatSearchResults(results: any): string {
+    const { nodes, metadata } = results;
+
+    let response = `# Search Results\n\n`;
+    response += `Found ${metadata.totalResults} results in ${metadata.executionTime}ms (showing ${nodes.length}):\n\n`;
+
+    for (const node of nodes) {
       response += `## ${node.title}\n`;
-      response += `- **Type**: ${node.type}\n`;
-      response += `- **Status**: ${node.status}\n`;
-      response += `- **ID**: ${node.id}\n`;
+      response += `- **Type**: ${node.type} | **Status**: ${node.status}\n`;
+      response += `- **ID**: \`${node.id}\`\n`;
       response += `- **Path**: ${node.filePath}\n\n`;
     }
 
