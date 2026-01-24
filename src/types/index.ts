@@ -94,6 +94,7 @@ export interface GraphNode {
   type: NoteType;
   status: NoteStatus;
   title: string;
+  content: string;
   properties: Record<string, any>;
   filePath: string;
   created: Date;
@@ -162,12 +163,16 @@ export interface HybridSearchResult {
 
 export const QueryCharacterArgsSchema = z.object({
   id: z.string().describe('Character ID or name to query'),
+  includeContent: z.boolean().optional().default(true).describe('Include content body in response'),
+  contentLimit: z.number().min(100).max(5000).optional().default(500).describe('Maximum characters of content to return'),
 });
 
 export type QueryCharacterArgs = z.infer<typeof QueryCharacterArgsSchema>;
 
 export const QueryLocationArgsSchema = z.object({
   id: z.string().describe('Location ID or name to query'),
+  includeContent: z.boolean().optional().default(true).describe('Include content body in response'),
+  contentLimit: z.number().min(100).max(5000).optional().default(500).describe('Maximum characters of content to return'),
 });
 
 export type QueryLocationArgs = z.infer<typeof QueryLocationArgsSchema>;
@@ -182,6 +187,8 @@ export const SearchVaultArgsSchema = z.object({
     world: z.string().optional(),
   }).optional(),
   limit: z.number().min(1).max(100).default(10),
+  includeContent: z.boolean().optional().default(false).describe('Include content snippets in results'),
+  contentLimit: z.number().min(100).max(2000).optional().default(300).describe('Maximum characters of content per result'),
 });
 
 export type SearchVaultArgs = z.infer<typeof SearchVaultArgsSchema>;

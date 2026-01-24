@@ -73,6 +73,18 @@ export class HivemindServer {
                   type: 'string',
                   description: 'Character ID or name to query',
                 },
+                includeContent: {
+                  type: 'boolean',
+                  description: 'Include content body in response (default: true)',
+                  default: true,
+                },
+                contentLimit: {
+                  type: 'number',
+                  description: 'Maximum characters of content to return (default: 500, max: 5000)',
+                  default: 500,
+                  minimum: 100,
+                  maximum: 5000,
+                },
               },
               required: ['id'],
             },
@@ -86,6 +98,18 @@ export class HivemindServer {
                 id: {
                   type: 'string',
                   description: 'Location ID or name to query',
+                },
+                includeContent: {
+                  type: 'boolean',
+                  description: 'Include content body in response (default: true)',
+                  default: true,
+                },
+                contentLimit: {
+                  type: 'number',
+                  description: 'Maximum characters of content to return (default: 500, max: 5000)',
+                  default: 500,
+                  minimum: 100,
+                  maximum: 5000,
                 },
               },
               required: ['id'],
@@ -126,6 +150,18 @@ export class HivemindServer {
                   type: 'number',
                   description: 'Maximum number of results (1-100)',
                   default: 10,
+                },
+                includeContent: {
+                  type: 'boolean',
+                  description: 'Include content snippets in results (default: false for efficiency)',
+                  default: false,
+                },
+                contentLimit: {
+                  type: 'number',
+                  description: 'Maximum characters of content per result (default: 300, max: 2000)',
+                  default: 300,
+                  minimum: 100,
+                  maximum: 2000,
                 },
               },
               required: ['query'],
@@ -222,7 +258,7 @@ export class HivemindServer {
     });
   }
 
-  private async handleQueryCharacter(args: { id: string }) {
+  private async handleQueryCharacter(args: { id: string; includeContent?: boolean; contentLimit?: number }) {
     await this.ensureIndexed();
 
     // Use search engine to get node with relationships
@@ -255,7 +291,11 @@ export class HivemindServer {
     }
 
     // Format comprehensive response with relationships
-    const response = this.formatCharacterWithRelationships(result);
+    const response = this.formatCharacterWithRelationships(
+      result,
+      args.includeContent ?? true,
+      args.contentLimit ?? 500
+    );
 
     return {
       content: [{
@@ -265,7 +305,7 @@ export class HivemindServer {
     };
   }
 
-  private async handleQueryLocation(args: { id: string }) {
+  private async handleQueryLocation(args: { id: string; includeContent?: boolean; contentLimit?: number }) {
     await this.ensureIndexed();
 
     // Use search engine to get node with relationships
@@ -298,7 +338,11 @@ export class HivemindServer {
     }
 
     // Format comprehensive response with relationships
-    const response = this.formatLocationWithRelationships(result);
+    const response = this.formatLocationWithRelationships(
+      result,
+      args.includeContent ?? true,
+      args.contentLimit ?? 500
+    );
 
     return {
       content: [{
@@ -308,7 +352,7 @@ export class HivemindServer {
     };
   }
 
-  private async handleSearchVault(args: { query: string; filters?: any; limit?: number }) {
+  private async handleSearchVault(args: { query: string; filters?: any; limit?: number; includeContent?: boolean; contentLimit?: number }) {
     await this.ensureIndexed();
 
     // Use enhanced search engine
@@ -327,7 +371,11 @@ export class HivemindServer {
       };
     }
 
-    const response = this.formatSearchResults(results);
+    const response = this.formatSearchResults(
+      results,
+      args.includeContent ?? false,
+      args.contentLimit ?? 300
+    );
 
     return {
       content: [{
@@ -360,7 +408,7 @@ export class HivemindServer {
     }
   }
 
-  private formatCharacterWithRelationships(result: any): string {
+  private formatCharacterWithRelationships(result: any, includeContent = true, contentLimit = 500): string {
     const { node, relatedNodes } = result;
     const props = node.properties;
 
@@ -372,6 +420,18 @@ export class HivemindServer {
     if (props.gender) response += `**Gender**: ${props.gender} | `;
     if (props.race) response += `**Race**: ${props.race}`;
     response += `\n\n`;
+
+    // Content (if requested)
+    if (includeContent && node.content) {
+      response += `## Description\n`;
+      const content = node.content.trim();
+      if (content.length > contentLimit) {
+        response += `${content.substring(0, contentLimit)}...\n\n`;
+        response += `*[Truncated at ${contentLimit} chars. Full content: ${content.length} chars]*\n\n`;
+      } else {
+        response += `${content}\n\n`;
+      }
+    }
 
     // Appearance
     if (props.appearance) {
@@ -420,7 +480,7 @@ export class HivemindServer {
     return response;
   }
 
-  private formatLocationWithRelationships(result: any): string {
+  private formatLocationWithRelationships(result: any, includeContent = true, contentLimit = 500): string {
     const { node, relatedNodes } = result;
     const props = node.properties;
 
@@ -432,6 +492,18 @@ export class HivemindServer {
     if (props.category) response += `**Category**: ${props.category} | `;
     if (props.climate) response += `**Climate**: ${props.climate}`;
     response += `\n\n`;
+
+    // Content (if requested)
+    if (includeContent && node.content) {
+      response += `## Description\n`;
+      const content = node.content.trim();
+      if (content.length > contentLimit) {
+        response += `${content.substring(0, contentLimit)}...\n\n`;
+        response += `*[Truncated at ${contentLimit} chars. Full content: ${content.length} chars]*\n\n`;
+      } else {
+        response += `${content}\n\n`;
+      }
+    }
 
     // Connected entities (from graph)
     if (relatedNodes.length > 0) {
@@ -454,7 +526,7 @@ export class HivemindServer {
     return response;
   }
 
-  private formatSearchResults(results: any): string {
+  private formatSearchResults(results: any, includeContent = false, contentLimit = 300): string {
     const { nodes, metadata } = results;
 
     let response = `# Search Results\n\n`;
@@ -464,7 +536,18 @@ export class HivemindServer {
       response += `## ${node.title}\n`;
       response += `- **Type**: ${node.type} | **Status**: ${node.status}\n`;
       response += `- **ID**: \`${node.id}\`\n`;
-      response += `- **Path**: ${node.filePath}\n\n`;
+      response += `- **Path**: ${node.filePath}\n`;
+      
+      if (includeContent && node.content) {
+        const content = node.content.trim();
+        if (content.length > contentLimit) {
+          response += `- **Snippet**: ${content.substring(0, contentLimit)}...\n`;
+        } else {
+          response += `- **Snippet**: ${content}\n`;
+        }
+      }
+      
+      response += `\n`;
     }
 
     return response;

@@ -80,18 +80,24 @@ Obsidian Vault → File Watcher → Markdown Parser → Knowledge Graph
 
 ### Roadmap
 
+See [.planning/PROJECT.md](.planning/PROJECT.md) for the active requirements and progress tracking.
+
+**Recently Completed:**
 - [x] Project setup and dependencies
-- [ ] Vault reading and file watching
-- [ ] Markdown parsing with wikilinks
-- [ ] Knowledge graph construction
-- [ ] HybridRAG search implementation
-- [ ] MCP tools (query_character, query_location, search_vault)
+- [x] Vault reading and file watching (VaultReader, VaultWatcher)
+- [x] Markdown parsing with wikilinks (MarkdownParser)
+- [x] Knowledge graph construction (GraphBuilder, HivemindDatabase)
+- [x] HybridRAG search implementation (SearchEngine)
+- [x] MCP tools (query_character, query_location, search_vault)
+
+**Up Next:**
+- [ ] Testing and validation
 - [ ] ComfyUI integration
 - [ ] Obsidian plugin
 
 ## Documentation
 
-- [Implementation Plan](../.copilot/session-state/.../plan.md)
+- [Project Requirements & Roadmap](.planning/PROJECT.md)
 - [Architecture Research](.planning/research/ARCHITECTURE.md)
 - [Technology Stack](.planning/research/STACK.md)
 - [Features Specification](.planning/research/FEATURES.md)
