@@ -1,0 +1,16 @@
+{
+  "vault": {
+    "path": "./sample-vault",
+    "watchForChanges": true,
+    "debounceMs": 100
+  },
+  "server": {
+    "transport": "stdio"
+  },
+  "indexing": {
+    "strategy": "incremental",
+    "batchSize": 100,
+    "enableVectorSearch": false,
+    "enableFullTextSearch": true
+  }
+}
