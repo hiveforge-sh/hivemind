@@ -15,6 +15,8 @@ import {
 import { VaultReader } from './vault/reader.js';
 import { VaultWatcher } from './vault/watcher.js';
 import { MarkdownParser } from './parser/markdown.js';
+import { HivemindDatabase } from './graph/database.js';
+import { GraphBuilder } from './graph/builder.js';
 import { join } from 'path';
 
 export class HivemindServer {
@@ -23,6 +25,8 @@ export class HivemindServer {
   private vaultReader: VaultReader;
   private vaultWatcher: VaultWatcher;
   private markdownParser: MarkdownParser;
+  private database: HivemindDatabase;
+  private graphBuilder: GraphBuilder;
   private isIndexed: boolean = false;
 
   constructor(config: HivemindConfig) {
@@ -31,6 +35,11 @@ export class HivemindServer {
     this.vaultReader = new VaultReader(config.vault);
     this.vaultWatcher = new VaultWatcher(config.vault);
     this.markdownParser = new MarkdownParser();
+    
+    // Initialize database
+    const dbPath = join(config.vault.path, '.hivemind', 'vault.db');
+    this.database = new HivemindDatabase({ path: dbPath });
+    this.graphBuilder = new GraphBuilder(this.database);
     
     this.server = new Server(
       {
@@ -285,36 +294,38 @@ export class HivemindServer {
     await this.ensureIndexed();
 
     const limit = args.limit || 10;
-    const query = args.query.toLowerCase();
+    const query = args.query;
 
-    // Simple text search (will be replaced with hybrid search in Week 4)
-    const allNotes = this.vaultReader.getAllNotes();
-    const matches = allNotes.filter(note => {
-      const matchesQuery = 
-        note.id.toLowerCase().includes(query) ||
-        note.fileName.toLowerCase().includes(query) ||
-        note.content.toLowerCase().includes(query);
+    // Use database full-text search
+    const searchResults = this.database.search(query, limit);
+    
+    // Get full node details for results
+    const results = searchResults.map(result => {
+      const node = this.database.getNode(result.id);
+      return node;
+    }).filter(node => node !== undefined);
 
-      // Apply filters if provided
+    // Apply filters if provided
+    const filteredResults = results.filter(node => {
+      if (!node) return false;
+      
       if (args.filters) {
-        if (args.filters.type && !args.filters.type.includes(note.frontmatter.type)) {
+        if (args.filters.type && !args.filters.type.includes(node.type)) {
           return false;
         }
-        if (args.filters.status && !args.filters.status.includes(note.frontmatter.status)) {
+        if (args.filters.status && !args.filters.status.includes(node.status)) {
           return false;
         }
       }
-
-      return matchesQuery;
+      
+      return true;
     });
-
-    const results = matches.slice(0, limit);
 
     return {
       content: [
         {
           type: 'text',
-          text: this.formatSearchResults(results, query, matches.length),
+          text: this.formatDatabaseSearchResults(filteredResults, query, searchResults.length),
         },
       ],
     };
@@ -410,22 +421,19 @@ ${note.content.substring(0, 1000)}${note.content.length > 1000 ? '...' : ''}
 *Last modified: ${note.stats.modified}*`;
   }
 
-  private formatSearchResults(results: any[], query: string, totalMatches: number): string {
+  private formatDatabaseSearchResults(results: any[], query: string, totalMatches: number): string {
     if (results.length === 0) {
       return `No results found for: "${query}"`;
     }
 
     let response = `# Search Results for "${query}"\n\nFound ${totalMatches} matches (showing ${results.length}):\n\n`;
 
-    for (const note of results) {
-      const fm = note.frontmatter;
-      const snippet = note.content.substring(0, 150).replace(/\n/g, ' ');
-      
-      response += `## ${fm.title || fm.name || note.fileName}\n`;
-      response += `- **Type**: ${fm.type}\n`;
-      response += `- **Status**: ${fm.status}\n`;
-      response += `- **Snippet**: ${snippet}...\n`;
-      response += `- **Path**: ${note.filePath}\n\n`;
+    for (const node of results) {
+      response += `## ${node.title}\n`;
+      response += `- **Type**: ${node.type}\n`;
+      response += `- **Status**: ${node.status}\n`;
+      response += `- **ID**: ${node.id}\n`;
+      response += `- **Path**: ${node.filePath}\n\n`;
     }
 
     return response;
@@ -435,6 +443,11 @@ ${note.content.substring(0, 1000)}${note.content.length > 1000 ? '...' : ''}
     // Initial vault scan
     console.error('Performing initial vault scan...');
     await this.vaultReader.scanVault();
+    
+    // Build knowledge graph
+    const allNotes = this.vaultReader.getAllNotes();
+    this.graphBuilder.buildGraph(allNotes);
+    
     this.isIndexed = true;
 
     // Start file watcher
@@ -450,7 +463,9 @@ ${note.content.substring(0, 1000)}${note.content.length > 1000 ? '...' : ''}
     console.error(`Vault path: ${this.config.vault.path}`);
     console.error(`Transport: ${this.config.server.transport}`);
     
-    const stats = this.vaultReader.getStats();
-    console.error(`Indexed ${stats.totalNotes} notes:`, stats.byType);
+    const vaultStats = this.vaultReader.getStats();
+    const dbStats = this.database.getStats();
+    console.error(`Vault: ${vaultStats.totalNotes} notes`);
+    console.error(`Database: ${dbStats.nodes} nodes, ${dbStats.relationships} relationships`);
   }
 }
