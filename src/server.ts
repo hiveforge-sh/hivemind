@@ -12,13 +12,25 @@ import {
   SearchVaultArgsSchema,
   type HivemindConfig,
 } from './types/index.js';
+import { VaultReader } from './vault/reader.js';
+import { VaultWatcher } from './vault/watcher.js';
+import { MarkdownParser } from './parser/markdown.js';
+import { join } from 'path';
 
 export class HivemindServer {
   private server: Server;
   private config: HivemindConfig;
+  private vaultReader: VaultReader;
+  private vaultWatcher: VaultWatcher;
+  private markdownParser: MarkdownParser;
+  private isIndexed: boolean = false;
 
   constructor(config: HivemindConfig) {
     this.config = config;
+    
+    this.vaultReader = new VaultReader(config.vault);
+    this.vaultWatcher = new VaultWatcher(config.vault);
+    this.markdownParser = new MarkdownParser();
     
     this.server = new Server(
       {
@@ -34,6 +46,7 @@ export class HivemindServer {
     );
 
     this.setupHandlers();
+    this.setupVaultWatcher();
   }
 
   private setupHandlers(): void {
@@ -167,15 +180,30 @@ export class HivemindServer {
       const { uri } = request.params;
 
       if (uri === 'vault://index') {
+        await this.ensureIndexed();
+        
+        const stats = this.vaultReader.getStats();
+        const allNotes = this.vaultReader.getAllNotes();
+        
+        const index = {
+          vault: this.config.vault.path,
+          stats,
+          notes: allNotes.map(note => ({
+            id: note.id,
+            type: note.frontmatter.type,
+            status: note.frontmatter.status,
+            title: note.frontmatter.title || note.fileName,
+            path: note.filePath,
+            links: note.links,
+          })),
+        };
+
         return {
           contents: [
             {
               uri,
               mimeType: 'application/json',
-              text: JSON.stringify({
-                message: 'Vault index not yet implemented',
-                vaultPath: this.config.vault.path,
-              }, null, 2),
+              text: JSON.stringify(index, null, 2),
             },
           ],
         };
@@ -186,47 +214,243 @@ export class HivemindServer {
   }
 
   private async handleQueryCharacter(args: { id: string }) {
-    // TODO: Implement actual character query
+    await this.ensureIndexed();
+
+    // Try to find character by ID or name
+    const note = this.findNoteByIdOrName(args.id, 'character');
+
+    if (!note) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Character not found: ${args.id}\n\nAvailable characters: ${this.getAvailableNotes('character').join(', ')}`,
+          },
+        ],
+      };
+    }
+
+    // Parse the full note content
+    const fullPath = join(this.config.vault.path, note.filePath);
+    const parsedNote = await this.markdownParser.parseFile(fullPath);
+
+    // Format response
+    const response = this.formatCharacterResponse(parsedNote);
+
     return {
       content: [
         {
           type: 'text',
-          text: `Character query not yet implemented. Requested ID: ${args.id}\n\nVault path: ${this.config.vault.path}`,
+          text: response,
         },
       ],
     };
   }
 
   private async handleQueryLocation(args: { id: string }) {
-    // TODO: Implement actual location query
+    await this.ensureIndexed();
+
+    // Try to find location by ID or name
+    const note = this.findNoteByIdOrName(args.id, 'location');
+
+    if (!note) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Location not found: ${args.id}\n\nAvailable locations: ${this.getAvailableNotes('location').join(', ')}`,
+          },
+        ],
+      };
+    }
+
+    // Parse the full note content
+    const fullPath = join(this.config.vault.path, note.filePath);
+    const parsedNote = await this.markdownParser.parseFile(fullPath);
+
+    // Format response
+    const response = this.formatLocationResponse(parsedNote);
+
     return {
       content: [
         {
           type: 'text',
-          text: `Location query not yet implemented. Requested ID: ${args.id}\n\nVault path: ${this.config.vault.path}`,
+          text: response,
         },
       ],
     };
   }
 
   private async handleSearchVault(args: { query: string; filters?: any; limit?: number }) {
-    // TODO: Implement actual hybrid search
+    await this.ensureIndexed();
+
+    const limit = args.limit || 10;
+    const query = args.query.toLowerCase();
+
+    // Simple text search (will be replaced with hybrid search in Week 4)
+    const allNotes = this.vaultReader.getAllNotes();
+    const matches = allNotes.filter(note => {
+      const matchesQuery = 
+        note.id.toLowerCase().includes(query) ||
+        note.fileName.toLowerCase().includes(query) ||
+        note.content.toLowerCase().includes(query);
+
+      // Apply filters if provided
+      if (args.filters) {
+        if (args.filters.type && !args.filters.type.includes(note.frontmatter.type)) {
+          return false;
+        }
+        if (args.filters.status && !args.filters.status.includes(note.frontmatter.status)) {
+          return false;
+        }
+      }
+
+      return matchesQuery;
+    });
+
+    const results = matches.slice(0, limit);
+
     return {
       content: [
         {
           type: 'text',
-          text: `Search not yet implemented. Query: "${args.query}"\nLimit: ${args.limit || 10}\n\nVault path: ${this.config.vault.path}`,
+          text: this.formatSearchResults(results, query, matches.length),
         },
       ],
     };
   }
 
+  private setupVaultWatcher(): void {
+    // Register change handler
+    this.vaultWatcher.onChange(async (event, filePath) => {
+      console.error(`Vault change detected: ${event} - ${filePath}`);
+      
+      // Re-index on changes
+      if (event === 'add' || event === 'change') {
+        await this.vaultReader.scanVault();
+      }
+    });
+  }
+
+  private async ensureIndexed(): Promise<void> {
+    if (!this.isIndexed) {
+      await this.vaultReader.scanVault();
+      this.isIndexed = true;
+    }
+  }
+
+  private findNoteByIdOrName(idOrName: string, type?: string): any {
+    const normalized = idOrName.toLowerCase().replace(/\s+/g, '-');
+    
+    // Try exact ID match first
+    let note = this.vaultReader.getNote(normalized);
+    
+    // Try searching all notes
+    if (!note) {
+      const allNotes = this.vaultReader.getAllNotes();
+      note = allNotes.find(n => 
+        n.id === normalized || 
+        n.id.includes(normalized) ||
+        n.fileName.toLowerCase().includes(idOrName.toLowerCase())
+      );
+    }
+
+    // Filter by type if specified
+    if (note && type && note.frontmatter.type !== type) {
+      return undefined;
+    }
+
+    return note;
+  }
+
+  private getAvailableNotes(type: string): string[] {
+    const notes = this.vaultReader.getNotesByType(type);
+    return notes.map(n => n.frontmatter.title || n.fileName).slice(0, 10);
+  }
+
+  private formatCharacterResponse(note: any): string {
+    const fm = note.frontmatter;
+    
+    return `# ${fm.name || fm.title || note.fileName}
+
+**Type**: Character
+**Status**: ${fm.status}
+**ID**: ${fm.id}
+
+${fm.age ? `**Age**: ${fm.age}\n` : ''}${fm.gender ? `**Gender**: ${fm.gender}\n` : ''}${fm.race ? `**Race**: ${fm.race}\n` : ''}
+${fm.appearance ? `## Appearance\n${JSON.stringify(fm.appearance, null, 2)}\n` : ''}
+${fm.personality ? `## Personality\n${JSON.stringify(fm.personality, null, 2)}\n` : ''}
+${note.links.length > 0 ? `## Related Notes\n${note.links.map((l: string) => `- [[${l}]]`).join('\n')}\n` : ''}
+## Content
+
+${note.content.substring(0, 1000)}${note.content.length > 1000 ? '...' : ''}
+
+---
+*Source: ${note.filePath}*
+*Last modified: ${note.stats.modified}*`;
+  }
+
+  private formatLocationResponse(note: any): string {
+    const fm = note.frontmatter;
+    
+    return `# ${fm.name || fm.title || note.fileName}
+
+**Type**: Location
+**Status**: ${fm.status}
+**ID**: ${fm.id}
+
+${fm.region ? `**Region**: ${fm.region}\n` : ''}${fm.category ? `**Category**: ${fm.category}\n` : ''}${fm.climate ? `**Climate**: ${fm.climate}\n` : ''}
+${note.links.length > 0 ? `## Connected Locations\n${note.links.map((l: string) => `- [[${l}]]`).join('\n')}\n` : ''}
+## Description
+
+${note.content.substring(0, 1000)}${note.content.length > 1000 ? '...' : ''}
+
+---
+*Source: ${note.filePath}*
+*Last modified: ${note.stats.modified}*`;
+  }
+
+  private formatSearchResults(results: any[], query: string, totalMatches: number): string {
+    if (results.length === 0) {
+      return `No results found for: "${query}"`;
+    }
+
+    let response = `# Search Results for "${query}"\n\nFound ${totalMatches} matches (showing ${results.length}):\n\n`;
+
+    for (const note of results) {
+      const fm = note.frontmatter;
+      const snippet = note.content.substring(0, 150).replace(/\n/g, ' ');
+      
+      response += `## ${fm.title || fm.name || note.fileName}\n`;
+      response += `- **Type**: ${fm.type}\n`;
+      response += `- **Status**: ${fm.status}\n`;
+      response += `- **Snippet**: ${snippet}...\n`;
+      response += `- **Path**: ${note.filePath}\n\n`;
+    }
+
+    return response;
+  }
+
   async start(): Promise<void> {
+    // Initial vault scan
+    console.error('Performing initial vault scan...');
+    await this.vaultReader.scanVault();
+    this.isIndexed = true;
+
+    // Start file watcher
+    if (this.config.vault.watchForChanges) {
+      this.vaultWatcher.start();
+    }
+
+    // Start MCP server
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
     
     console.error('Hivemind MCP server started');
     console.error(`Vault path: ${this.config.vault.path}`);
     console.error(`Transport: ${this.config.server.transport}`);
+    
+    const stats = this.vaultReader.getStats();
+    console.error(`Indexed ${stats.totalNotes} notes:`, stats.byType);
   }
 }

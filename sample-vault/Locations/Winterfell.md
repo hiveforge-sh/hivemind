@@ -4,14 +4,11 @@ type: location
 status: canon
 importance: major
 world: Westeros
-
-# Basic Info
 name: Winterfell
 region: The North
 category: castle
 climate: cold, harsh winters
-
-# Metadata
+tags: [north, castle, stark]
 created: 2026-01-24
 updated: 2026-01-24
 canon_authority: high

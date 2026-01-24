@@ -4,15 +4,12 @@ type: character
 status: canon
 importance: major
 world: Westeros
-
-# Basic Info
 name: Eddard Stark
 aliases: [Ned, The Quiet Wolf]
 age: 35
 gender: male
 race: human
-
-# Metadata
+tags: [stark, north, lord]
 created: 2026-01-24
 updated: 2026-01-24
 canon_authority: high
