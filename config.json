@@ -1,6 +1,6 @@
 {
   "vault": {
-    "path": "./sample-vault",
+    "path": "F:\\Heimdall-Dropbox\\Obsidian Vaults\\DND-Wayward Watch\\DND Wayward Watch",
     "watchForChanges": true,
     "debounceMs": 100
   },
