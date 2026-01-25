@@ -1,3 +1,10 @@
+# [1.13.0](https://github.com/hiveforge-io/hivemind/compare/v1.12.0...v1.13.0) (2026-01-25)
+
+
+### Features
+
+* add Obsidian plugin files to GitHub releases ([2324d73](https://github.com/hiveforge-io/hivemind/commit/2324d73d3d1b797ab7566e0f771c2fc5bfaf880f))
+
 # [1.12.0](https://github.com/hiveforge-io/hivemind/compare/v1.11.0...v1.12.0) (2026-01-25)
 
 
