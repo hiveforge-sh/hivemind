@@ -649,13 +649,30 @@ export class HivemindServer {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
     
-    console.error('Hivemind MCP server started');
-    console.error(`Vault path: ${this.config.vault.path}`);
-    console.error(`Transport: ${this.config.server.transport}`);
-    
-    const vaultStats = this.vaultReader.getStats();
+    // Print ready banner
     const dbStats = this.database.getStats();
-    console.error(`Vault: ${vaultStats.totalNotes} notes`);
-    console.error(`Database: ${dbStats.nodes} nodes, ${dbStats.relationships} relationships`);
+    this.printReadyBanner(dbStats);
+  }
+
+  private printReadyBanner(stats: { nodes: number; relationships: number }) {
+    console.error(`
+     _______________
+    /               \\
+   /   .--. .--.   \\
+  /   ( o ) ( o )   \\
+ /     '|'   '|'     \\
+/   .--+-+---+-+--.   \\
+\\   |  | |   | |  |  /
+ \\   \\-+-+---+-+-/  /
+  \\    ( o ) ( o )  /
+   \\               /
+    \\____HM_____/
+
+   HIVEMIND MCP Server
+
+   ✓ Vault: ${this.config.vault.path}
+   ✓ Graph: ${stats.nodes} nodes, ${stats.relationships} edges
+   ✓ Ready for queries
+`);
   }
 }
