@@ -120,6 +120,7 @@ export default class HivemindPlugin extends Plugin {
     }
 
     try {
+      console.log('[Plugin] Starting MCP server with command:', this.settings.mcpServerPath);
       const [command, ...args] = this.settings.mcpServerPath.split(' ');
       
       this.mcpProcess = spawn(command, args, {
@@ -129,9 +130,17 @@ export default class HivemindPlugin extends Plugin {
 
       this.mcpStdin = this.mcpProcess.stdin;
       this.mcpStdout = this.mcpProcess.stdout;
+      const mcpStderr = this.mcpProcess.stderr;
 
       if (!this.mcpStdout) {
         throw new Error('Failed to get MCP stdout');
+      }
+      
+      // Log stderr for debugging
+      if (mcpStderr) {
+        mcpStderr.on('data', (chunk) => {
+          console.log('[MCP Server]', chunk.toString());
+        });
       }
 
       let buffer = '';
@@ -319,7 +328,15 @@ export default class HivemindPlugin extends Plugin {
 
   async executeWorkflow(workflowId: string, contextId: string, contextType: string) {
     try {
-      new Notice('Generating image...');
+      // Show starting notice
+      new Notice('🎨 Starting image generation...');
+      
+      // Open ComfyUI in browser so user can watch
+      const comfyUrl = 'http://127.0.0.1:8000';
+      window.open(comfyUrl, '_blank');
+      
+      // Show progress notice
+      new Notice('⏳ Generating... (check ComfyUI window)', 5000);
 
       const response = await this.callMCPTool({
         name: 'generate_image',
@@ -331,20 +348,24 @@ export default class HivemindPlugin extends Plugin {
       });
 
       if (response.isError) {
-        new Notice('Image generation failed');
+        new Notice('❌ Image generation failed: ' + (response.content?.[0]?.text || 'Unknown error'), 8000);
         return;
       }
 
-      new Notice('Image generated successfully!');
+      // Parse the response to get image path
+      const resultText = response.content?.[0]?.text || '';
       
-      // Show result
-      if (response.content && response.content[0]) {
-        new ResultModal(this.app, response.content[0].text).open();
+      // Show success with details
+      new Notice('✅ Image generated successfully!', 5000);
+      
+      // Show result modal with image path
+      if (resultText) {
+        new ResultModal(this.app, resultText).open();
       }
 
     } catch (error) {
       console.error('Workflow execution failed:', error);
-      new Notice('Workflow execution failed: ' + (error as Error).message);
+      new Notice('❌ Workflow execution failed: ' + (error as Error).message, 8000);
     }
   }
 }
@@ -367,12 +388,16 @@ class WorkflowSelectionModal extends Modal {
     contentEl.createEl('h2', { text: 'Select Workflow' });
 
     try {
+      console.log('[Plugin] Calling list_workflows...');
       const response = await this.plugin.callMCPTool({
         name: 'list_workflows',
         arguments: {},
       });
 
+      console.log('[Plugin] list_workflows response:', response);
+
       if (!response.content || response.content.length === 0) {
+        console.error('[Plugin] No content in response');
         contentEl.createEl('p', { 
           text: 'No workflows available. Loading...',
           cls: 'mod-warning'
@@ -437,13 +462,14 @@ class WorkflowSelectionModal extends Modal {
       });
 
     } catch (error) {
+      console.error('[Plugin] Error loading workflows:', error);
       contentEl.createEl('p', { 
         text: 'Failed to load workflows: ' + (error as Error).message,
         cls: 'mod-error'
       });
       
       contentEl.createEl('p', {
-        text: 'Make sure MCP server is connected.'
+        text: 'Make sure MCP server is connected and ComfyUI is enabled in config.json'
       });
     }
   }
@@ -815,13 +841,39 @@ class HivemindSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('ComfyUI endpoint')
-      .setDesc('URL of your ComfyUI instance')
+      .setDesc('URL of your ComfyUI instance (e.g., http://127.0.0.1:8000)')
       .addText(text => text
         .setPlaceholder('http://127.0.0.1:8188')
         .setValue(this.plugin.settings.comfyuiEndpoint)
         .onChange(async (value) => {
           this.plugin.settings.comfyuiEndpoint = value;
           await this.plugin.saveSettings();
+        }))
+      .addButton(button => button
+        .setButtonText('Test Connection')
+        .setCta()
+        .onClick(async () => {
+          button.setDisabled(true);
+          button.setButtonText('Testing...');
+          
+          try {
+            const endpoint = this.plugin.settings.comfyuiEndpoint || 'http://127.0.0.1:8188';
+            const response = await fetch(`${endpoint}/system_stats`, {
+              method: 'GET',
+              signal: AbortSignal.timeout(5000)
+            });
+            
+            if (response.ok) {
+              new Notice('✅ ComfyUI connection successful!', 5000);
+            } else {
+              new Notice(`❌ ComfyUI responded with status ${response.status}`, 5000);
+            }
+          } catch (error) {
+            new Notice(`❌ Failed to connect to ComfyUI: ${(error as Error).message}`, 8000);
+          } finally {
+            button.setDisabled(false);
+            button.setButtonText('Test Connection');
+          }
         }));
   }
 }

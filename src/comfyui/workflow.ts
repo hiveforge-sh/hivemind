@@ -122,19 +122,30 @@ export class WorkflowManager {
   async scanWorkflowsDirectory(): Promise<void> {
     const workflowDir = join(this.vaultPath, this.workflowsPath);
     
+    console.error(`[WorkflowManager] Scanning workflows directory: ${workflowDir}`);
+    
     try {
       await fs.mkdir(workflowDir, { recursive: true });
       const files = await fs.readdir(workflowDir);
       
+      console.error(`[WorkflowManager] Found ${files.length} files in workflows directory`);
+      
       for (const file of files) {
-        if (!file.endsWith('.json')) continue;
+        if (!file.endsWith('.json')) {
+          console.error(`[WorkflowManager] Skipping non-JSON file: ${file}`);
+          continue;
+        }
         
+        console.error(`[WorkflowManager] Processing workflow file: ${file}`);
         const filePath = join(workflowDir, file);
         const content = await fs.readFile(filePath, 'utf-8');
         const workflowData = JSON.parse(content);
         
+        console.error(`[WorkflowManager] Workflow data keys: ${Object.keys(workflowData).join(', ')}`);
+        
         // Ensure it has required fields
         if (workflowData.id && workflowData.name && workflowData.workflow) {
+          console.error(`[WorkflowManager] Storing workflow: ${workflowData.id} - ${workflowData.name}`);
           await this.storeWorkflow({
             id: workflowData.id,
             name: workflowData.name,
@@ -143,10 +154,15 @@ export class WorkflowManager {
             contextFields: workflowData.contextFields,
             outputPath: workflowData.outputPath,
           });
+        } else {
+          console.error(`[WorkflowManager] Skipping invalid workflow (missing required fields): ${file}`);
+          console.error(`[WorkflowManager]   Has id: ${!!workflowData.id}, Has name: ${!!workflowData.name}, Has workflow: ${!!workflowData.workflow}`);
         }
       }
+      
+      console.error(`[WorkflowManager] Workflow scan complete`);
     } catch (error) {
-      console.error('Failed to scan workflows directory:', error);
+      console.error('[WorkflowManager] Failed to scan workflows directory:', error);
     }
   }
 }
