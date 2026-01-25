@@ -1,3 +1,43 @@
+# [2.0.0](https://github.com/hiveforge-io/hivemind/compare/v1.14.0...v2.0.0) (2026-01-25)
+
+
+### Features
+
+* migrate from Jest to Vitest for better ESM support ([4a28eca](https://github.com/hiveforge-io/hivemind/commit/4a28eca04521e0f85679429d383624ca4b7fd0df))
+* set up Jest testing infrastructure with initial tests ([599e24e](https://github.com/hiveforge-io/hivemind/commit/599e24e0839023fb67eb4dbf0ab1deca5cc6274b))
+
+
+### Reverts
+
+* restore git plugin in semantic-release config ([5e9e24f](https://github.com/hiveforge-io/hivemind/commit/5e9e24f173041bc06b288d92ec3efbf8455ab6e4))
+
+
+### BREAKING CHANGES
+
+* Switched test runner from Jest to Vitest
+
+- Remove Jest, ts-jest, @jest/globals, @types/jest
+- Install Vitest with UI and coverage support
+- Create vitest.config.ts with coverage thresholds
+- Update all test files to import from 'vitest'
+- Update test scripts in package.json
+- Fix MarkdownParser test (status has default value)
+
+Benefits:
+- Native ESM support (no more remark import errors!)
+- Faster test execution
+- Better TypeScript integration
+- UI dashboard available with npm run test:ui
+
+Test Results:
+- ✅ 18/18 tests passing
+- ✅ MarkdownParser: 92% coverage
+- ✅ ComfyUIClient: 40% coverage
+- ✅ Overall: 8.4% coverage (baseline established)
+
+Coverage thresholds set to 8% as starting point.
+Will increase gradually as more tests are added.
+
 # [1.14.0](https://github.com/hiveforge-io/hivemind/compare/v1.13.0...v1.14.0) (2026-01-25)
 
 
