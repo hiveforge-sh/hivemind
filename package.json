@@ -63,7 +63,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.4",
     "axios": "^1.13.2",
-    "better-sqlite3": "^11.7.0",
+    "better-sqlite3": "^12.6.2",
     "chokidar": "^4.0.3",
     "express": "^4.21.2",
     "gray-matter": "^4.0.3",
