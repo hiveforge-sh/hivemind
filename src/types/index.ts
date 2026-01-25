@@ -60,6 +60,76 @@ export const LocationFrontmatterSchema = BaseFrontmatterSchema.extend({
 
 export type LocationFrontmatter = z.infer<typeof LocationFrontmatterSchema>;
 
+// Event-specific frontmatter
+export const EventFrontmatterSchema = BaseFrontmatterSchema.extend({
+  type: z.literal('event'),
+  name: z.string(),
+  date: z.string().optional(),
+  date_start: z.string().optional(),
+  date_end: z.string().optional(),
+  date_display: z.string().optional(),
+  event_type: z.string().optional(),
+  participants: z.array(z.string()).optional(),
+  locations: z.array(z.string()).optional(),
+  factions: z.array(z.string()).optional(),
+  outcome: z.string().optional(),
+  consequences: z.array(z.string()).optional(),
+  timeline: z.string().optional(),
+  previous_event: z.string().optional(),
+  next_event: z.string().optional(),
+});
+
+export type EventFrontmatter = z.infer<typeof EventFrontmatterSchema>;
+
+// Faction-specific frontmatter
+export const FactionFrontmatterSchema = BaseFrontmatterSchema.extend({
+  type: z.literal('faction'),
+  name: z.string(),
+  faction_type: z.enum(['house', 'guild', 'organization', 'government', 'military', 'religion', 'other']).optional(),
+  leader: z.string().optional(),
+  members: z.array(z.string()).optional(),
+  headquarters: z.string().optional(),
+  founded: z.string().optional(),
+  goals: z.array(z.string()).optional(),
+  resources: z.array(z.string()).optional(),
+  allies: z.array(z.string()).optional(),
+  rivals: z.array(z.string()).optional(),
+});
+
+export type FactionFrontmatter = z.infer<typeof FactionFrontmatterSchema>;
+
+// Lore-specific frontmatter
+export const LoreFrontmatterSchema = BaseFrontmatterSchema.extend({
+  type: z.literal('lore'),
+  name: z.string(),
+  category: z.enum(['mythology', 'history', 'magic', 'technology', 'culture', 'religion', 'other']).optional(),
+  related_entities: z.array(z.string()).optional(),
+  source: z.enum(['in-world', 'meta', 'player-knowledge']).optional(),
+});
+
+export type LoreFrontmatter = z.infer<typeof LoreFrontmatterSchema>;
+
+// Asset-specific frontmatter
+export const AssetFrontmatterSchema = BaseFrontmatterSchema.extend({
+  type: z.literal('asset'),
+  asset_type: z.enum(['image', 'audio', 'video', 'document']).default('image'),
+  file_path: z.string(),
+  file_format: z.string().optional(),
+  depicts: z.array(z.string()).optional(),
+  generation_date: z.string().optional(),
+  generator: z.string().optional(),
+  workflow_id: z.string().optional(),
+  prompt: z.string().optional(),
+  negative_prompt: z.string().optional(),
+  model: z.string().optional(),
+  seed: z.number().optional(),
+  parameters: z.record(z.any()).optional(),
+  approved_by: z.string().optional(),
+  approval_date: z.string().optional(),
+});
+
+export type AssetFrontmatter = z.infer<typeof AssetFrontmatterSchema>;
+
 // ============================================================================
 // Vault Note Structure
 // ============================================================================
