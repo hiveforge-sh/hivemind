@@ -152,6 +152,8 @@ See [.planning/PROJECT.md](.planning/PROJECT.md) for the active requirements and
 - [x] ComfyUI integration with workflow management
 - [x] Obsidian plugin with image generation and frontmatter tools
 - [x] GitHub release automation for plugin distribution
+- [x] Test coverage improvement (37% → 45%)
+- [x] CodeQL security scanning integration
 
 **Up Next:**
 - [ ] Obsidian plugin community submission (automated release ready)
