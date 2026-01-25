@@ -75,7 +75,19 @@ Please fix any linting errors before submitting a pull request.
 
 1.  **Fork the repository** and create your branch from `main`.
 2.  **Make your changes.**
-3.  **Write clear, concise commit messages.**
+3.  **Write clear, concise commit messages** following the [Conventional Commits](https://www.conventionalcommits.org/) specification:
+    - `feat:` - New feature
+    - `fix:` - Bug fix
+    - `docs:` - Documentation changes
+    - `style:` - Code style changes (formatting, etc.)
+    - `refactor:` - Code refactoring
+    - `perf:` - Performance improvements
+    - `test:` - Test changes
+    - `build:` - Build system changes
+    - `ci:` - CI configuration changes
+    - `chore:` - Other changes
+    
+    Example: `feat: add support for custom templates` or `fix: resolve memory leak in vault watcher`
 4.  **Ensure your code passes all tests and lint checks.**
     ```bash
     npm test
@@ -85,6 +97,23 @@ Please fix any linting errors before submitting a pull request.
 6.  **Open a pull request** to the `main` branch of the main repository.
     *   Provide a clear description of your changes and why they are necessary.
     *   Reference any relevant issues.
+
+## Release Process
+
+This project uses automated semantic versioning based on commit messages:
+
+- Commits with `fix:` trigger a **patch** version bump (0.1.0 → 0.1.1)
+- Commits with `feat:` trigger a **minor** version bump (0.1.0 → 0.2.0)
+- Commits with `BREAKING CHANGE:` in the footer trigger a **major** version bump (0.1.0 → 1.0.0)
+
+When changes are merged to the `master` branch, GitHub Actions automatically:
+1. Analyzes commits since the last release
+2. Determines the next version number
+3. Generates a changelog
+4. Creates a GitHub release
+5. Publishes the package to npm
+
+**Note:** The commit message hook will validate your commits locally before they are created.
 
 ## Code of Conduct
 

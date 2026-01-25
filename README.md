@@ -147,4 +147,18 @@ MIT
 
 ## Contributing
 
-This project is currently in early development. Contributions welcome once MVP is stable.
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+**Important**: This project uses [Conventional Commits](https://www.conventionalcommits.org/). Commit messages must follow the format:
+
+```
+<type>: <description>
+
+[optional body]
+
+[optional footer]
+```
+
+Common types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
+
+Example: `feat: add pagination support to search results`
