@@ -1,0 +1,8 @@
+# Obsidian Plugin Build
+main.js
+*.js.map
+node_modules/
+.DS_Store
+
+# TypeScript
+*.tsbuildinfo

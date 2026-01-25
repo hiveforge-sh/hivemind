@@ -1,0 +1,33 @@
+{
+  "name": "hivemind-obsidian",
+  "version": "0.1.0",
+  "description": "Hivemind MCP integration for Obsidian - Generate AI images with worldbuilding context",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "tsc --noEmit && node esbuild.config.mjs production",
+    "version": "node version-bump.mjs && git add manifest.json versions.json"
+  },
+  "keywords": [
+    "obsidian",
+    "plugin",
+    "mcp",
+    "comfyui",
+    "ai",
+    "image-generation",
+    "worldbuilding"
+  ],
+  "author": "HiveForge",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.11.5",
+    "@typescript-eslint/eslint-plugin": "^6.18.1",
+    "@typescript-eslint/parser": "^6.18.1",
+    "builtin-modules": "^3.3.0",
+    "esbuild": "^0.19.11",
+    "obsidian": "latest",
+    "tslib": "^2.6.2",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {}
+}
