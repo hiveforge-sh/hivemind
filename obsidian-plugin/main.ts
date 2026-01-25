@@ -1205,6 +1205,17 @@ class HivemindSettingTab extends PluginSettingTab {
 
     containerEl.createEl('h2', { text: 'Hivemind MCP Settings' });
 
+    // Info banner about local connections
+    const infoBanner = containerEl.createDiv({ cls: 'hivemind-info-banner' });
+    infoBanner.style.padding = '10px';
+    infoBanner.style.marginBottom = '20px';
+    infoBanner.style.backgroundColor = 'var(--background-secondary)';
+    infoBanner.style.borderRadius = '5px';
+    infoBanner.createEl('p', { 
+      text: '🔒 Privacy: All connections are local (localhost). No data leaves your computer.',
+      cls: 'setting-item-description'
+    });
+
     new Setting(containerEl)
       .setName('MCP server command')
       .setDesc('Command to start the MCP server')
@@ -1218,7 +1229,7 @@ class HivemindSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Auto-start MCP server')
-      .setDesc('Automatically start MCP server when Obsidian loads')
+      .setDesc('Automatically start MCP server when Obsidian loads (runs locally via Node.js)')
       .addToggle(toggle => toggle
         .setValue(this.plugin.settings.autoStartMCP)
         .onChange(async (value) => {
@@ -1227,6 +1238,11 @@ class HivemindSettingTab extends PluginSettingTab {
         }));
 
     containerEl.createEl('h3', { text: 'ComfyUI Integration' });
+
+    const comfyInfoEl = containerEl.createEl('p', { cls: 'setting-item-description' });
+    comfyInfoEl.style.marginTop = '10px';
+    comfyInfoEl.style.marginBottom = '10px';
+    comfyInfoEl.setText('ComfyUI runs on your local machine. Enable only if you have ComfyUI installed and running.');
 
     new Setting(containerEl)
       .setName('Enable ComfyUI')

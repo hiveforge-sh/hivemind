@@ -42,6 +42,16 @@ Then copy `main.js`, `manifest.json`, and `styles.css` to your vault's plugins f
 1. **Hivemind MCP Server**: Install globally with `npm install -g @hiveforge/hivemind-mcp`
 2. **ComfyUI**: Running locally (optional, only needed for image generation)
 
+### Privacy & Network Usage
+
+**🔒 All connections are local-only (localhost)**
+
+This plugin makes no external network requests. All connections are to services running on your own machine:
+- **MCP Server**: Runs locally via Node.js (stdio communication, no HTTP)
+- **ComfyUI**: Connects to `http://127.0.0.1:8188` only when ComfyUI is enabled in settings
+
+Your worldbuilding data never leaves your computer.
+
 ## Usage
 
 ### Generating Images
