@@ -3,12 +3,19 @@ import { join, relative } from 'path';
 import type { VaultConfig, VaultNote } from '../types/index.js';
 import { MarkdownParser } from '../parser/markdown.js';
 
+export interface ParseError {
+  filePath: string;
+  reason: string;
+  error?: any;
+}
+
 export interface VaultIndex {
   notes: Map<string, VaultNote>;
   notesByType: Map<string, Set<string>>;
   notesByStatus: Map<string, Set<string>>;
   totalNotes: number;
   lastUpdated: Date;
+  ignoredFiles: ParseError[];
 }
 
 export class VaultReader {
@@ -25,6 +32,7 @@ export class VaultReader {
       notesByStatus: new Map(),
       totalNotes: 0,
       lastUpdated: new Date(),
+      ignoredFiles: [],
     };
   }
 
@@ -43,13 +51,20 @@ export class VaultReader {
     this.index.notes.clear();
     this.index.notesByType.clear();
     this.index.notesByStatus.clear();
+    this.index.ignoredFiles = [];
     
     // Process each file
     for (const filePath of files) {
       try {
         await this.indexFile(filePath);
       } catch (error) {
-        console.error(`Error indexing ${filePath}:`, error);
+        const relPath = relative(this.config.path, filePath);
+        console.error(`Error indexing ${relPath}:`, error);
+        this.index.ignoredFiles.push({
+          filePath: relPath,
+          reason: 'Failed to parse file',
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     }
     
@@ -58,6 +73,17 @@ export class VaultReader {
     
     const elapsed = Date.now() - startTime;
     console.error(`Vault scan complete: ${this.index.totalNotes} notes indexed in ${elapsed}ms`);
+    
+    // Report ignored files summary
+    if (this.index.ignoredFiles.length > 0) {
+      console.error(`\n⚠️  ${this.index.ignoredFiles.length} file(s) ignored due to errors:`);
+      for (const ignored of this.index.ignoredFiles) {
+        console.error(`  - ${ignored.filePath}: ${ignored.reason}`);
+        if (ignored.error) {
+          console.error(`    Details: ${ignored.error}`);
+        }
+      }
+    }
     
     return this.index;
   }
@@ -216,7 +242,15 @@ export class VaultReader {
       byType: typeStats,
       byStatus: statusStats,
       lastUpdated: this.index.lastUpdated,
+      ignoredFiles: this.index.ignoredFiles.length,
     };
+  }
+
+  /**
+   * Get list of ignored files with error details
+   */
+  getIgnoredFiles(): ParseError[] {
+    return this.index.ignoredFiles;
   }
 
   /**

@@ -62,16 +62,25 @@ export class MarkdownParser {
       // Validate with Zod schema
       return BaseFrontmatterSchema.parse(raw);
     } catch (error) {
-      console.error('Frontmatter validation error:', error);
+      // Check if frontmatter is completely missing
+      const hasFrontmatter = raw && Object.keys(raw).length > 0;
       
-      // Return minimal valid frontmatter
-      return {
-        id: raw.id || 'unknown',
-        type: raw.type || 'lore',
-        status: raw.status || 'draft',
-        tags: raw.tags || [],
-        aliases: raw.aliases || [],
-      };
+      if (!hasFrontmatter) {
+        throw new Error('Missing frontmatter - file must have YAML frontmatter with id, type, and status fields');
+      }
+      
+      // Check for specific missing required fields
+      const missingFields: string[] = [];
+      if (!raw.id) missingFields.push('id');
+      if (!raw.type) missingFields.push('type');
+      if (!raw.status) missingFields.push('status');
+      
+      if (missingFields.length > 0) {
+        throw new Error(`Missing required frontmatter fields: ${missingFields.join(', ')}`);
+      }
+      
+      // Other validation error
+      throw new Error(`Invalid frontmatter: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
