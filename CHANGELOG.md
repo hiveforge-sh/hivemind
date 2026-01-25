@@ -1,3 +1,10 @@
+# [1.14.0](https://github.com/hiveforge-io/hivemind/compare/v1.13.0...v1.14.0) (2026-01-25)
+
+
+### Features
+
+* add explicit privacy notices and network consent UI ([648c46c](https://github.com/hiveforge-io/hivemind/commit/648c46c7fa681f7051fd3f61e02f0e99835deab2))
+
 # [1.13.0](https://github.com/hiveforge-io/hivemind/compare/v1.12.0...v1.13.0) (2026-01-25)
 
 
