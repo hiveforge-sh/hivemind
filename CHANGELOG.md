@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/hiveforge-io/hivemind/compare/v1.1.0...v1.1.1) (2026-01-25)
+
+
+### Bug Fixes
+
+* handle --vault flag in CLI entry point ([92392c2](https://github.com/hiveforge-io/hivemind/commit/92392c2e1d53101dc8b75a271fde402262f50e04))
+
 # [1.1.0](https://github.com/hiveforge-io/hivemind/compare/v1.0.0...v1.1.0) (2026-01-25)
 
 
