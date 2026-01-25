@@ -61,19 +61,13 @@ export class VaultWatcher {
     // Set up event handlers with debouncing
     this.watcher
       .on('add', (path: string) => {
-        console.error(`[Watcher] ADD event: ${path}`);
         this.handleChange('add', path);
       })
       .on('change', (path: string) => {
-        console.error(`[Watcher] CHANGE event: ${path}`);
         this.handleChange('change', path);
       })
       .on('unlink', (path: string) => {
-        console.error(`[Watcher] UNLINK event: ${path}`);
         this.handleChange('unlink', path);
-      })
-      .on('raw', (event: string, path: string, details: any) => {
-        console.error(`[Watcher] RAW event: ${event} on ${path}`, details);
       })
       .on('error', (error: unknown) => console.error('❌ Watcher error:', error))
       .on('ready', () => console.error('✅ File watcher ready and listening for changes...'));

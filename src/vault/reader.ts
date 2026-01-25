@@ -37,15 +37,27 @@ export class VaultReader {
   }
 
   /**
+   * Generate a visual progress bar
+   */
+  private generateProgressBar(current: number, total: number, width: number = 30): string {
+    const percent = current / total;
+    const filled = Math.floor(percent * width);
+    const empty = width - filled;
+    
+    const bar = '='.repeat(Math.max(0, filled - 1)) + (filled > 0 ? '>' : '') + ' '.repeat(empty);
+    const percentStr = Math.floor(percent * 100).toString().padStart(3, ' ');
+    
+    return `[${bar}] ${percentStr}% (${current}/${total})`;
+  }
+
+  /**
    * Scan the vault directory and build an index of all markdown files
    */
   async scanVault(): Promise<VaultIndex> {
-    console.error(`Scanning vault at: ${this.config.path}`);
-    
     const startTime = Date.now();
     const files = await this.findMarkdownFiles(this.config.path);
     
-    console.error(`Found ${files.length} markdown files`);
+    console.error(`\n📂 Scanning vault: ${files.length} markdown files found`);
     
     // Clear existing index
     this.index.notes.clear();
@@ -53,36 +65,39 @@ export class VaultReader {
     this.index.notesByStatus.clear();
     this.index.ignoredFiles = [];
     
-    // Process each file
+    // Process each file with progress
+    const total = files.length;
+    let processed = 0;
+    
     for (const filePath of files) {
       try {
         await this.indexFile(filePath);
       } catch (error) {
         const relPath = relative(this.config.path, filePath);
-        console.error(`Error indexing ${relPath}:`, error);
         this.index.ignoredFiles.push({
           filePath: relPath,
           reason: 'Failed to parse file',
           error: error instanceof Error ? error.message : String(error),
         });
       }
+      
+      // Update progress bar
+      processed++;
+      const progressBar = this.generateProgressBar(processed, total);
+      process.stderr.write(`\r⏳ Indexing ${progressBar}`);
     }
+    
+    process.stderr.write('\n');
     
     this.index.totalNotes = this.index.notes.size;
     this.index.lastUpdated = new Date();
     
     const elapsed = Date.now() - startTime;
-    console.error(`Vault scan complete: ${this.index.totalNotes} notes indexed in ${elapsed}ms`);
+    console.error(`✅ Vault scan complete: ${this.index.totalNotes} notes indexed in ${elapsed}ms`);
     
     // Report ignored files summary
     if (this.index.ignoredFiles.length > 0) {
-      console.error(`\n⚠️  ${this.index.ignoredFiles.length} file(s) ignored due to errors:`);
-      for (const ignored of this.index.ignoredFiles) {
-        console.error(`  - ${ignored.filePath}: ${ignored.reason}`);
-        if (ignored.error) {
-          console.error(`    Details: ${ignored.error}`);
-        }
-      }
+      console.error(`⚠️  ${this.index.ignoredFiles.length} file(s) skipped (missing frontmatter or errors)`);
     }
     
     return this.index;
@@ -181,7 +196,8 @@ export class VaultReader {
       }
       this.index.notesByStatus.get(note.frontmatter.status)!.add(note.id);
     } catch (error) {
-      console.error(`Failed to parse ${filePath}:`, error);
+      // Silently skip files with parsing errors - they'll be reported in summary
+      throw error;
     }
   }
 
