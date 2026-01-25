@@ -12,5 +12,13 @@
     "batchSize": 100,
     "enableVectorSearch": false,
     "enableFullTextSearch": true
+  },
+  "comfyui": {
+    "enabled": false,
+    "endpoint": "http://127.0.0.1:8188",
+    "timeout": 300000,
+    "workflowsPath": "workflows",
+    "assetsPath": "assets/images",
+    "assetsNotesPath": "Assets"
   }
 }

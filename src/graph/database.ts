@@ -9,7 +9,7 @@ export interface DatabaseConfig {
 }
 
 export class HivemindDatabase {
-  private db: Database.Database;
+  public db: Database.Database;
 
   constructor(config: DatabaseConfig) {
     // Ensure directory exists
@@ -106,6 +106,41 @@ export class HivemindDatabase {
         SET title = new.title, content = new.content
         WHERE rowid = new.rowid;
       END;
+    `);
+
+    // ComfyUI workflows table
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS workflows (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        file_path TEXT NOT NULL,
+        context_fields TEXT,
+        output_path TEXT,
+        created TEXT NOT NULL,
+        updated TEXT NOT NULL
+      );
+      
+      CREATE INDEX IF NOT EXISTS idx_workflows_updated ON workflows(updated);
+    `);
+
+    // Assets table for tracking generated images
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS assets (
+        id TEXT PRIMARY KEY,
+        asset_type TEXT NOT NULL DEFAULT 'image',
+        file_path TEXT NOT NULL,
+        depicts TEXT,
+        workflow_id TEXT,
+        prompt TEXT,
+        parameters TEXT,
+        created TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'draft',
+        FOREIGN KEY (workflow_id) REFERENCES workflows(id) ON DELETE SET NULL
+      );
+      
+      CREATE INDEX IF NOT EXISTS idx_assets_workflow ON assets(workflow_id);
+      CREATE INDEX IF NOT EXISTS idx_assets_status ON assets(status);
     `);
 
     console.error('Database schema initialized');

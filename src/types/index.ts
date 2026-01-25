@@ -291,13 +291,70 @@ export interface IndexConfig {
   enableFullTextSearch?: boolean;
 }
 
+export interface ComfyUIConfig {
+  enabled: boolean;
+  endpoint?: string;
+  timeout?: number;
+  workflowsPath?: string;
+  assetsPath?: string;
+  assetsNotesPath?: string;
+}
+
 export interface HivemindConfig {
   vault: VaultConfig;
   server: ServerConfig;
   indexing?: IndexConfig;
+  comfyui?: ComfyUIConfig;
   embedding?: {
     model: string;
     provider: 'openai' | 'local';
     apiKey?: string;
   };
 }
+
+// ============================================================================
+// ComfyUI Types
+// ============================================================================
+
+export interface ComfyUIWorkflow {
+  id: string;
+  name: string;
+  description?: string;
+  workflow: Record<string, any>;  // ComfyUI workflow JSON
+  contextFields?: string[];  // Which fields to inject from vault context
+  outputPath?: string;
+  created: Date;
+  updated: Date;
+}
+
+export const StoreWorkflowArgsSchema = z.object({
+  id: z.string().describe('Unique workflow identifier'),
+  name: z.string().describe('Human-readable workflow name'),
+  description: z.string().optional().describe('Workflow description'),
+  workflow: z.record(z.any()).describe('ComfyUI workflow JSON'),
+  contextFields: z.array(z.string()).optional().describe('Fields to inject from context (e.g., appearance, personality)'),
+  outputPath: z.string().optional().describe('Custom output path for generated images'),
+});
+
+export type StoreWorkflowArgs = z.infer<typeof StoreWorkflowArgsSchema>;
+
+export const GenerateImageArgsSchema = z.object({
+  workflowId: z.string().describe('ID of workflow to execute'),
+  contextId: z.string().describe('ID of character/location to use as context'),
+  contextType: z.enum(['character', 'location']).describe('Type of context entity'),
+  seed: z.number().optional().describe('Random seed for generation (optional)'),
+  overrides: z.record(z.any()).optional().describe('Additional workflow parameter overrides'),
+});
+
+export type GenerateImageArgs = z.infer<typeof GenerateImageArgsSchema>;
+
+export const StoreAssetArgsSchema = z.object({
+  assetType: z.enum(['image', 'audio', 'video', 'document']).default('image'),
+  filePath: z.string().describe('Path to asset file in vault'),
+  depicts: z.array(z.string()).optional().describe('Entity IDs depicted in asset'),
+  workflowId: z.string().optional().describe('Workflow used to generate asset'),
+  prompt: z.string().optional().describe('Generation prompt'),
+  parameters: z.record(z.any()).optional().describe('Generation parameters (seed, steps, cfg, etc.)'),
+});
+
+export type StoreAssetArgs = z.infer<typeof StoreAssetArgsSchema>;

@@ -10,6 +10,9 @@ import {
   QueryCharacterArgsSchema,
   QueryLocationArgsSchema,
   SearchVaultArgsSchema,
+  StoreWorkflowArgsSchema,
+  GenerateImageArgsSchema,
+  StoreAssetArgsSchema,
   type HivemindConfig,
 } from './types/index.js';
 import { VaultReader } from './vault/reader.js';
@@ -17,6 +20,8 @@ import { VaultWatcher } from './vault/watcher.js';
 import { HivemindDatabase } from './graph/database.js';
 import { GraphBuilder } from './graph/builder.js';
 import { SearchEngine } from './search/engine.js';
+import { ComfyUIClient } from './comfyui/client.js';
+import { WorkflowManager } from './comfyui/workflow.js';
 import { join } from 'path';
 
 export class HivemindServer {
@@ -27,6 +32,8 @@ export class HivemindServer {
   private database: HivemindDatabase;
   private graphBuilder: GraphBuilder;
   private searchEngine: SearchEngine;
+  private comfyuiClient?: ComfyUIClient;
+  private workflowManager?: WorkflowManager;
   private isIndexed: boolean = false;
   private queryMetrics = {
     totalQueries: 0,
@@ -45,6 +52,16 @@ export class HivemindServer {
     this.database = new HivemindDatabase({ path: dbPath });
     this.graphBuilder = new GraphBuilder(this.database);
     this.searchEngine = new SearchEngine(this.database);
+    
+    // Initialize ComfyUI if enabled
+    if (config.comfyui?.enabled) {
+      this.comfyuiClient = new ComfyUIClient(config.comfyui);
+      this.workflowManager = new WorkflowManager(
+        this.database,
+        config.vault.path,
+        config.comfyui.workflowsPath
+      );
+    }
     
     this.server = new Server(
       {
@@ -190,6 +207,134 @@ export class HivemindServer {
               required: [],
             },
           },
+          ...(this.config.comfyui?.enabled ? [
+            {
+              name: 'store_workflow',
+              description: 'Store a ComfyUI workflow definition in the vault',
+              inputSchema: {
+                type: 'object',
+                properties: {
+                  id: {
+                    type: 'string',
+                    description: 'Unique workflow identifier',
+                  },
+                  name: {
+                    type: 'string',
+                    description: 'Human-readable workflow name',
+                  },
+                  description: {
+                    type: 'string',
+                    description: 'Workflow description',
+                  },
+                  workflow: {
+                    type: 'object',
+                    description: 'ComfyUI workflow JSON',
+                  },
+                  contextFields: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'Fields to inject from context (e.g., appearance, personality)',
+                  },
+                  outputPath: {
+                    type: 'string',
+                    description: 'Custom output path for generated images',
+                  },
+                },
+                required: ['id', 'name', 'workflow'],
+              },
+            },
+            {
+              name: 'list_workflows',
+              description: 'List all stored ComfyUI workflows',
+              inputSchema: {
+                type: 'object',
+                properties: {},
+                required: [],
+              },
+            },
+            {
+              name: 'get_workflow',
+              description: 'Get a specific ComfyUI workflow by ID',
+              inputSchema: {
+                type: 'object',
+                properties: {
+                  id: {
+                    type: 'string',
+                    description: 'Workflow ID to retrieve',
+                  },
+                },
+                required: ['id'],
+              },
+            },
+            {
+              name: 'generate_image',
+              description: 'Generate an image using ComfyUI with vault context',
+              inputSchema: {
+                type: 'object',
+                properties: {
+                  workflowId: {
+                    type: 'string',
+                    description: 'ID of workflow to execute',
+                  },
+                  contextId: {
+                    type: 'string',
+                    description: 'ID of character/location to use as context',
+                  },
+                  contextType: {
+                    type: 'string',
+                    enum: ['character', 'location'],
+                    description: 'Type of context entity',
+                  },
+                  seed: {
+                    type: 'number',
+                    description: 'Random seed for generation (optional)',
+                  },
+                  overrides: {
+                    type: 'object',
+                    description: 'Additional workflow parameter overrides',
+                  },
+                },
+                required: ['workflowId', 'contextId', 'contextType'],
+              },
+            },
+            {
+              name: 'store_asset',
+              description: 'Store a generated asset (image) in the vault with metadata',
+              inputSchema: {
+                type: 'object',
+                properties: {
+                  assetType: {
+                    type: 'string',
+                    enum: ['image', 'audio', 'video', 'document'],
+                    default: 'image',
+                    description: 'Type of asset',
+                  },
+                  filePath: {
+                    type: 'string',
+                    description: 'Path to asset file in vault',
+                  },
+                  depicts: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'Entity IDs depicted in asset',
+                  },
+                  workflowId: {
+                    type: 'string',
+                    description: 'Workflow used to generate asset',
+                  },
+                  prompt: {
+                    type: 'string',
+                    description: 'Generation prompt',
+                  },
+                  parameters: {
+                    type: 'object',
+                    description: 'Generation parameters (seed, steps, cfg, etc.)',
+                  },
+                },
+                required: ['filePath'],
+              },
+            },
+          ] : []),
         ],
       };
     });
@@ -217,6 +362,36 @@ export class HivemindServer {
           }
           case 'get_vault_stats': {
             return await this.handleGetVaultStats();
+          }
+          case 'store_workflow': {
+            if (!this.workflowManager) {
+              throw new Error('ComfyUI is not enabled');
+            }
+            const parsed = StoreWorkflowArgsSchema.parse(args);
+            return await this.handleStoreWorkflow(parsed);
+          }
+          case 'list_workflows': {
+            if (!this.workflowManager) {
+              throw new Error('ComfyUI is not enabled');
+            }
+            return await this.handleListWorkflows();
+          }
+          case 'get_workflow': {
+            if (!this.workflowManager) {
+              throw new Error('ComfyUI is not enabled');
+            }
+            return await this.handleGetWorkflow(args as { id: string });
+          }
+          case 'generate_image': {
+            if (!this.comfyuiClient || !this.workflowManager) {
+              throw new Error('ComfyUI is not enabled');
+            }
+            const parsed = GenerateImageArgsSchema.parse(args);
+            return await this.handleGenerateImage(parsed);
+          }
+          case 'store_asset': {
+            const parsed = StoreAssetArgsSchema.parse(args);
+            return await this.handleStoreAsset(parsed);
           }
           default:
             throw new Error(`Unknown tool: ${name}`);
@@ -749,6 +924,196 @@ File watcher keeps index updated automatically.
     return response;
   }
 
+  private async handleStoreWorkflow(args: typeof StoreWorkflowArgsSchema._type) {
+    const workflow = await this.workflowManager!.storeWorkflow(args);
+    
+    return {
+      content: [{
+        type: 'text',
+        text: `# Workflow Stored\n\n` +
+          `✅ Successfully stored workflow **${workflow.name}**\n\n` +
+          `**Details:**\n` +
+          `- ID: \`${workflow.id}\`\n` +
+          `- Description: ${workflow.description || 'None'}\n` +
+          `- Context Fields: ${workflow.contextFields?.join(', ') || 'None'}\n` +
+          `- Created: ${workflow.created.toLocaleString()}\n\n` +
+          `Workflow saved to: \`${this.config.comfyui?.workflowsPath}/${workflow.id}.json\``,
+      }],
+    };
+  }
+
+  private async handleListWorkflows() {
+    const workflows = await this.workflowManager!.listWorkflows();
+    
+    if (workflows.length === 0) {
+      return {
+        content: [{
+          type: 'text',
+          text: 'No workflows found. Use `store_workflow` to add one.',
+        }],
+      };
+    }
+
+    let response = `# ComfyUI Workflows\n\nFound ${workflows.length} workflow(s):\n\n`;
+    
+    for (const wf of workflows) {
+      response += `## ${wf.name}\n`;
+      response += `- **ID**: \`${wf.id}\`\n`;
+      if (wf.description) response += `- **Description**: ${wf.description}\n`;
+      if (wf.contextFields) response += `- **Context Fields**: ${wf.contextFields.join(', ')}\n`;
+      response += `- **Updated**: ${wf.updated.toLocaleString()}\n\n`;
+    }
+
+    return {
+      content: [{
+        type: 'text',
+        text: response,
+      }],
+    };
+  }
+
+  private async handleGetWorkflow(args: { id: string }) {
+    const workflow = await this.workflowManager!.getWorkflow(args.id);
+    
+    if (!workflow) {
+      return {
+        content: [{
+          type: 'text',
+          text: `Workflow not found: "${args.id}"`,
+        }],
+      };
+    }
+
+    return {
+      content: [{
+        type: 'text',
+        text: `# Workflow: ${workflow.name}\n\n` +
+          `**ID**: \`${workflow.id}\`\n` +
+          `**Description**: ${workflow.description || 'None'}\n` +
+          `**Context Fields**: ${workflow.contextFields?.join(', ') || 'None'}\n` +
+          `**Created**: ${workflow.created.toLocaleString()}\n` +
+          `**Updated**: ${workflow.updated.toLocaleString()}\n\n` +
+          `**Workflow JSON**:\n\`\`\`json\n${JSON.stringify(workflow.workflow, null, 2)}\n\`\`\``,
+      }],
+    };
+  }
+
+  private async handleGenerateImage(args: typeof GenerateImageArgsSchema._type) {
+    await this.ensureIndexed();
+
+    // Get workflow
+    const workflow = await this.workflowManager!.getWorkflow(args.workflowId);
+    if (!workflow) {
+      throw new Error(`Workflow not found: ${args.workflowId}`);
+    }
+
+    // Get context entity
+    const contextNode = await this.searchEngine.getNodeWithRelationships(args.contextId);
+    if (!contextNode) {
+      throw new Error(`Context entity not found: ${args.contextId}`);
+    }
+
+    // Inject context into workflow
+    const context = {
+      ...contextNode.node.properties,
+      title: contextNode.node.title,
+      content: contextNode.node.content,
+    };
+
+    let workflowWithContext = this.comfyuiClient!.injectContext(
+      workflow.workflow,
+      context
+    );
+
+    // Apply seed if provided
+    if (args.seed !== undefined) {
+      // Find KSampler nodes and set seed
+      for (const [, node] of Object.entries(workflowWithContext)) {
+        const nodeData = node as any;
+        if (nodeData.class_type?.includes('Sampler') || nodeData.class_type?.includes('KSampler')) {
+          if (nodeData.inputs) {
+            nodeData.inputs.seed = args.seed;
+          }
+        }
+      }
+    }
+
+    // Apply additional overrides
+    if (args.overrides) {
+      workflowWithContext = { ...workflowWithContext, ...args.overrides };
+    }
+
+    // Execute workflow
+    console.error(`Executing ComfyUI workflow ${args.workflowId} with context from ${args.contextId}...`);
+    
+    const result = await this.comfyuiClient!.executeWorkflow(workflowWithContext, (progress) => {
+      console.error(`ComfyUI Progress: ${JSON.stringify(progress)}`);
+    });
+
+    // Extract output images
+    const outputs = result.outputs || {};
+    const imageNodes = Object.entries(outputs).filter(([, value]) => {
+      const v = value as any;
+      return v.images && Array.isArray(v.images);
+    });
+
+    if (imageNodes.length === 0) {
+      throw new Error('No images generated by workflow');
+    }
+
+    // Get first image
+    const [, nodeOutput] = imageNodes[0];
+    const firstImage = (nodeOutput as any).images[0];
+    
+    return {
+      content: [{
+        type: 'text',
+        text: `# Image Generation Complete\n\n` +
+          `✅ Successfully generated image using workflow **${workflow.name}**\n\n` +
+          `**Details:**\n` +
+          `- Context: ${contextNode.node.title} (${args.contextType})\n` +
+          `- Workflow: ${workflow.name}\n` +
+          `- Seed: ${args.seed || 'Random'}\n` +
+          `- Output: ${firstImage.filename}\n\n` +
+          `Use \`store_asset\` to save this image to your vault with metadata.`,
+      }],
+    };
+  }
+
+  private async handleStoreAsset(args: typeof StoreAssetArgsSchema._type) {
+    const assetId = `asset-${Date.now()}`;
+    
+    this.database.db.prepare(`
+      INSERT INTO assets (id, asset_type, file_path, depicts, workflow_id, prompt, parameters, created, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      assetId,
+      args.assetType || 'image',
+      args.filePath,
+      args.depicts ? JSON.stringify(args.depicts) : null,
+      args.workflowId || null,
+      args.prompt || null,
+      args.parameters ? JSON.stringify(args.parameters) : null,
+      new Date().toISOString(),
+      'draft'
+    );
+
+    return {
+      content: [{
+        type: 'text',
+        text: `# Asset Stored\n\n` +
+          `✅ Successfully stored asset\n\n` +
+          `**Details:**\n` +
+          `- ID: \`${assetId}\`\n` +
+          `- Type: ${args.assetType || 'image'}\n` +
+          `- Path: ${args.filePath}\n` +
+          `- Workflow: ${args.workflowId || 'None'}\n` +
+          `- Status: draft\n\n` +
+          `Use the Obsidian plugin or manually create a note in \`Assets/\` directory to reference this asset.`,
+      }],
+    };
+  }
+
   async start(): Promise<void> {
     // Initial vault scan
     console.error('Performing initial vault scan...');
@@ -759,6 +1124,12 @@ File watcher keeps index updated automatically.
     this.graphBuilder.buildGraph(allNotes);
     
     this.isIndexed = true;
+
+    // Scan workflows directory if ComfyUI is enabled
+    if (this.workflowManager) {
+      console.error('Scanning workflows directory...');
+      await this.workflowManager.scanWorkflowsDirectory();
+    }
 
     // Start file watcher
     if (this.config.vault.watchForChanges) {
