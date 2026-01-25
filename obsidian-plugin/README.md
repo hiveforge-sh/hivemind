@@ -5,6 +5,7 @@ An Obsidian plugin that integrates with the Hivemind MCP server to generate cons
 ## Features
 
 - **Generate Images from Notes**: Right-click on a character or location note to generate AI images with automatic context injection
+- **Smart Frontmatter Management**: Automatically detect and insert missing frontmatter fields in your notes
 - **Workflow Management**: Browse and select ComfyUI workflows directly from Obsidian
 - **MCP Integration**: Seamless connection to the Hivemind MCP server
 - **Asset Tracking**: Track generated images with full provenance (workflow, prompts, parameters)
@@ -71,6 +72,7 @@ Status is shown in the status bar: "Hivemind: Connected" / "Hivemind: Disconnect
 |---------|-------------|
 | Generate image from current note | Generate AI image using note's context |
 | Browse ComfyUI workflows | View all saved workflows |
+| Check and insert missing frontmatter | Add missing frontmatter fields to notes |
 | View generated assets | Browse asset gallery (coming soon) |
 | Connect to MCP server | Start MCP server connection |
 | Disconnect from MCP server | Stop MCP server connection |
