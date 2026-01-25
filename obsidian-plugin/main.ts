@@ -25,6 +25,90 @@ interface MCPResponse {
   isError?: boolean;
 }
 
+// Frontmatter template definitions
+const FRONTMATTER_TEMPLATES: Record<string, any> = {
+  character: {
+    id: '',
+    type: 'character',
+    status: 'draft',
+    title: '',
+    importance: 'minor',
+    tags: [],
+    aliases: [],
+    name: '',
+    age: null,
+    gender: '',
+    race: '',
+    appearance: {
+      height: '',
+      build: '',
+      hair: '',
+      eyes: '',
+      distinctive_features: ''
+    },
+    personality: {
+      traits: [],
+      motivations: [],
+      flaws: []
+    },
+    background: {
+      birthplace: '',
+      occupation: '',
+      affiliations: []
+    },
+    relationships: [],
+    assets: []
+  },
+  location: {
+    id: '',
+    type: 'location',
+    status: 'draft',
+    title: '',
+    importance: 'minor',
+    tags: [],
+    aliases: [],
+    location_type: '',
+    parent_location: '',
+    population: null,
+    notable_features: [],
+    climate: '',
+    resources: [],
+    factions: [],
+    assets: []
+  },
+  event: {
+    id: '',
+    type: 'event',
+    status: 'draft',
+    title: '',
+    importance: 'minor',
+    tags: [],
+    aliases: [],
+    date: '',
+    location: '',
+    participants: [],
+    outcome: '',
+    consequences: [],
+    assets: []
+  },
+  faction: {
+    id: '',
+    type: 'faction',
+    status: 'draft',
+    title: '',
+    importance: 'minor',
+    tags: [],
+    aliases: [],
+    faction_type: '',
+    leader: '',
+    members: [],
+    goals: [],
+    resources: [],
+    territory: [],
+    assets: []
+  }
+};
+
 export default class HivemindPlugin extends Plugin {
   settings: HivemindSettings;
   private mcpProcess?: ChildProcess;
@@ -87,6 +171,14 @@ export default class HivemindPlugin extends Plugin {
       name: 'Disconnect from MCP server',
       callback: () => {
         this.stopMCPServer();
+      }
+    });
+
+    this.addCommand({
+      id: 'check-missing-frontmatter',
+      name: 'Check and insert missing frontmatter',
+      editorCallback: (editor: Editor, view: MarkdownView) => {
+        this.checkMissingFrontmatter(view.file);
       }
     });
 
@@ -310,6 +402,160 @@ export default class HivemindPlugin extends Plugin {
       console.error('Failed to browse workflows:', error);
       new Notice('Failed to browse workflows: ' + (error as Error).message);
     }
+  }
+
+  private async checkMissingFrontmatter(file: TFile | null) {
+    if (!file) {
+      new Notice('No active file');
+      return;
+    }
+
+    try {
+      // Get the file content
+      const content = await this.app.vault.read(file);
+      const cache = this.app.metadataCache.getFileCache(file);
+      
+      const frontmatter = cache?.frontmatter || {};
+      const noteType = frontmatter.type;
+
+      // If no type, ask user to specify
+      if (!noteType) {
+        new Notice('Note must have a "type" field in frontmatter (character, location, event, faction, etc.)');
+        return;
+      }
+
+      // Get template for this type
+      const template = FRONTMATTER_TEMPLATES[noteType];
+      if (!template) {
+        new Notice(`Unknown note type: ${noteType}. Supported types: ${Object.keys(FRONTMATTER_TEMPLATES).join(', ')}`);
+        return;
+      }
+
+      // Find missing fields
+      const missingFields = this.findMissingFields(frontmatter, template);
+
+      if (Object.keys(missingFields).length === 0) {
+        new Notice('✅ All required frontmatter fields are present!');
+        return;
+      }
+
+      // Show modal to insert missing fields
+      new MissingFrontmatterModal(this.app, this, file, frontmatter, missingFields, noteType).open();
+
+    } catch (error) {
+      console.error('Failed to check frontmatter:', error);
+      new Notice('Failed to check frontmatter: ' + (error as Error).message);
+    }
+  }
+
+  private findMissingFields(existing: Record<string, any>, template: Record<string, any>, prefix = ''): Record<string, any> {
+    const missing: Record<string, any> = {};
+
+    for (const [key, value] of Object.entries(template)) {
+      const fullKey = prefix ? `${prefix}.${key}` : key;
+      
+      // Skip if exists and not empty
+      if (existing[key] !== undefined && existing[key] !== null && existing[key] !== '') {
+        // If it's an object, check nested fields
+        if (typeof value === 'object' && !Array.isArray(value) && value !== null) {
+          const nestedMissing = this.findMissingFields(existing[key] || {}, value, fullKey);
+          Object.assign(missing, nestedMissing);
+        }
+        continue;
+      }
+
+      // Field is missing or empty
+      missing[fullKey] = value;
+    }
+
+    return missing;
+  }
+
+  async insertMissingFrontmatter(file: TFile, existingFrontmatter: Record<string, any>, newFields: Record<string, any>) {
+    try {
+      const content = await this.app.vault.read(file);
+      
+      // Merge frontmatter
+      const merged = this.deepMerge(existingFrontmatter, newFields);
+      
+      // Convert to YAML
+      const yaml = this.objectToYaml(merged);
+      
+      // Replace frontmatter in content
+      let newContent: string;
+      const frontmatterRegex = /^---\n([\s\S]*?)\n---\n/;
+      
+      if (frontmatterRegex.test(content)) {
+        // Replace existing frontmatter
+        newContent = content.replace(frontmatterRegex, `---\n${yaml}\n---\n`);
+      } else {
+        // Add new frontmatter at the top
+        newContent = `---\n${yaml}\n---\n\n${content}`;
+      }
+      
+      // Write back to file
+      await this.app.vault.modify(file, newContent);
+      
+      new Notice('✅ Frontmatter updated successfully!');
+      
+    } catch (error) {
+      console.error('Failed to insert frontmatter:', error);
+      throw error;
+    }
+  }
+
+  private deepMerge(target: any, source: any): any {
+    const result = { ...target };
+    
+    for (const [key, value] of Object.entries(source)) {
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        result[key] = this.deepMerge(target[key] || {}, value);
+      } else {
+        result[key] = value;
+      }
+    }
+    
+    return result;
+  }
+
+  private objectToYaml(obj: Record<string, any>, indent = 0): string {
+    const lines: string[] = [];
+    const indentStr = '  '.repeat(indent);
+    
+    for (const [key, value] of Object.entries(obj)) {
+      if (value === null || value === undefined) {
+        lines.push(`${indentStr}${key}:`);
+      } else if (Array.isArray(value)) {
+        if (value.length === 0) {
+          lines.push(`${indentStr}${key}: []`);
+        } else {
+          lines.push(`${indentStr}${key}:`);
+          for (const item of value) {
+            if (typeof item === 'object') {
+              lines.push(`${indentStr}  -`);
+              const subYaml = this.objectToYaml(item, indent + 2);
+              lines.push(subYaml.split('\n').map(l => '  ' + l).join('\n'));
+            } else {
+              lines.push(`${indentStr}  - ${item}`);
+            }
+          }
+        }
+      } else if (typeof value === 'object') {
+        lines.push(`${indentStr}${key}:`);
+        lines.push(this.objectToYaml(value, indent + 1));
+      } else if (typeof value === 'string') {
+        // Escape strings that might need quotes
+        if (value.includes(':') || value.includes('#') || value.startsWith('[')) {
+          lines.push(`${indentStr}${key}: "${value}"`);
+        } else {
+          lines.push(`${indentStr}${key}: ${value}`);
+        }
+      } else {
+        lines.push(`${indentStr}${key}: ${value}`);
+      }
+    }
+    
+    return lines.join('\n');
   }
 
   private parseFrontmatter(yaml: string): Record<string, any> {
@@ -783,6 +1029,159 @@ class WorkflowCreatedModal extends Modal {
       await this.plugin.startMCPServer();
       new Notice('MCP server reconnected - workflow loaded!');
     });
+  }
+
+  onClose() {
+    const { contentEl } = this;
+    contentEl.empty();
+  }
+}
+
+// Missing Frontmatter Modal
+class MissingFrontmatterModal extends Modal {
+  plugin: HivemindPlugin;
+  file: TFile;
+  existingFrontmatter: Record<string, any>;
+  missingFields: Record<string, any>;
+  noteType: string;
+  fieldValues: Record<string, any> = {};
+
+  constructor(
+    app: App, 
+    plugin: HivemindPlugin, 
+    file: TFile, 
+    existingFrontmatter: Record<string, any>, 
+    missingFields: Record<string, any>,
+    noteType: string
+  ) {
+    super(app);
+    this.plugin = plugin;
+    this.file = file;
+    this.existingFrontmatter = existingFrontmatter;
+    this.missingFields = missingFields;
+    this.noteType = noteType;
+    
+    // Initialize field values with defaults
+    this.fieldValues = { ...missingFields };
+  }
+
+  onOpen() {
+    const { contentEl } = this;
+    
+    contentEl.createEl('h2', { text: '🔍 Missing Frontmatter Fields' });
+    
+    contentEl.createEl('p', { 
+      text: `Found ${Object.keys(this.missingFields).length} missing field(s) in this ${this.noteType} note.`
+    });
+
+    const infoBox = contentEl.createDiv({ cls: 'missing-frontmatter-info' });
+    infoBox.createEl('p', {
+      text: '💡 Tip: You can edit the values below before inserting them. Leave empty for default values.',
+      cls: 'mod-info'
+    });
+
+    // Create a scrollable container for fields
+    const fieldsContainer = contentEl.createDiv({ cls: 'missing-frontmatter-fields' });
+    fieldsContainer.style.maxHeight = '400px';
+    fieldsContainer.style.overflowY = 'auto';
+    fieldsContainer.style.marginBottom = '20px';
+    fieldsContainer.style.padding = '10px';
+    fieldsContainer.style.border = '1px solid var(--background-modifier-border)';
+    fieldsContainer.style.borderRadius = '5px';
+
+    // Display missing fields with input options
+    for (const [fieldPath, defaultValue] of Object.entries(this.missingFields)) {
+      const fieldContainer = fieldsContainer.createDiv({ cls: 'missing-field-item' });
+      fieldContainer.style.marginBottom = '15px';
+      fieldContainer.style.paddingBottom = '10px';
+      fieldContainer.style.borderBottom = '1px solid var(--background-modifier-border-focus)';
+
+      // Field name
+      fieldContainer.createEl('strong', { text: fieldPath });
+      
+      // Default value preview
+      const defaultText = Array.isArray(defaultValue) 
+        ? '[]' 
+        : typeof defaultValue === 'object' && defaultValue !== null
+        ? '{...}'
+        : String(defaultValue || '(empty)');
+      
+      fieldContainer.createEl('div', { 
+        text: `Default: ${defaultText}`,
+        cls: 'setting-item-description'
+      });
+
+      // Input field (for simple types)
+      if (typeof defaultValue === 'string' || typeof defaultValue === 'number' || defaultValue === null) {
+        new Setting(fieldContainer)
+          .setName('Custom value (optional)')
+          .addText(text => text
+            .setPlaceholder(defaultText)
+            .setValue(String(defaultValue || ''))
+            .onChange(value => {
+              this.fieldValues[fieldPath] = value || defaultValue;
+            }));
+      }
+    }
+
+    // Buttons
+    const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container' });
+    buttonContainer.style.display = 'flex';
+    buttonContainer.style.gap = '10px';
+    buttonContainer.style.justifyContent = 'flex-end';
+    buttonContainer.style.marginTop = '20px';
+
+    const cancelBtn = buttonContainer.createEl('button', { text: 'Cancel' });
+    cancelBtn.addEventListener('click', () => {
+      this.close();
+    });
+
+    const insertBtn = buttonContainer.createEl('button', {
+      text: '✅ Insert Missing Fields',
+      cls: 'mod-cta'
+    });
+    insertBtn.addEventListener('click', async () => {
+      try {
+        insertBtn.setAttr('disabled', 'true');
+        insertBtn.setText('Inserting...');
+        
+        // Convert flat field paths back to nested object
+        const fieldsToInsert = this.flatToNested(this.fieldValues);
+        
+        await this.plugin.insertMissingFrontmatter(
+          this.file,
+          this.existingFrontmatter,
+          fieldsToInsert
+        );
+        
+        this.close();
+      } catch (error) {
+        new Notice('Failed to insert frontmatter: ' + (error as Error).message);
+        insertBtn.removeAttribute('disabled');
+        insertBtn.setText('✅ Insert Missing Fields');
+      }
+    });
+  }
+
+  private flatToNested(flat: Record<string, any>): Record<string, any> {
+    const result: Record<string, any> = {};
+    
+    for (const [path, value] of Object.entries(flat)) {
+      const parts = path.split('.');
+      let current = result;
+      
+      for (let i = 0; i < parts.length - 1; i++) {
+        const part = parts[i];
+        if (!current[part]) {
+          current[part] = {};
+        }
+        current = current[part];
+      }
+      
+      current[parts[parts.length - 1]] = value;
+    }
+    
+    return result;
   }
 
   onClose() {

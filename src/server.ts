@@ -1024,10 +1024,37 @@ File watcher keeps index updated automatically.
     }
 
     // Inject context into workflow
+    // Build a comprehensive context object with sensible defaults
+    const props = contextNode.node.properties || {};
     const context = {
-      ...contextNode.node.properties,
+      id: contextNode.node.id,
+      name: props.name || contextNode.node.title,
       title: contextNode.node.title,
       content: contextNode.node.content,
+      age: props.age || 'unknown age',
+      gender: props.gender || '',
+      race: props.race || 'humanoid',
+      species: props.race || props.species || 'humanoid',
+      // Flatten appearance properties for easier template access
+      ...(props.appearance && typeof props.appearance === 'object' ? {
+        appearance: props.appearance,
+        'appearance.height': props.appearance.height || '',
+        'appearance.build': props.appearance.build || 'average',
+        'appearance.hair': props.appearance.hair || 'hair',
+        'appearance.eyes': props.appearance.eyes || 'eyes',
+        'appearance.clothing': props.appearance.clothing || 'clothing',
+        'appearance.distinctive_features': props.appearance.distinctive_features || '',
+      } : {
+        appearance: {},
+        'appearance.height': '',
+        'appearance.build': 'average',
+        'appearance.hair': 'hair',
+        'appearance.eyes': 'eyes',
+        'appearance.clothing': 'clothing',
+        'appearance.distinctive_features': '',
+      }),
+      // Include any other properties
+      ...props,
     };
 
     let workflowWithContext = this.comfyuiClient!.injectContext(
