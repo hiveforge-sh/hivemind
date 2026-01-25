@@ -23,6 +23,8 @@ import { SearchEngine } from './search/engine.js';
 import { ComfyUIClient } from './comfyui/client.js';
 import { WorkflowManager } from './comfyui/workflow.js';
 import { join } from 'path';
+import * as path from 'path';
+import * as fs from 'fs';
 
 export class HivemindServer {
   private server: Server;
@@ -55,12 +57,20 @@ export class HivemindServer {
     
     // Initialize ComfyUI if enabled
     if (config.comfyui?.enabled) {
+      console.error('[Server] Initializing ComfyUI integration...');
+      console.error(`[Server] ComfyUI endpoint: ${config.comfyui.endpoint}`);
+      console.error(`[Server] Workflows path: ${config.comfyui.workflowsPath}`);
+      
       this.comfyuiClient = new ComfyUIClient(config.comfyui);
       this.workflowManager = new WorkflowManager(
         this.database,
         config.vault.path,
         config.comfyui.workflowsPath
       );
+      
+      console.error('[Server] ComfyUI initialized');
+    } else {
+      console.error('[Server] ComfyUI is disabled in config');
     }
     
     this.server = new Server(
@@ -1014,10 +1024,37 @@ File watcher keeps index updated automatically.
     }
 
     // Inject context into workflow
+    // Build a comprehensive context object with sensible defaults
+    const props = contextNode.node.properties || {};
     const context = {
-      ...contextNode.node.properties,
+      id: contextNode.node.id,
+      name: props.name || contextNode.node.title,
       title: contextNode.node.title,
       content: contextNode.node.content,
+      age: props.age || 'unknown age',
+      gender: props.gender || '',
+      race: props.race || 'humanoid',
+      species: props.race || props.species || 'humanoid',
+      // Flatten appearance properties for easier template access
+      ...(props.appearance && typeof props.appearance === 'object' ? {
+        appearance: props.appearance,
+        'appearance.height': props.appearance.height || '',
+        'appearance.build': props.appearance.build || 'average',
+        'appearance.hair': props.appearance.hair || 'hair',
+        'appearance.eyes': props.appearance.eyes || 'eyes',
+        'appearance.clothing': props.appearance.clothing || 'clothing',
+        'appearance.distinctive_features': props.appearance.distinctive_features || '',
+      } : {
+        appearance: {},
+        'appearance.height': '',
+        'appearance.build': 'average',
+        'appearance.hair': 'hair',
+        'appearance.eyes': 'eyes',
+        'appearance.clothing': 'clothing',
+        'appearance.distinctive_features': '',
+      }),
+      // Include any other properties
+      ...props,
     };
 
     let workflowWithContext = this.comfyuiClient!.injectContext(
@@ -1065,17 +1102,44 @@ File watcher keeps index updated automatically.
     const [, nodeOutput] = imageNodes[0];
     const firstImage = (nodeOutput as any).images[0];
     
+    // Download image from ComfyUI
+    console.error(`Downloading image ${firstImage.filename} from ComfyUI...`);
+    const imageBuffer = await this.comfyuiClient!.downloadImage(firstImage.filename, firstImage.subfolder, firstImage.type);
+    
+    // Save to vault
+    const vaultAssetsPath = path.join(this.config.vault.path, this.config.comfyui!.assetsPath || 'assets/images');
+    const assetsDir = path.join(vaultAssetsPath, args.contextType, args.contextId);
+    
+    // Ensure directory exists
+    await fs.promises.mkdir(assetsDir, { recursive: true });
+    
+    // Generate unique filename
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+    const ext = path.extname(firstImage.filename);
+    const filename = `${workflow.id}_${timestamp}${ext}`;
+    const imagePath = path.join(assetsDir, filename);
+    
+    // Write image file
+    await fs.promises.writeFile(imagePath, imageBuffer);
+    console.error(`Image saved to: ${imagePath}`);
+    
+    // Get relative path for display
+    const relativePath = path.relative(this.config.vault.path, imagePath).replace(/\\/g, '/');
+    
     return {
       content: [{
         type: 'text',
-        text: `# Image Generation Complete\n\n` +
-          `✅ Successfully generated image using workflow **${workflow.name}**\n\n` +
+        text: `# ✅ Image Generated Successfully!\n\n` +
+          `**Image saved to vault:**\n` +
+          `\`${relativePath}\`\n\n` +
           `**Details:**\n` +
           `- Context: ${contextNode.node.title} (${args.contextType})\n` +
           `- Workflow: ${workflow.name}\n` +
           `- Seed: ${args.seed || 'Random'}\n` +
-          `- Output: ${firstImage.filename}\n\n` +
-          `Use \`store_asset\` to save this image to your vault with metadata.`,
+          `- Original: ${firstImage.filename}\n\n` +
+          `**Next steps:**\n` +
+          `- Embed in note: \`![[${relativePath}]]\`\n` +
+          `- Or use \`store_asset\` to add metadata`,
       }],
     };
   }
@@ -1127,8 +1191,11 @@ File watcher keeps index updated automatically.
 
     // Scan workflows directory if ComfyUI is enabled
     if (this.workflowManager) {
-      console.error('Scanning workflows directory...');
+      console.error('[Server] ComfyUI is enabled, scanning workflows directory...');
       await this.workflowManager.scanWorkflowsDirectory();
+      console.error('[Server] Workflow scan complete');
+    } else {
+      console.error('[Server] ComfyUI is disabled or not configured');
     }
 
     // Start file watcher

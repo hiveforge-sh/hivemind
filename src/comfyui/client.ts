@@ -207,9 +207,31 @@ export class ComfyUIClient {
   }
 
   private interpolateContext(text: string, context: Record<string, any>): string {
-    return text.replace(/\{\{([^}]+)\}\}/g, (match, path) => {
-      const value = this.getNestedValue(context, path.trim());
-      return value !== undefined ? String(value) : match;
+    return text.replace(/\{\{([^}]+)\}\}/g, (_match, path) => {
+      const trimmedPath = path.trim();
+      const value = this.getNestedValue(context, trimmedPath);
+      
+      // If value is found, use it
+      if (value !== undefined && value !== null && value !== '') {
+        return String(value);
+      }
+      
+      // Provide sensible defaults for common missing fields instead of leaving template vars
+      const defaults: Record<string, string> = {
+        'name': context.title || 'character',
+        'age': 'adult',
+        'species': 'humanoid',
+        'race': 'humanoid',
+        'appearance.build': 'average build',
+        'appearance.height': 'average height',
+        'appearance.hair': 'hair',
+        'appearance.eyes': 'eyes',
+        'appearance.clothing': 'clothing',
+        'appearance.skin': 'skin',
+        'appearance.distinctive_features': '',
+      };
+      
+      return defaults[trimmedPath] || '';
     });
   }
 

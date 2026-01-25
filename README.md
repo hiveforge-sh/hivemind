@@ -4,7 +4,13 @@
 
 # Hivemind MCP Server
 
-[![npm version](https://img.shields.io/npm/v/@hiveforge/hivemind-mcp.svg)](https://www.npmjs.com/package/@hiveforge/hivemind-mcp)
+[![NPM Version](https://img.shields.io/npm/v/@hiveforge/hivemind-mcp.svg)](https://www.npmjs.com/package/@hiveforge/hivemind-mcp)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/hiveforge-io/hivemind/test.yml?branch=master&label=tests)](https://github.com/hiveforge-io/hivemind/actions/workflows/test.yml)
+[![Release](https://img.shields.io/github/actions/workflow/status/hiveforge-io/hivemind/release.yml?branch=master&label=release)](https://github.com/hiveforge-io/hivemind/actions/workflows/release.yml)
+[![codecov](https://codecov.io/gh/hiveforge-io/hivemind/branch/master/graph/badge.svg)](https://codecov.io/gh/hiveforge-io/hivemind)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![GitHub issues](https://img.shields.io/github/issues/hiveforge-io/hivemind)](https://github.com/hiveforge-io/hivemind/issues)
+[![GitHub stars](https://img.shields.io/github/stars/hiveforge-io/hivemind)](https://github.com/hiveforge-io/hivemind/stargazers)
 
 An MCP (Model Context Protocol) server for Obsidian worldbuilding vaults that provides AI tools with consistent, canonical context from your fictional worlds.
 
@@ -149,11 +155,17 @@ See [.planning/PROJECT.md](.planning/PROJECT.md) for the active requirements and
 - [x] MCP tools (query_character, query_location, search_vault, rebuild_index)
 - [x] CLI vault override flag (--vault)
 - [x] Automatic stale index detection on startup
+- [x] ComfyUI integration with workflow management
+- [x] Obsidian plugin with image generation and frontmatter tools
+- [x] GitHub release automation for plugin distribution
+- [x] Test coverage improvement (37% → 45%)
+- [x] CodeQL security scanning integration
 
 **Up Next:**
+- [ ] Obsidian plugin community submission (automated release ready)
 - [ ] Testing and validation
-- [ ] ComfyUI integration
-- [ ] Obsidian plugin
+- [ ] Vault templates standardization
+- [ ] Canon workflow implementation
 
 ## Documentation
 
