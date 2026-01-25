@@ -40,25 +40,43 @@ export class VaultWatcher {
       ],
       ignoreInitial: true, // Don't trigger on initial scan
       persistent: true,
+      // Increase thresholds for Obsidian's atomic writes
       awaitWriteFinish: {
-        stabilityThreshold: 100,
-        pollInterval: 50,
+        stabilityThreshold: 500,  // Wait 500ms for file to be stable
+        pollInterval: 100,
       },
+      // Enable additional events for debugging
+      alwaysStat: true,
+      atomic: true, // Handle atomic writes (rename operations)
     });
 
     console.error(`Watcher configuration:
   - Pattern: **/*.md
   - CWD: ${this.config.path}
   - Debounce: ${this.config.debounceMs || 100}ms
-  - Ignored: ${this.watcher.options.ignored}`);
+  - Atomic writes: enabled
+  - Stability threshold: 500ms
+  - Ignored: ${JSON.stringify(this.watcher.options.ignored)}`);
 
     // Set up event handlers with debouncing
     this.watcher
-      .on('add', (path: string) => this.handleChange('add', path))
-      .on('change', (path: string) => this.handleChange('change', path))
-      .on('unlink', (path: string) => this.handleChange('unlink', path))
-      .on('error', (error: unknown) => console.error('Watcher error:', error))
-      .on('ready', () => console.error('File watcher ready'));
+      .on('add', (path: string) => {
+        console.error(`[Watcher] ADD event: ${path}`);
+        this.handleChange('add', path);
+      })
+      .on('change', (path: string) => {
+        console.error(`[Watcher] CHANGE event: ${path}`);
+        this.handleChange('change', path);
+      })
+      .on('unlink', (path: string) => {
+        console.error(`[Watcher] UNLINK event: ${path}`);
+        this.handleChange('unlink', path);
+      })
+      .on('raw', (event: string, path: string, details: any) => {
+        console.error(`[Watcher] RAW event: ${event} on ${path}`, details);
+      })
+      .on('error', (error: unknown) => console.error('❌ Watcher error:', error))
+      .on('ready', () => console.error('✅ File watcher ready and listening for changes...'));
   }
 
   /**
@@ -104,13 +122,13 @@ export class VaultWatcher {
    * Notify all registered handlers
    */
   private async notifyHandlers(event: FileChangeEvent, filePath: string): Promise<void> {
-    console.error(`File ${event}: ${filePath}`);
+    console.error(`📝 File ${event}: ${filePath}`);
 
     for (const handler of this.handlers) {
       try {
         await handler(event, filePath);
       } catch (error) {
-        console.error(`Error in change handler for ${filePath}:`, error);
+        console.error(`❌ Error in change handler for ${filePath}:`, error);
       }
     }
   }
