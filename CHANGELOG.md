@@ -1,3 +1,10 @@
+# [1.10.0](https://github.com/hiveforge-io/hivemind/compare/v1.9.0...v1.10.0) (2026-01-25)
+
+
+### Features
+
+* add Obsidian plugin for ComfyUI integration ([28e440c](https://github.com/hiveforge-io/hivemind/commit/28e440c7e5efcfbc74a2480c02f2040b6eb97588))
+
 # [1.9.0](https://github.com/hiveforge-io/hivemind/compare/v1.8.0...v1.9.0) (2026-01-25)
 
 
