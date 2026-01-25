@@ -771,10 +771,10 @@ File watcher keeps index updated automatically.
     
     // Print ready banner
     const dbStats = this.database.getStats();
-    this.printReadyBanner(dbStats);
+    await this.printReadyBanner(dbStats);
   }
 
-  private printReadyBanner(stats: { nodes: number; relationships: number }) {
+  private async printReadyBanner(stats: { nodes: number; relationships: number }) {
     console.error(`
      _______________
     /               \\
@@ -794,5 +794,11 @@ File watcher keeps index updated automatically.
    ✓ Graph: ${stats.nodes} nodes, ${stats.relationships} edges
    ✓ Ready for queries
 `);
+
+    // Display vault stats automatically
+    const statsResult = await this.handleGetVaultStats();
+    if (statsResult.content && statsResult.content[0]) {
+      console.error('\n' + statsResult.content[0].text);
+    }
   }
 }
