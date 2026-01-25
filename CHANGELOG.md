@@ -1,3 +1,10 @@
+# [2.1.0](https://github.com/hiveforge-io/hivemind/compare/v2.0.0...v2.1.0) (2026-01-25)
+
+
+### Features
+
+* complete Milestone 1.0 with canon workflow, asset tools, and cross-platform support ([b6d1841](https://github.com/hiveforge-io/hivemind/commit/b6d1841df33cfef60820a49f5192992305166e15))
+
 # [2.0.0](https://github.com/hiveforge-io/hivemind/compare/v1.14.0...v2.0.0) (2026-01-25)
 
 
