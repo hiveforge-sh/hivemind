@@ -140,39 +140,65 @@ Obsidian Vault → File Watcher → Markdown Parser → Knowledge Graph
 
 ## Development Status
 
-**Current Phase**: Phase 1 - MVP Complete ✅
+**Current Phase**: Milestone 1.0 Complete ✅
 
-### Roadmap
+### What's Included
 
-See [.planning/PROJECT.md](.planning/PROJECT.md) for the active requirements and progress tracking.
-
-**Recently Completed:**
-- [x] Project setup and dependencies
-- [x] Vault reading and file watching (VaultReader, VaultWatcher)
-- [x] Markdown parsing with wikilinks (MarkdownParser)
-- [x] Knowledge graph construction (GraphBuilder, HivemindDatabase)
-- [x] HybridRAG search implementation (SearchEngine)
-- [x] MCP tools (query_character, query_location, search_vault, rebuild_index)
-- [x] CLI vault override flag (--vault)
-- [x] Automatic stale index detection on startup
+- [x] MCP server with hybrid search (vector, graph, keyword)
+- [x] Vault templates for all entity types (Character, Location, Event, Faction, Lore, Asset)
+- [x] Canon workflow tools (status management, consistency validation)
+- [x] Asset management with full provenance tracking
 - [x] ComfyUI integration with workflow management
-- [x] Obsidian plugin with image generation and frontmatter tools
-- [x] GitHub release automation for plugin distribution
-- [x] Test coverage improvement (37% → 45%)
-- [x] CodeQL security scanning integration
+- [x] Obsidian plugin with image generation
+- [x] CI/CD with semantic-release and CodeQL scanning
 
 **Up Next:**
-- [ ] Obsidian plugin community submission (automated release ready)
-- [ ] Testing and validation
-- [ ] Vault templates standardization
-- [ ] Canon workflow implementation
+- [ ] Obsidian community plugin submission
+- [ ] Template System (make Hivemind domain-agnostic)
+
+## MCP Tools
+
+### Query Tools
+| Tool | Description |
+|------|-------------|
+| `query_character` | Get character with relationships and content |
+| `query_location` | Get location with hierarchy and connected entities |
+| `search_vault` | Hybrid search across all content with filters |
+
+### Asset Management
+| Tool | Description |
+|------|-------------|
+| `store_asset` | Store generated image with provenance metadata |
+| `query_asset` | Get asset with generation settings |
+| `list_assets` | Filter assets by entity, type, status, workflow |
+
+### Canon Workflow
+| Tool | Description |
+|------|-------------|
+| `get_canon_status` | List entities grouped by status (draft/pending/canon) |
+| `submit_for_review` | Move entity from draft to pending review |
+| `validate_consistency` | Check for broken links, duplicates, conflicts |
+
+### ComfyUI Integration (when enabled)
+| Tool | Description |
+|------|-------------|
+| `store_workflow` | Save ComfyUI workflow to vault |
+| `list_workflows` | Browse saved workflows |
+| `get_workflow` | Retrieve workflow by ID |
+| `generate_image` | Generate image with vault context injection |
+
+### Utility
+| Tool | Description |
+|------|-------------|
+| `rebuild_index` | Force complete re-index of vault |
+| `get_vault_stats` | Vault statistics and token savings metrics |
 
 ## Documentation
 
-- [Project Requirements & Roadmap](.planning/PROJECT.md)
-- [Architecture Research](.planning/research/ARCHITECTURE.md)
-- [Technology Stack](.planning/research/STACK.md)
-- [Features Specification](.planning/research/FEATURES.md)
+- [Setup Guide](docs/SETUP_GUIDE.md)
+- [ComfyUI Integration](docs/COMFYUI_INTEGRATION.md)
+- [Obsidian Plugin Workflow](docs/OBSIDIAN_PLUGIN_WORKFLOW.md)
+- [Vault Templates](sample-vault/Templates/README.md)
 
 ## License
 

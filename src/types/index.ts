@@ -358,3 +358,41 @@ export const StoreAssetArgsSchema = z.object({
 });
 
 export type StoreAssetArgs = z.infer<typeof StoreAssetArgsSchema>;
+
+export const QueryAssetArgsSchema = z.object({
+  id: z.string().describe('Asset ID to query'),
+});
+
+export type QueryAssetArgs = z.infer<typeof QueryAssetArgsSchema>;
+
+export const ListAssetsArgsSchema = z.object({
+  depicts: z.string().optional().describe('Filter by entity ID depicted in asset'),
+  assetType: z.enum(['image', 'audio', 'video', 'document']).optional().describe('Filter by asset type'),
+  status: z.enum(['draft', 'pending', 'canon', 'non-canon', 'archived']).optional().describe('Filter by approval status'),
+  workflowId: z.string().optional().describe('Filter by workflow used'),
+  limit: z.number().min(1).max(100).default(20).describe('Maximum results to return'),
+});
+
+export type ListAssetsArgs = z.infer<typeof ListAssetsArgsSchema>;
+
+// Canon Workflow schemas
+export const GetCanonStatusArgsSchema = z.object({
+  status: z.enum(['draft', 'pending', 'canon', 'non-canon', 'archived']).optional().describe('Filter to specific status'),
+  type: z.enum(['character', 'location', 'event', 'faction', 'lore', 'asset']).optional().describe('Filter by entity type'),
+});
+
+export type GetCanonStatusArgs = z.infer<typeof GetCanonStatusArgsSchema>;
+
+export const SubmitForReviewArgsSchema = z.object({
+  id: z.string().describe('Entity ID to submit for review'),
+  notes: z.string().optional().describe('Optional notes for reviewers'),
+});
+
+export type SubmitForReviewArgs = z.infer<typeof SubmitForReviewArgsSchema>;
+
+export const ValidateConsistencyArgsSchema = z.object({
+  id: z.string().optional().describe('Specific entity ID to validate, or omit for full vault check'),
+  type: z.enum(['character', 'location', 'event', 'faction', 'lore', 'asset']).optional().describe('Filter validation to specific type'),
+});
+
+export type ValidateConsistencyArgs = z.infer<typeof ValidateConsistencyArgsSchema>;
