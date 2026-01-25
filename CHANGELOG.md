@@ -1,3 +1,10 @@
+# [1.7.0](https://github.com/hiveforge-io/hivemind/compare/v1.6.0...v1.7.0) (2026-01-25)
+
+
+### Features
+
+* add vault statistics tool and skipped files logging ([e6b9359](https://github.com/hiveforge-io/hivemind/commit/e6b935908544d5bdae3596588bf1263f3832b421))
+
 # [1.6.0](https://github.com/hiveforge-io/hivemind/compare/v1.5.1...v1.6.0) (2026-01-25)
 
 
