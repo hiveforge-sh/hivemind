@@ -1,5 +1,7 @@
 # Hivemind MCP Server
 
+[![npm version](https://img.shields.io/npm/v/@hiveforge/hivemind-mcp.svg)](https://www.npmjs.com/package/@hiveforge/hivemind-mcp)
+
 An MCP (Model Context Protocol) server for Obsidian worldbuilding vaults that provides AI tools with consistent, canonical context from your fictional worlds.
 
 ## What is Hivemind?
