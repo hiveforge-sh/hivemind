@@ -91,15 +91,21 @@ async function init() {
 }
 
 async function start() {
-  const configPath = resolve(process.cwd(), 'config.json');
-  if (!existsSync(configPath)) {
-    console.error('❌ config.json not found. Run "npx hivemind init" first.');
-    process.exit(1);
+  // Check if --vault flag is provided, skip config check in that case
+  const hasVaultFlag = process.argv.includes('--vault');
+  
+  if (!hasVaultFlag) {
+    const configPath = resolve(process.cwd(), 'config.json');
+    if (!existsSync(configPath)) {
+      console.error('❌ config.json not found. Run "npx @hiveforge/hivemind-mcp init" first.');
+      console.error('   Or use: npx @hiveforge/hivemind-mcp --vault <path>');
+      process.exit(1);
+    }
   }
 
   console.log('🚀 Starting Hivemind MCP Server...\n');
   
-  // Import and start the server
+  // Import and start the server (index.js handles --vault flag parsing)
   const { startServer } = await import('./index.js');
   await startServer();
 }
@@ -178,23 +184,28 @@ async function validate() {
 // Parse command
 const command = process.argv[2];
 
-switch (command) {
-  case 'init':
-    init();
-    break;
-  case 'start':
-    start();
-    break;
-  case 'validate':
-    validate();
-    break;
-  default:
-    console.log('Hivemind MCP Server\n');
-    console.log('Usage:');
-    console.log('  npx @hiveforge/hivemind-mcp init              - Interactive configuration setup');
-    console.log('  npx @hiveforge/hivemind-mcp validate          - Validate configuration');
-    console.log('  npx @hiveforge/hivemind-mcp start             - Start the MCP server');
-    console.log('  npx @hiveforge/hivemind-mcp --vault <path>    - Start with specified vault path');
-    console.log('  npx @hiveforge/hivemind-mcp --vault .         - Start with current directory as vault');
-    process.exit(command ? 1 : 0);
+// Check if --vault flag is provided
+if (command === '--vault') {
+  start();
+} else {
+  switch (command) {
+    case 'init':
+      init();
+      break;
+    case 'start':
+      start();
+      break;
+    case 'validate':
+      validate();
+      break;
+    default:
+      console.log('Hivemind MCP Server\n');
+      console.log('Usage:');
+      console.log('  npx @hiveforge/hivemind-mcp init              - Interactive configuration setup');
+      console.log('  npx @hiveforge/hivemind-mcp validate          - Validate configuration');
+      console.log('  npx @hiveforge/hivemind-mcp start             - Start the MCP server');
+      console.log('  npx @hiveforge/hivemind-mcp --vault <path>    - Start with specified vault path');
+      console.log('  npx @hiveforge/hivemind-mcp --vault .         - Start with current directory as vault');
+      process.exit(command ? 1 : 0);
+  }
 }
