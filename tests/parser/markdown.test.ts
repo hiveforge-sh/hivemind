@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from '@jest/globals';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { MarkdownParser } from '../../src/parser/markdown.js';
 import { mockNoteWithWikilinks } from '../fixtures.js';
 
@@ -84,12 +84,12 @@ tags: []
       }).toThrow('type');
     });
 
-    it('should throw error for missing status field', () => {
-      const content = '---\nid: test\ntype: character\n---\n# Content';
+    it('should use default status when not provided', () => {
+      const content = '---\nid: test\ntype: character\ntags: []\n---\n# Content';
 
-      expect(() => {
-        parser.parseContent(content, 'test.md');
-      }).toThrow('status');
+      const result = parser.parseContent(content, 'test.md');
+      
+      expect(result.frontmatter.status).toBe('draft');
     });
   });
 

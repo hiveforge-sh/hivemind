@@ -1,9 +1,13 @@
 // Global test setup
-import '@jest/globals';
-
-// Suppress console.error in tests unless explicitly needed
-global.console.error = jest.fn();
-global.console.warn = jest.fn();
+import { beforeEach, afterEach } from 'vitest';
 
 // Set test timeout
-jest.setTimeout(10000);
+beforeEach(() => {
+  // Suppress console output in tests unless explicitly needed
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
