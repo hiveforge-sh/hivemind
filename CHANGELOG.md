@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/hiveforge-io/hivemind/compare/v1.0.0...v1.1.0) (2026-01-25)
+
+
+### Features
+
+* add CLI vault flag, stale index detection, and rebuild_index tool ([6cf8fa0](https://github.com/hiveforge-io/hivemind/commit/6cf8fa0b455c032adfec8d2d4c0245256a064bcd))
+
 # 1.0.0 (2026-01-25)
 
 
