@@ -1,3 +1,10 @@
+## [1.5.1](https://github.com/hiveforge-io/hivemind/compare/v1.5.0...v1.5.1) (2026-01-25)
+
+
+### Bug Fixes
+
+* update watcher glob pattern to include root directory files ([a43abfa](https://github.com/hiveforge-io/hivemind/commit/a43abfa47727d8a3a767c7e01dee0059145e094b))
+
 # [1.5.0](https://github.com/hiveforge-io/hivemind/compare/v1.4.0...v1.5.0) (2026-01-25)
 
 
