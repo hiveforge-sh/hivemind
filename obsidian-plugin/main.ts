@@ -866,8 +866,8 @@ class CreateWorkflowModal extends Modal {
 
     try {
       const vaultPath = (this.app.vault.adapter as any).basePath;
-      const workflowDir = `${vaultPath}\\workflows`;
-      const workflowPath = `${workflowDir}\\${this.result.id}.json`;
+      const workflowDir = `${vaultPath}/workflows`;
+      const workflowPath = `${workflowDir}/${this.result.id}.json`;
 
       // Create workflow object based on template
       const workflow = template === 'basic' 
