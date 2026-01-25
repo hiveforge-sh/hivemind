@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/hiveforge-io/hivemind/compare/v1.5.1...v1.6.0) (2026-01-25)
+
+
+### Features
+
+* add animated progress bar and clean up console output ([b66427e](https://github.com/hiveforge-io/hivemind/commit/b66427ea86cb5b59db4edc813f6dcdffb9d28f42))
+
 ## [1.5.1](https://github.com/hiveforge-io/hivemind/compare/v1.5.0...v1.5.1) (2026-01-25)
 
 
