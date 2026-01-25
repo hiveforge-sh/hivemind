@@ -41,11 +41,15 @@ function loadConfig(): HivemindConfig {
   };
 }
 
+export async function startServer() {
+  const config = loadConfig();
+  const server = new HivemindServer(config);
+  await server.start();
+}
+
 async function main() {
   try {
-    const config = loadConfig();
-    const server = new HivemindServer(config);
-    await server.start();
+    await startServer();
   } catch (error) {
     console.error('Failed to start Hivemind server:', error);
     process.exit(1);

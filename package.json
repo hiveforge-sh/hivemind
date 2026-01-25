@@ -4,13 +4,17 @@
   "description": "MCP server for Obsidian worldbuilding vaults - provides AI tools with consistent canonical context",
   "main": "dist/index.js",
   "type": "module",
+  "bin": {
+    "hivemind": "dist/cli.js"
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
     "start": "node dist/index.js",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "lint": "eslint src --ext .ts",
-    "clean": "rimraf dist"
+    "clean": "rimraf dist",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "mcp",
