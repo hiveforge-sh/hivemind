@@ -1,3 +1,10 @@
+# [1.11.0](https://github.com/hiveforge-io/hivemind/compare/v1.10.0...v1.11.0) (2026-01-25)
+
+
+### Features
+
+* update server and plugin with latest changes ([1e50c0e](https://github.com/hiveforge-io/hivemind/commit/1e50c0e9cf86ce5b496e45c403da0d301cf02d31))
+
 # [1.10.0](https://github.com/hiveforge-io/hivemind/compare/v1.9.0...v1.10.0) (2026-01-25)
 
 
