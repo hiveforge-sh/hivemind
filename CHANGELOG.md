@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/hiveforge-io/hivemind/compare/v1.2.0...v1.3.0) (2026-01-25)
+
+
+### Features
+
+* track and report ignored files with missing frontmatter ([3ec0e80](https://github.com/hiveforge-io/hivemind/commit/3ec0e801b27fabeac32b38fc077af4a2f640f9f7))
+
 # [1.2.0](https://github.com/hiveforge-io/hivemind/compare/v1.1.1...v1.2.0) (2026-01-25)
 
 
