@@ -28,7 +28,7 @@ export class VaultWatcher {
 
     console.error(`Starting file watcher on: ${this.config.path}`);
 
-    this.watcher = chokidar.watch('**/*.md', {
+     this.watcher = chokidar.watch('**/*.md', {
       cwd: this.config.path,
       ignored: [
         '**/node_modules/**',
@@ -45,6 +45,12 @@ export class VaultWatcher {
         pollInterval: 50,
       },
     });
+
+    console.error(`Watcher configuration:
+  - Pattern: **/*.md
+  - CWD: ${this.config.path}
+  - Debounce: ${this.config.debounceMs || 100}ms
+  - Ignored: ${this.watcher.options.ignored}`);
 
     // Set up event handlers with debouncing
     this.watcher
