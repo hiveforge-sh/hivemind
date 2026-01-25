@@ -149,11 +149,15 @@ See [.planning/PROJECT.md](.planning/PROJECT.md) for the active requirements and
 - [x] MCP tools (query_character, query_location, search_vault, rebuild_index)
 - [x] CLI vault override flag (--vault)
 - [x] Automatic stale index detection on startup
+- [x] ComfyUI integration with workflow management
+- [x] Obsidian plugin with image generation and frontmatter tools
+- [x] GitHub release automation for plugin distribution
 
 **Up Next:**
+- [ ] Obsidian plugin community submission (automated release ready)
 - [ ] Testing and validation
-- [ ] ComfyUI integration
-- [ ] Obsidian plugin
+- [ ] Vault templates standardization
+- [ ] Canon workflow implementation
 
 ## Documentation
 
