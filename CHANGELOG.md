@@ -1,3 +1,10 @@
+# [1.9.0](https://github.com/hiveforge-io/hivemind/compare/v1.8.0...v1.9.0) (2026-01-25)
+
+
+### Features
+
+* add ComfyUI integration with workflow management and image generation ([4647402](https://github.com/hiveforge-io/hivemind/commit/46474027a3883b5f8bae708da4d07c95aa94f7d4))
+
 # [1.8.0](https://github.com/hiveforge-io/hivemind/compare/v1.7.0...v1.8.0) (2026-01-25)
 
 
