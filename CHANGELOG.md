@@ -1,3 +1,10 @@
+# [1.12.0](https://github.com/hiveforge-io/hivemind/compare/v1.11.0...v1.12.0) (2026-01-25)
+
+
+### Features
+
+* fix prompt injection and add missing frontmatter feature ([44ccbea](https://github.com/hiveforge-io/hivemind/commit/44ccbead8bd0a218fc7fddd71818f855ea5f0db3))
+
 # [1.11.0](https://github.com/hiveforge-io/hivemind/compare/v1.10.0...v1.11.0) (2026-01-25)
 
 
