@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/hiveforge-io/hivemind/compare/v1.4.0...v1.5.0) (2026-01-25)
+
+
+### Features
+
+* enhance file watcher with atomic write support and verbose logging ([7e3326b](https://github.com/hiveforge-io/hivemind/commit/7e3326b9a141083f2108a8841e76c102daefa865))
+
 # [1.4.0](https://github.com/hiveforge-io/hivemind/compare/v1.3.0...v1.4.0) (2026-01-25)
 
 
