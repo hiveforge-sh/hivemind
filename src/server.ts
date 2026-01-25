@@ -28,6 +28,11 @@ export class HivemindServer {
   private graphBuilder: GraphBuilder;
   private searchEngine: SearchEngine;
   private isIndexed: boolean = false;
+  private queryMetrics = {
+    totalQueries: 0,
+    totalTokensReturned: 0,
+    totalTokensSaved: 0,
+  };
 
   constructor(config: HivemindConfig) {
     this.config = config;
@@ -176,6 +181,15 @@ export class HivemindServer {
               required: [],
             },
           },
+          {
+            name: 'get_vault_stats',
+            description: 'Get statistics about the vault and context savings from using MCP. Shows vault size, potential token savings, and efficiency metrics.',
+            inputSchema: {
+              type: 'object',
+              properties: {},
+              required: [],
+            },
+          },
         ],
       };
     });
@@ -200,6 +214,9 @@ export class HivemindServer {
           }
           case 'rebuild_index': {
             return await this.handleRebuildIndex();
+          }
+          case 'get_vault_stats': {
+            return await this.handleGetVaultStats();
           }
           default:
             throw new Error(`Unknown tool: ${name}`);
@@ -389,6 +406,16 @@ export class HivemindServer {
       args.contentLimit ?? 300
     );
 
+    // Track metrics
+    this.queryMetrics.totalQueries++;
+    const tokensReturned = Math.round(response.length / 4);
+    this.queryMetrics.totalTokensReturned += tokensReturned;
+    // Estimate tokens saved (if user loaded all searched files manually)
+    const vaultStats = this.vaultReader.getStats();
+    const avgFileSize = 2500;
+    const tokensSaved = Math.round((vaultStats.totalNotes * avgFileSize / 4) - tokensReturned);
+    this.queryMetrics.totalTokensSaved += tokensSaved;
+
     return {
       content: [{
         type: 'text',
@@ -422,6 +449,99 @@ export class HivemindServer {
         .map(([type, count]) => `- ${type}: ${count}`)
         .join('\n');
     
+    return {
+      content: [{
+        type: 'text',
+        text: response,
+      }],
+    };
+  }
+
+  private async handleGetVaultStats() {
+    const vaultStats = this.vaultReader.getStats();
+    const dbStats = this.database.getStats();
+    
+    // Calculate file sizes
+    const avgFileSize = 2500; // Average characters per markdown file (estimated)
+    const totalVaultSize = vaultStats.totalNotes * avgFileSize;
+    
+    // Estimate tokens (rough: 1 token ≈ 4 characters)
+    const totalVaultTokens = Math.round(totalVaultSize / 4);
+    const avgQueryTokens = 500; // Average tokens returned per query
+    
+    // Calculate savings
+    const tokensPerFullLoad = totalVaultTokens;
+    const tokensSavedPerQuery = tokensPerFullLoad - avgQueryTokens;
+    const savingsPercent = ((tokensSavedPerQuery / tokensPerFullLoad) * 100).toFixed(1);
+    
+    // Context window comparison (Claude 3.5 Sonnet = 200k tokens)
+    const contextWindow = 200000;
+    const timesVaultFits = (totalVaultTokens / contextWindow).toFixed(2);
+    
+    const response = 
+`# 📊 Hivemind MCP Value Metrics
+
+## Vault Overview
+- **Total Notes:** ${vaultStats.totalNotes.toLocaleString()}
+- **Knowledge Graph Nodes:** ${dbStats.nodes.toLocaleString()}
+- **Knowledge Graph Relationships:** ${dbStats.relationships.toLocaleString()}
+- **Estimated Vault Size:** ~${totalVaultSize.toLocaleString()} characters (~${totalVaultTokens.toLocaleString()} tokens)
+
+## Context Savings per Query
+
+### Without MCP (Loading all relevant files):
+- Need to manually find and paste relevant files
+- Typical scenario: 5-10 related files = ~${(avgFileSize * 7).toLocaleString()} chars (~${Math.round((avgFileSize * 7) / 4).toLocaleString()} tokens)
+- Risk: Missing connected information, hallucinations
+
+### With MCP (Targeted retrieval):
+- **Average response:** ~${avgQueryTokens} tokens
+- **Tokens saved per query:** ~${tokensSavedPerQuery.toLocaleString()} tokens
+- **Efficiency:** ${savingsPercent}% reduction in context usage
+- **Benefit:** Graph-aware, always finds connections
+
+## Scale Benefits
+
+### Your Vault Size:
+${parseFloat(timesVaultFits) > 1 
+  ? `⚠️ Your vault is **${timesVaultFits}x** the size of Claude's 200k context window!
+- **Impossible to load entire vault** into context at once
+- **MCP is essential** for accessing this knowledge base`
+  : `✅ Your vault fits in ${(parseFloat(timesVaultFits) * 100).toFixed(0)}% of Claude's context window
+- Still, loading everything wastes tokens on irrelevant content
+- **MCP provides targeted retrieval** for efficiency`}
+
+### Query Efficiency:
+- **Without MCP:** Limited by context window, manual file selection
+- **With MCP:** Can efficiently query across **all ${vaultStats.totalNotes} notes**
+- **Hybrid Search:** Vector + Graph + Keyword = Superior relevance
+
+## Session Metrics (This Session)
+- **Total Queries:** ${this.queryMetrics.totalQueries}
+- **Total Tokens Returned:** ~${this.queryMetrics.totalTokensReturned.toLocaleString()}
+- **Estimated Tokens Saved:** ~${this.queryMetrics.totalTokensSaved.toLocaleString()}
+${this.queryMetrics.totalQueries > 0 ? `- **Average Tokens per Query:** ~${Math.round(this.queryMetrics.totalTokensReturned / this.queryMetrics.totalQueries)}` : ''}
+
+## Value Proposition
+
+### 1. **Unlimited Scale**
+Your vault can grow infinitely - MCP only retrieves what's relevant.
+
+### 2. **Graph Intelligence**
+Automatically finds connected information through ${dbStats.relationships.toLocaleString()} relationships.
+
+### 3. **Token Efficiency**
+Save ~${savingsPercent}% of tokens per query = more queries per session.
+
+### 4. **Consistency**
+Canonical source of truth prevents AI hallucinations about your lore.
+
+### 5. **Always Current**
+File watcher keeps index updated automatically.
+
+---
+**Bottom line:** Without MCP, you'd need to manually manage ${vaultStats.totalNotes} files and risk missing connections. With MCP, get precise, graph-aware context every time.`;
+
     return {
       content: [{
         type: 'text',

@@ -98,9 +98,85 @@ export class VaultReader {
     // Report ignored files summary
     if (this.index.ignoredFiles.length > 0) {
       console.error(`⚠️  ${this.index.ignoredFiles.length} file(s) skipped (missing frontmatter or errors)`);
+      await this.writeSkippedFilesLog();
     }
     
     return this.index;
+  }
+
+  /**
+   * Write a log file of skipped files, organized by root folder
+   */
+  private async writeSkippedFilesLog(): Promise<void> {
+    try {
+      const hivemindDir = join(this.config.path, '.hivemind');
+      await fs.mkdir(hivemindDir, { recursive: true });
+      
+      const logPath = join(hivemindDir, 'skipped-files.log');
+      
+      // Group files by their root folder
+      const byFolder = new Map<string, ParseError[]>();
+      
+      for (const error of this.index.ignoredFiles) {
+        const parts = error.filePath.split(/[/\\]/);
+        const folder = parts.length > 1 ? parts[0] : '(root)';
+        
+        if (!byFolder.has(folder)) {
+          byFolder.set(folder, []);
+        }
+        byFolder.get(folder)!.push(error);
+      }
+      
+      // Build log content
+      const lines: string[] = [
+        '═══════════════════════════════════════════════════════════════',
+        '                    SKIPPED FILES REPORT',
+        '═══════════════════════════════════════════════════════════════',
+        '',
+        `Generated: ${new Date().toISOString()}`,
+        `Total Skipped: ${this.index.ignoredFiles.length} files`,
+        '',
+        'These files were not indexed because they are missing required',
+        'YAML frontmatter. Each file needs:',
+        '',
+        '---',
+        'id: unique-identifier',
+        'type: character|location|event|faction|item|lore|etc',
+        'status: canon|draft|pending|non-canon|archived',
+        '---',
+        '',
+        '═══════════════════════════════════════════════════════════════',
+        '',
+      ];
+      
+      // Sort folders alphabetically
+      const sortedFolders = Array.from(byFolder.keys()).sort();
+      
+      for (const folder of sortedFolders) {
+        const files = byFolder.get(folder)!;
+        lines.push(`📁 ${folder}/ (${files.length} files)`);
+        lines.push('─'.repeat(60));
+        
+        for (const error of files) {
+          lines.push(`  • ${error.filePath}`);
+          if (error.error) {
+            lines.push(`    ↳ ${error.error}`);
+          }
+        }
+        
+        lines.push('');
+      }
+      
+      lines.push('═══════════════════════════════════════════════════════════════');
+      lines.push('To fix: Add frontmatter to each file listed above.');
+      lines.push('See documentation for frontmatter requirements.');
+      lines.push('═══════════════════════════════════════════════════════════════');
+      
+      await fs.writeFile(logPath, lines.join('\n'), 'utf-8');
+      console.error(`📄 Detailed log written to: .hivemind/skipped-files.log`);
+    } catch (error) {
+      console.error('Failed to write skipped files log:', error);
+    }
   }
 
   /**
