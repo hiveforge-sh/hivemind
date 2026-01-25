@@ -42,7 +42,7 @@ export default class HivemindPlugin extends Plugin {
 
     // Add status bar item
     this.statusBarItem = this.addStatusBarItem();
-    this.statusBarItem.setText('Hivemind: Disconnected');
+    this.updateStatusBar('disconnected');
 
     // Add ribbon icon
     this.addRibbonIcon('brain-circuit', 'Hivemind', (evt: MouseEvent) => {
@@ -155,22 +155,22 @@ export default class HivemindPlugin extends Plugin {
       this.mcpProcess.on('error', (error) => {
         console.error('MCP process error:', error);
         new Notice('Failed to start MCP server: ' + error.message);
-        this.statusBarItem.setText('Hivemind: Error');
+        this.updateStatusBar('error');
       });
 
       this.mcpProcess.on('exit', (code) => {
         console.log('MCP process exited with code:', code);
         this.mcpProcess = undefined;
-        this.statusBarItem.setText('Hivemind: Disconnected');
+        this.updateStatusBar('disconnected');
       });
 
-      this.statusBarItem.setText('Hivemind: Connected');
+      this.updateStatusBar('connected');
       new Notice('Connected to Hivemind MCP server');
 
     } catch (error) {
       console.error('Failed to start MCP server:', error);
       new Notice('Failed to start MCP server');
-      this.statusBarItem.setText('Hivemind: Error');
+      this.updateStatusBar('error');
     }
   }
 
@@ -178,8 +178,22 @@ export default class HivemindPlugin extends Plugin {
     if (this.mcpProcess) {
       this.mcpProcess.kill();
       this.mcpProcess = undefined;
-      this.statusBarItem.setText('Hivemind: Disconnected');
+      this.updateStatusBar('disconnected');
       new Notice('Disconnected from MCP server');
+    }
+  }
+
+  private updateStatusBar(status: 'connected' | 'disconnected' | 'error') {
+    switch (status) {
+      case 'connected':
+        this.statusBarItem.setText('🟢 Hivemind: Connected');
+        break;
+      case 'disconnected':
+        this.statusBarItem.setText('⚫ Hivemind: Disconnected');
+        break;
+      case 'error':
+        this.statusBarItem.setText('🔴 Hivemind: Error');
+        break;
     }
   }
 
@@ -235,16 +249,15 @@ export default class HivemindPlugin extends Plugin {
     }
 
     try {
-      // Parse frontmatter to get entity ID and type
-      const content = await this.app.vault.read(file);
-      const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+      // Use Obsidian's cache to get frontmatter
+      const cache = this.app.metadataCache.getFileCache(file);
       
-      if (!frontmatterMatch) {
+      if (!cache || !cache.frontmatter) {
         new Notice('No frontmatter found in note');
         return;
       }
 
-      const frontmatter = this.parseFrontmatter(frontmatterMatch[1]);
+      const frontmatter = cache.frontmatter;
       
       if (!frontmatter.id || !frontmatter.type) {
         new Notice('Note must have id and type in frontmatter');
@@ -360,12 +373,56 @@ class WorkflowSelectionModal extends Modal {
       });
 
       if (!response.content || response.content.length === 0) {
-        contentEl.createEl('p', { text: 'No workflows available' });
+        contentEl.createEl('p', { 
+          text: 'No workflows available. Loading...',
+          cls: 'mod-warning'
+        });
         return;
       }
 
       // Parse workflow list (simple parsing)
       const workflows = this.parseWorkflowList(response.content[0].text);
+
+      if (workflows.length === 0) {
+        // Show helpful message
+        contentEl.createEl('p', { 
+          text: '📭 No workflows found',
+          cls: 'mod-warning'
+        });
+        
+        contentEl.createEl('p', { 
+          text: 'Create a new workflow to get started:',
+        });
+
+        const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container' });
+        buttonContainer.style.display = 'flex';
+        buttonContainer.style.gap = '10px';
+        buttonContainer.style.marginTop = '20px';
+
+        const createBtn = buttonContainer.createEl('button', {
+          text: '➕ Create New Workflow',
+          cls: 'mod-cta'
+        });
+        
+        createBtn.addEventListener('click', () => {
+          this.close();
+          new CreateWorkflowModal(this.app, this.plugin).open();
+        });
+
+        const reconnectBtn = buttonContainer.createEl('button', {
+          text: '🔄 Reconnect MCP',
+          cls: 'mod-warning'
+        });
+        
+        reconnectBtn.addEventListener('click', async () => {
+          this.close();
+          this.plugin.stopMCPServer();
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          await this.plugin.startMCPServer();
+        });
+
+        return;
+      }
 
       workflows.forEach(workflow => {
         const button = contentEl.createEl('button', {
@@ -380,7 +437,14 @@ class WorkflowSelectionModal extends Modal {
       });
 
     } catch (error) {
-      contentEl.createEl('p', { text: 'Failed to load workflows: ' + (error as Error).message });
+      contentEl.createEl('p', { 
+        text: 'Failed to load workflows: ' + (error as Error).message,
+        cls: 'mod-error'
+      });
+      
+      contentEl.createEl('p', {
+        text: 'Make sure MCP server is connected.'
+      });
     }
   }
 
@@ -437,6 +501,262 @@ class ResultModal extends Modal {
     const { contentEl } = this;
     const pre = contentEl.createEl('pre');
     pre.createEl('code', { text: this.content });
+  }
+
+  onClose() {
+    const { contentEl } = this;
+    contentEl.empty();
+  }
+}
+
+// Create Workflow Modal
+class CreateWorkflowModal extends Modal {
+  plugin: HivemindPlugin;
+  result: {
+    id: string;
+    name: string;
+    description: string;
+  } = { id: '', name: '', description: '' };
+
+  constructor(app: App, plugin: HivemindPlugin) {
+    super(app);
+    this.plugin = plugin;
+  }
+
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.createEl('h2', { text: 'Create New Workflow' });
+
+    contentEl.createEl('p', {
+      text: 'This will create a basic workflow template. You can customize it later by editing the JSON file or importing from ComfyUI.'
+    });
+
+    // Workflow ID
+    new Setting(contentEl)
+      .setName('Workflow ID')
+      .setDesc('Unique identifier (lowercase, no spaces)')
+      .addText(text => text
+        .setPlaceholder('my-portrait')
+        .onChange(value => {
+          this.result.id = value.toLowerCase().replace(/\s+/g, '-');
+        }));
+
+    // Workflow Name
+    new Setting(contentEl)
+      .setName('Workflow Name')
+      .setDesc('Human-readable name')
+      .addText(text => text
+        .setPlaceholder('My Character Portrait')
+        .onChange(value => {
+          this.result.name = value;
+        }));
+
+    // Description
+    new Setting(contentEl)
+      .setName('Description')
+      .setDesc('Optional description')
+      .addTextArea(text => text
+        .setPlaceholder('High-quality character portraits...')
+        .onChange(value => {
+          this.result.description = value;
+        }));
+
+    // Template Selection
+    contentEl.createEl('h3', { text: 'Template' });
+    
+    const templateContainer = contentEl.createDiv();
+    
+    const basicTemplate = templateContainer.createEl('button', {
+      text: '📝 Basic Template',
+      cls: 'mod-cta'
+    });
+
+    basicTemplate.style.marginRight = '10px';
+    
+    basicTemplate.addEventListener('click', async () => {
+      await this.createWorkflow('basic');
+    });
+
+    const advancedTemplate = templateContainer.createEl('button', {
+      text: '🎨 Advanced Template (with context)',
+    });
+    
+    advancedTemplate.addEventListener('click', async () => {
+      await this.createWorkflow('advanced');
+    });
+  }
+
+  async createWorkflow(template: 'basic' | 'advanced') {
+    if (!this.result.id || !this.result.name) {
+      new Notice('Please fill in ID and Name');
+      return;
+    }
+
+    try {
+      const vaultPath = (this.app.vault.adapter as any).basePath;
+      const workflowDir = `${vaultPath}\\workflows`;
+      const workflowPath = `${workflowDir}\\${this.result.id}.json`;
+
+      // Create workflow object based on template
+      const workflow = template === 'basic' 
+        ? this.getBasicTemplate()
+        : this.getAdvancedTemplate();
+
+      const workflowData = {
+        id: this.result.id,
+        name: this.result.name,
+        description: this.result.description || undefined,
+        workflow: workflow,
+        contextFields: template === 'advanced' ? ['appearance', 'personality', 'age'] : [],
+        outputPath: 'assets/images'
+      };
+
+      // Write file using Node fs
+      const fs = require('fs');
+      if (!fs.existsSync(workflowDir)) {
+        fs.mkdirSync(workflowDir, { recursive: true });
+      }
+
+      fs.writeFileSync(workflowPath, JSON.stringify(workflowData, null, 2));
+
+      new Notice(`✅ Workflow created: ${this.result.name}`);
+      
+      // Show info modal
+      new WorkflowCreatedModal(this.app, workflowPath, this.plugin).open();
+      
+      this.close();
+
+    } catch (error) {
+      console.error('Failed to create workflow:', error);
+      new Notice('Failed to create workflow: ' + (error as Error).message);
+    }
+  }
+
+  getBasicTemplate(): Record<string, any> {
+    return {
+      "1": {
+        "class_type": "CheckpointLoaderSimple",
+        "inputs": {
+          "ckpt_name": "model.safetensors"
+        }
+      },
+      "3": {
+        "class_type": "KSampler",
+        "inputs": {
+          "seed": 12345,
+          "steps": 20,
+          "cfg": 7.5,
+          "sampler_name": "euler_a"
+        }
+      },
+      "6": {
+        "class_type": "CLIPTextEncode",
+        "inputs": {
+          "text": "your prompt here"
+        }
+      },
+      "7": {
+        "class_type": "CLIPTextEncode",
+        "inputs": {
+          "text": "negative prompt"
+        }
+      }
+    };
+  }
+
+  getAdvancedTemplate(): Record<string, any> {
+    return {
+      "1": {
+        "class_type": "CheckpointLoaderSimple",
+        "inputs": {
+          "ckpt_name": "model.safetensors"
+        }
+      },
+      "3": {
+        "class_type": "KSampler",
+        "inputs": {
+          "seed": 12345,
+          "steps": 20,
+          "cfg": 7.5,
+          "sampler_name": "euler_a"
+        }
+      },
+      "6": {
+        "class_type": "CLIPTextEncode",
+        "inputs": {
+          "text": "A portrait of a {{age}} year old person with {{appearance.hair}} hair and {{appearance.eyes}} eyes. {{personality.traits}} expression. Fantasy art style."
+        }
+      },
+      "7": {
+        "class_type": "CLIPTextEncode",
+        "inputs": {
+          "text": "ugly, distorted, low quality, blurry"
+        }
+      }
+    };
+  }
+
+  onClose() {
+    const { contentEl } = this;
+    contentEl.empty();
+  }
+}
+
+// Workflow Created Modal
+class WorkflowCreatedModal extends Modal {
+  filePath: string;
+  plugin: HivemindPlugin;
+
+  constructor(app: App, filePath: string, plugin: HivemindPlugin) {
+    super(app);
+    this.filePath = filePath;
+    this.plugin = plugin;
+  }
+
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.createEl('h2', { text: '✅ Workflow Created!' });
+
+    contentEl.createEl('p', {
+      text: `Your workflow has been created at:`
+    });
+
+    contentEl.createEl('code', {
+      text: this.filePath
+    });
+    
+    contentEl.createEl('p', {
+      text: '⚠️ Note: JSON files won\'t appear in Obsidian\'s file explorer (this is normal!). Use File Explorer to verify the file exists.'
+    });
+
+    contentEl.createEl('p', {
+      text: 'To use it with ComfyUI, you need to export a real workflow from ComfyUI and replace the workflow JSON in this file.'
+    });
+
+    contentEl.createEl('h3', { text: 'Next Steps:' });
+    
+    const steps = contentEl.createEl('ol');
+    steps.createEl('li', { text: 'Open ComfyUI in your browser' });
+    steps.createEl('li', { text: 'Create/load your workflow' });
+    steps.createEl('li', { text: 'Click "Save (API Format)" button' });
+    steps.createEl('li', { text: 'Copy the JSON output' });
+    steps.createEl('li', { text: 'Paste it into the "workflow" field in your JSON file' });
+
+    const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container' });
+    buttonContainer.style.marginTop = '20px';
+
+    const reconnectBtn = buttonContainer.createEl('button', {
+      text: '🔄 Reconnect MCP to Load Workflow',
+      cls: 'mod-cta'
+    });
+    
+    reconnectBtn.addEventListener('click', async () => {
+      this.close();
+      this.plugin.stopMCPServer();
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      await this.plugin.startMCPServer();
+      new Notice('MCP server reconnected - workflow loaded!');
+    });
   }
 
   onClose() {

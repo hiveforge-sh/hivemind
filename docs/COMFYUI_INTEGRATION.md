@@ -30,7 +30,33 @@ Generated Images → Back to Vault (with Metadata)
 
 ### Prerequisites
 
-1. **ComfyUI** installed and running locally
+#### 1. ComfyUI Installation
+- Download and install ComfyUI: https://github.com/comfyanonymous/ComfyUI
+- Start ComfyUI and verify it's accessible in your browser
+- Default endpoints: `http://127.0.0.1:8188` or `http://127.0.0.1:8000`
+- Note your port number for configuration
+
+#### 2. Stable Diffusion Models
+The starter workflow templates require a Stable Diffusion checkpoint model. Download at least one:
+
+**SDXL Base 1.0** (Recommended)
+- Download: https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/resolve/main/sd_xl_base_1.0.safetensors
+- Size: ~6.9 GB | VRAM: 8+ GB recommended
+- Best quality for character portraits and detailed scenes
+
+**Stable Diffusion 1.5** (Faster Alternative)
+- Download: https://huggingface.co/runwayml/stable-diffusion-v1-5/resolve/main/v1-5-pruned-emaonly.safetensors
+- Size: ~4 GB | VRAM: 4+ GB
+- Faster generation, works on lower-end GPUs
+
+**Installation:**
+1. Download the `.safetensors` file
+2. Place in ComfyUI's models folder: `ComfyUI/models/checkpoints/`
+3. Restart ComfyUI to detect the model
+4. Verify it appears in ComfyUI's checkpoint loader
+
+#### 3. Development Prerequisites
+1. **ComfyUI** installed and running locally (see above)
 2. **Hivemind MCP Server** installed: `npm install -g @hiveforge/hivemind-mcp`
 3. **Obsidian Plugin** installed (optional, but recommended)
 
@@ -140,6 +166,8 @@ Create `workflows/portrait-realistic.json` in your vault:
 ```
 
 The MCP server will auto-scan the `workflows/` directory on startup.
+
+**Important:** JSON workflow files won't appear in Obsidian's file explorer (Obsidian only shows markdown and media files by default). This is normal! The files are still there, and the MCP server can see and use them. To verify your workflows exist, use File Explorer or the workflow selection modal in the plugin.
 
 ### Context Injection Syntax
 

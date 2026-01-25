@@ -14,8 +14,8 @@
     "enableFullTextSearch": true
   },
   "comfyui": {
-    "enabled": false,
-    "endpoint": "http://127.0.0.1:8188",
+    "enabled": true,
+    "endpoint": "http://127.0.0.1:8000",
     "timeout": 300000,
     "workflowsPath": "workflows",
     "assetsPath": "assets/images",
