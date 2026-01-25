@@ -1,3 +1,10 @@
+# [1.8.0](https://github.com/hiveforge-io/hivemind/compare/v1.7.0...v1.8.0) (2026-01-25)
+
+
+### Features
+
+* display vault stats automatically on server startup ([02f456f](https://github.com/hiveforge-io/hivemind/commit/02f456fb645056e62c6af60e721db6c0a560a318))
+
 # [1.7.0](https://github.com/hiveforge-io/hivemind/compare/v1.6.0...v1.7.0) (2026-01-25)
 
 
