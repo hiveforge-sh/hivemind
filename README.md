@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="gh-social-preview.png" alt="Hivemind" width="100%"/>
+</p>
+
 # Hivemind MCP Server
 
 [![npm version](https://img.shields.io/npm/v/@hiveforge/hivemind-mcp.svg)](https://www.npmjs.com/package/@hiveforge/hivemind-mcp)

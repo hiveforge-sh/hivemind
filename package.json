@@ -10,7 +10,9 @@
   "files": [
     "dist/**/*",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "icon.png",
+    "gh-social-preview.png"
   ],
   "scripts": {
     "build": "tsc",
