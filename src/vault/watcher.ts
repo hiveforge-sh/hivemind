@@ -28,7 +28,7 @@ export class VaultWatcher {
 
     console.error(`Starting file watcher on: ${this.config.path}`);
 
-     this.watcher = chokidar.watch('**/*.md', {
+     this.watcher = chokidar.watch(['*.md', '**/*.md'], {
       cwd: this.config.path,
       ignored: [
         '**/node_modules/**',
@@ -51,7 +51,7 @@ export class VaultWatcher {
     });
 
     console.error(`Watcher configuration:
-  - Pattern: **/*.md
+  - Pattern: ['*.md', '**/*.md']
   - CWD: ${this.config.path}
   - Debounce: ${this.config.debounceMs || 100}ms
   - Atomic writes: enabled
