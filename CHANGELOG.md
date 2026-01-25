@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/hiveforge-io/hivemind/compare/v1.3.0...v1.4.0) (2026-01-25)
+
+
+### Features
+
+* add verbose logging to file watcher for debugging ([84894e1](https://github.com/hiveforge-io/hivemind/commit/84894e17fac0f97613112f81980092fd02396565))
+
 # [1.3.0](https://github.com/hiveforge-io/hivemind/compare/v1.2.0...v1.3.0) (2026-01-25)
 
 
