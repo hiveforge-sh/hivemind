@@ -1,0 +1,42 @@
+# Source files
+src/
+tests/
+*.ts
+!*.d.ts
+
+# Development files
+.planning/
+.claude/
+.git/
+.gitignore
+tsconfig.json
+.eslintrc.*
+jest.config.*
+
+# Development artifacts
+node_modules/
+coverage/
+*.log
+npm-debug.log*
+.DS_Store
+
+# Documentation (keeping only README.md)
+docs/
+CONTRIBUTING.md
+GEMINI.md
+
+# Test files
+test-query.js
+*.test.js
+*.spec.js
+
+# Configuration examples
+config.json
+sample-vault/
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

@@ -17,39 +17,76 @@ Hivemind bridges your Obsidian vault (where you maintain your worldbuilding cano
 
 ## Quick Start
 
-### Prerequisites
-
-- Node.js 20+
-- Obsidian vault with worldbuilding content
-
 ### Installation
 
 ```bash
-npm install
-npm run build
+# Install globally
+npm install -g hivemind-mcp
+
+# Or use with npx (no installation needed)
+npx hivemind-mcp init
 ```
 
-### Usage
+### Setup
 
 ```bash
-# Start MCP server (stdio mode)
-npm start
+# Interactive setup - creates config.json
+npx hivemind-mcp init
 
-# Development mode with auto-rebuild
-npm run dev
+# Validate your configuration
+npx hivemind-mcp validate
+
+# Start the server
+npx hivemind-mcp start
 ```
 
-### Configuration
+### Configuration for MCP Clients
 
-Create a `config.json` in your vault root:
+**Claude Desktop** (`%APPDATA%\Claude\claude_desktop_config.json`):
+```json
+{
+  "mcpServers": {
+    "hivemind": {
+      "command": "npx",
+      "args": ["-y", "hivemind-mcp", "start"]
+    }
+  }
+}
+```
+
+**GitHub Copilot** (`~/.copilot/mcp-config.json`):
+```json
+{
+  "mcpServers": {
+    "hivemind": {
+      "type": "local",
+      "command": "npx",
+      "args": ["-y", "hivemind-mcp", "start"],
+      "tools": ["*"]
+    }
+  }
+}
+```
+
+### Manual Configuration
+
+If you prefer to configure manually, create a `config.json`:
 
 ```json
 {
   "vault": {
-    "path": "/path/to/your/obsidian/vault"
+    "path": "/path/to/your/obsidian/vault",
+    "watchForChanges": true,
+    "debounceMs": 100
   },
   "server": {
     "transport": "stdio"
+  },
+  "indexing": {
+    "strategy": "incremental",
+    "batchSize": 100,
+    "enableVectorSearch": false,
+    "enableFullTextSearch": true
   }
 }
 ```

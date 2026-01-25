@@ -7,6 +7,11 @@
   "bin": {
     "hivemind": "dist/cli.js"
   },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
@@ -16,13 +21,28 @@
     "clean": "rimraf dist",
     "prepublishOnly": "npm run build"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hiveforge-io/hivemind.git"
+  },
+  "bugs": {
+    "url": "https://github.com/hiveforge-io/hivemind/issues"
+  },
+  "homepage": "https://github.com/hiveforge-io/hivemind#readme",
   "keywords": [
     "mcp",
+    "model-context-protocol",
     "obsidian",
     "worldbuilding",
     "ai",
     "context",
-    "knowledge-graph"
+    "knowledge-graph",
+    "claude",
+    "rag",
+    "hybrid-search",
+    "creative-writing",
+    "fiction",
+    "storytelling"
   ],
   "author": "Preston",
   "license": "MIT",
