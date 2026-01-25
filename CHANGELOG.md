@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/hiveforge-io/hivemind/compare/v1.1.1...v1.2.0) (2026-01-25)
+
+
+### Features
+
+* add ASCII logo banner to server startup ([d8f4861](https://github.com/hiveforge-io/hivemind/commit/d8f4861102e3f586803bb45816bb4e64918df309))
+
 ## [1.1.1](https://github.com/hiveforge-io/hivemind/compare/v1.1.0...v1.1.1) (2026-01-25)
 
 
