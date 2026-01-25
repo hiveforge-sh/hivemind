@@ -3,9 +3,46 @@
 import { HivemindServer } from './server.js';
 import type { HivemindConfig } from './types/index.js';
 import { readFileSync, existsSync } from 'fs';
-import { join } from 'path';
+import { join, resolve } from 'path';
+
+function parseArgs(): { vault?: string } {
+  const args: { vault?: string } = {};
+  
+  for (let i = 2; i < process.argv.length; i++) {
+    if (process.argv[i] === '--vault' && process.argv[i + 1]) {
+      args.vault = process.argv[i + 1];
+      i++; // Skip next argument
+    }
+  }
+  
+  return args;
+}
 
 function loadConfig(): HivemindConfig {
+  const args = parseArgs();
+  
+  // CLI vault flag takes highest priority
+  if (args.vault) {
+    const vaultPath = resolve(args.vault);
+    console.error(`Using vault from CLI flag: ${vaultPath}`);
+    return {
+      vault: {
+        path: vaultPath,
+        watchForChanges: true,
+        debounceMs: 100,
+      },
+      server: {
+        transport: 'stdio',
+      },
+      indexing: {
+        strategy: 'incremental',
+        batchSize: 100,
+        enableVectorSearch: false,
+        enableFullTextSearch: true,
+      },
+    };
+  }
+  
   // Try to load config from multiple locations
   const configPaths = [
     join(process.cwd(), 'config.json'),

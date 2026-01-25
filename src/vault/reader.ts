@@ -218,4 +218,26 @@ export class VaultReader {
       lastUpdated: this.index.lastUpdated,
     };
   }
+
+  /**
+   * Check if any markdown files have been modified since the given timestamp
+   */
+  async checkForStaleFiles(sinceTimestamp: number): Promise<boolean> {
+    const files = await this.findMarkdownFiles(this.config.path);
+    
+    for (const filePath of files) {
+      try {
+        const stats = await fs.stat(filePath);
+        if (stats.mtime.getTime() > sinceTimestamp) {
+          console.error(`Found modified file: ${filePath} (modified: ${stats.mtime.toISOString()})`);
+          return true;
+        }
+      } catch (error) {
+        // Skip files we can't stat
+        continue;
+      }
+    }
+    
+    return false;
+  }
 }

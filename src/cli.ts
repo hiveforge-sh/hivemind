@@ -191,8 +191,10 @@ switch (command) {
   default:
     console.log('Hivemind MCP Server\n');
     console.log('Usage:');
-    console.log('  npx hivemind init      - Interactive configuration setup');
-    console.log('  npx hivemind validate  - Validate configuration');
-    console.log('  npx hivemind start     - Start the MCP server');
+    console.log('  npx @hiveforge/hivemind-mcp init              - Interactive configuration setup');
+    console.log('  npx @hiveforge/hivemind-mcp validate          - Validate configuration');
+    console.log('  npx @hiveforge/hivemind-mcp start             - Start the MCP server');
+    console.log('  npx @hiveforge/hivemind-mcp --vault <path>    - Start with specified vault path');
+    console.log('  npx @hiveforge/hivemind-mcp --vault .         - Start with current directory as vault');
     process.exit(command ? 1 : 0);
 }

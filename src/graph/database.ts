@@ -299,6 +299,22 @@ export class HivemindDatabase {
   }
 
   /**
+   * Get the most recent updated_at timestamp from database
+   */
+  getLatestTimestamp(): number | null {
+    const result = this.db.prepare('SELECT MAX(updated_at) as max_ts FROM nodes').get() as { max_ts: number | null };
+    return result.max_ts;
+  }
+
+  /**
+   * Check if database has any nodes
+   */
+  hasNodes(): boolean {
+    const result = this.db.prepare('SELECT COUNT(*) as count FROM nodes').get() as { count: number };
+    return result.count > 0;
+  }
+
+  /**
    * Close database connection
    */
   close(): void {

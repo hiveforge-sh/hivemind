@@ -27,23 +27,27 @@ Hivemind bridges your Obsidian vault (where you maintain your worldbuilding cano
 
 ```bash
 # Install globally
-npm install -g hivemind-mcp
+npm install -g @hiveforge/hivemind-mcp
 
 # Or use with npx (no installation needed)
-npx hivemind-mcp init
+npx @hiveforge/hivemind-mcp init
 ```
 
 ### Setup
 
 ```bash
 # Interactive setup - creates config.json
-npx hivemind-mcp init
+npx @hiveforge/hivemind-mcp init
 
 # Validate your configuration
-npx hivemind-mcp validate
+npx @hiveforge/hivemind-mcp validate
 
 # Start the server
-npx hivemind-mcp start
+npx @hiveforge/hivemind-mcp start
+
+# Or start with a specific vault path (no config needed)
+npx @hiveforge/hivemind-mcp --vault /path/to/vault
+npx @hiveforge/hivemind-mcp --vault .  # Use current directory
 ```
 
 ### Configuration for MCP Clients
@@ -54,7 +58,19 @@ npx hivemind-mcp start
   "mcpServers": {
     "hivemind": {
       "command": "npx",
-      "args": ["-y", "hivemind-mcp", "start"]
+      "args": ["-y", "@hiveforge/hivemind-mcp", "start"]
+    }
+  }
+}
+```
+
+**Claude Desktop with vault override**:
+```json
+{
+  "mcpServers": {
+    "hivemind": {
+      "command": "npx",
+      "args": ["-y", "@hiveforge/hivemind-mcp", "--vault", "C:\\Path\\To\\Your\\Vault"]
     }
   }
 }
@@ -67,7 +83,7 @@ npx hivemind-mcp start
     "hivemind": {
       "type": "local",
       "command": "npx",
-      "args": ["-y", "hivemind-mcp", "start"],
+      "args": ["-y", "@hiveforge/hivemind-mcp", "start"],
       "tools": ["*"]
     }
   }
@@ -130,7 +146,9 @@ See [.planning/PROJECT.md](.planning/PROJECT.md) for the active requirements and
 - [x] Markdown parsing with wikilinks (MarkdownParser)
 - [x] Knowledge graph construction (GraphBuilder, HivemindDatabase)
 - [x] HybridRAG search implementation (SearchEngine)
-- [x] MCP tools (query_character, query_location, search_vault)
+- [x] MCP tools (query_character, query_location, search_vault, rebuild_index)
+- [x] CLI vault override flag (--vault)
+- [x] Automatic stale index detection on startup
 
 **Up Next:**
 - [ ] Testing and validation

@@ -167,6 +167,15 @@ export class HivemindServer {
               required: ['query'],
             },
           },
+          {
+            name: 'rebuild_index',
+            description: 'Force a complete rebuild of the vault index. Use this when files have been added or modified outside of normal detection.',
+            inputSchema: {
+              type: 'object',
+              properties: {},
+              required: [],
+            },
+          },
         ],
       };
     });
@@ -188,6 +197,9 @@ export class HivemindServer {
           case 'search_vault': {
             const parsed = SearchVaultArgsSchema.parse(args);
             return await this.handleSearchVault(parsed);
+          }
+          case 'rebuild_index': {
+            return await this.handleRebuildIndex();
           }
           default:
             throw new Error(`Unknown tool: ${name}`);
@@ -385,6 +397,39 @@ export class HivemindServer {
     };
   }
 
+  private async handleRebuildIndex() {
+    console.error('Manual index rebuild requested...');
+    
+    const startTime = Date.now();
+    
+    // Force re-scan
+    await this.vaultReader.scanVault();
+    const allNotes = this.vaultReader.getAllNotes();
+    this.graphBuilder.buildGraph(allNotes);
+    
+    const elapsed = Date.now() - startTime;
+    const vaultStats = this.vaultReader.getStats();
+    const dbStats = this.database.getStats();
+    
+    const response = `# Index Rebuild Complete\n\n` +
+      `✅ Successfully rebuilt vault index in ${elapsed}ms\n\n` +
+      `**Statistics:**\n` +
+      `- Total notes: ${vaultStats.totalNotes}\n` +
+      `- Database nodes: ${dbStats.nodes}\n` +
+      `- Database relationships: ${dbStats.relationships}\n\n` +
+      `**Notes by type:**\n` +
+      Object.entries(vaultStats.byType)
+        .map(([type, count]) => `- ${type}: ${count}`)
+        .join('\n');
+    
+    return {
+      content: [{
+        type: 'text',
+        text: response,
+      }],
+    };
+  }
+
   private setupVaultWatcher(): void {
     // Register change handler
     this.vaultWatcher.onChange(async (event, filePath) => {
@@ -401,9 +446,40 @@ export class HivemindServer {
 
   private async ensureIndexed(): Promise<void> {
     if (!this.isIndexed) {
-      await this.vaultReader.scanVault();
-      const allNotes = this.vaultReader.getAllNotes();
-      this.graphBuilder.buildGraph(allNotes);
+      // Check if database exists and has data
+      const hasExistingData = this.database.hasNodes();
+      
+      if (hasExistingData) {
+        // Check for stale index
+        const latestDbTimestamp = this.database.getLatestTimestamp();
+        
+        if (latestDbTimestamp) {
+          console.error(`Checking for changes since ${new Date(latestDbTimestamp).toISOString()}...`);
+          const isStale = await this.vaultReader.checkForStaleFiles(latestDbTimestamp);
+          
+          if (isStale) {
+            console.error('Detected modified files, rebuilding index...');
+            await this.vaultReader.scanVault();
+            const allNotes = this.vaultReader.getAllNotes();
+            this.graphBuilder.buildGraph(allNotes);
+          } else {
+            console.error('Index is up to date, skipping re-scan');
+          }
+        } else {
+          // Database exists but no timestamp, force re-index
+          console.error('No timestamp found, rebuilding index...');
+          await this.vaultReader.scanVault();
+          const allNotes = this.vaultReader.getAllNotes();
+          this.graphBuilder.buildGraph(allNotes);
+        }
+      } else {
+        // No existing data, perform initial scan
+        console.error('Performing initial index...');
+        await this.vaultReader.scanVault();
+        const allNotes = this.vaultReader.getAllNotes();
+        this.graphBuilder.buildGraph(allNotes);
+      }
+      
       this.isIndexed = true;
     }
   }
