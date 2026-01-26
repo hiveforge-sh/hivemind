@@ -13,6 +13,11 @@ import {
   StoreWorkflowArgsSchema,
   GenerateImageArgsSchema,
   StoreAssetArgsSchema,
+  QueryAssetArgsSchema,
+  ListAssetsArgsSchema,
+  GetCanonStatusArgsSchema,
+  SubmitForReviewArgsSchema,
+  ValidateConsistencyArgsSchema,
   type HivemindConfig,
 } from './types/index.js';
 import { VaultReader } from './vault/reader.js';
@@ -217,6 +222,110 @@ export class HivemindServer {
               required: [],
             },
           },
+          {
+            name: 'query_asset',
+            description: 'Get a specific asset by ID with its generation settings and metadata',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                id: {
+                  type: 'string',
+                  description: 'Asset ID to query',
+                },
+              },
+              required: ['id'],
+            },
+          },
+          {
+            name: 'list_assets',
+            description: 'List assets with optional filters by entity, type, status, or workflow',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                depicts: {
+                  type: 'string',
+                  description: 'Filter by entity ID depicted in asset',
+                },
+                assetType: {
+                  type: 'string',
+                  enum: ['image', 'audio', 'video', 'document'],
+                  description: 'Filter by asset type',
+                },
+                status: {
+                  type: 'string',
+                  enum: ['draft', 'pending', 'canon', 'non-canon', 'archived'],
+                  description: 'Filter by approval status',
+                },
+                workflowId: {
+                  type: 'string',
+                  description: 'Filter by workflow used',
+                },
+                limit: {
+                  type: 'number',
+                  description: 'Maximum results to return (1-100, default 20)',
+                  default: 20,
+                },
+              },
+              required: [],
+            },
+          },
+          {
+            name: 'get_canon_status',
+            description: 'Get entities grouped by their canon status (draft, pending, canon, non-canon, archived)',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                status: {
+                  type: 'string',
+                  enum: ['draft', 'pending', 'canon', 'non-canon', 'archived'],
+                  description: 'Filter to specific status',
+                },
+                type: {
+                  type: 'string',
+                  enum: ['character', 'location', 'event', 'faction', 'lore', 'asset'],
+                  description: 'Filter by entity type',
+                },
+              },
+              required: [],
+            },
+          },
+          {
+            name: 'submit_for_review',
+            description: 'Submit an entity for review, changing its status from draft to pending',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                id: {
+                  type: 'string',
+                  description: 'Entity ID to submit for review',
+                },
+                notes: {
+                  type: 'string',
+                  description: 'Optional notes for reviewers',
+                },
+              },
+              required: ['id'],
+            },
+          },
+          {
+            name: 'validate_consistency',
+            description: 'Check for consistency issues in the vault (duplicate names, broken links, conflicting data)',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                id: {
+                  type: 'string',
+                  description: 'Specific entity ID to validate, or omit for full vault check',
+                },
+                type: {
+                  type: 'string',
+                  enum: ['character', 'location', 'event', 'faction', 'lore', 'asset'],
+                  description: 'Filter validation to specific type',
+                },
+              },
+              required: [],
+            },
+          },
           ...(this.config.comfyui?.enabled ? [
             {
               name: 'store_workflow',
@@ -402,6 +511,26 @@ export class HivemindServer {
           case 'store_asset': {
             const parsed = StoreAssetArgsSchema.parse(args);
             return await this.handleStoreAsset(parsed);
+          }
+          case 'query_asset': {
+            const parsed = QueryAssetArgsSchema.parse(args);
+            return await this.handleQueryAsset(parsed);
+          }
+          case 'list_assets': {
+            const parsed = ListAssetsArgsSchema.parse(args);
+            return await this.handleListAssets(parsed);
+          }
+          case 'get_canon_status': {
+            const parsed = GetCanonStatusArgsSchema.parse(args);
+            return await this.handleGetCanonStatus(parsed);
+          }
+          case 'submit_for_review': {
+            const parsed = SubmitForReviewArgsSchema.parse(args);
+            return await this.handleSubmitForReview(parsed);
+          }
+          case 'validate_consistency': {
+            const parsed = ValidateConsistencyArgsSchema.parse(args);
+            return await this.handleValidateConsistency(parsed);
           }
           default:
             throw new Error(`Unknown tool: ${name}`);
@@ -1174,6 +1303,347 @@ File watcher keeps index updated automatically.
           `- Workflow: ${args.workflowId || 'None'}\n` +
           `- Status: draft\n\n` +
           `Use the Obsidian plugin or manually create a note in \`Assets/\` directory to reference this asset.`,
+      }],
+    };
+  }
+
+  private async handleQueryAsset(args: typeof QueryAssetArgsSchema._type) {
+    const asset = this.database.db.prepare(`
+      SELECT * FROM assets WHERE id = ?
+    `).get(args.id) as any;
+
+    if (!asset) {
+      return {
+        content: [{
+          type: 'text',
+          text: `Asset not found: "${args.id}"`,
+        }],
+      };
+    }
+
+    const depicts = asset.depicts ? JSON.parse(asset.depicts) : [];
+    const parameters = asset.parameters ? JSON.parse(asset.parameters) : {};
+
+    let response = `# Asset: ${asset.id}\n\n`;
+    response += `**Type**: ${asset.asset_type} | **Status**: ${asset.status}\n\n`;
+    response += `## File\n\`${asset.file_path}\`\n\n`;
+
+    if (depicts.length > 0) {
+      response += `## Depicts\n${depicts.map((d: string) => `- ${d}`).join('\n')}\n\n`;
+    }
+
+    if (asset.workflow_id) {
+      response += `## Generation\n`;
+      response += `- **Workflow**: ${asset.workflow_id}\n`;
+      if (asset.prompt) response += `- **Prompt**: ${asset.prompt}\n`;
+      if (Object.keys(parameters).length > 0) {
+        response += `- **Parameters**:\n`;
+        for (const [key, value] of Object.entries(parameters)) {
+          response += `  - ${key}: ${value}\n`;
+        }
+      }
+      response += `\n`;
+    }
+
+    response += `## Metadata\n`;
+    response += `- **Created**: ${asset.created}\n`;
+    response += `- **Status**: ${asset.status}\n`;
+
+    return {
+      content: [{
+        type: 'text',
+        text: response,
+      }],
+    };
+  }
+
+  private async handleListAssets(args: typeof ListAssetsArgsSchema._type) {
+    let query = 'SELECT * FROM assets WHERE 1=1';
+    const params: any[] = [];
+
+    if (args.depicts) {
+      query += ` AND depicts LIKE ?`;
+      params.push(`%${args.depicts}%`);
+    }
+    if (args.assetType) {
+      query += ` AND asset_type = ?`;
+      params.push(args.assetType);
+    }
+    if (args.status) {
+      query += ` AND status = ?`;
+      params.push(args.status);
+    }
+    if (args.workflowId) {
+      query += ` AND workflow_id = ?`;
+      params.push(args.workflowId);
+    }
+
+    query += ` ORDER BY created DESC LIMIT ?`;
+    params.push(args.limit || 20);
+
+    const assets = this.database.db.prepare(query).all(...params) as any[];
+
+    if (assets.length === 0) {
+      return {
+        content: [{
+          type: 'text',
+          text: 'No assets found matching the specified filters.',
+        }],
+      };
+    }
+
+    let response = `# Assets\n\nFound ${assets.length} asset(s):\n\n`;
+
+    for (const asset of assets) {
+      const depicts = asset.depicts ? JSON.parse(asset.depicts) : [];
+      response += `## ${asset.id}\n`;
+      response += `- **Type**: ${asset.asset_type} | **Status**: ${asset.status}\n`;
+      response += `- **Path**: \`${asset.file_path}\`\n`;
+      if (depicts.length > 0) {
+        response += `- **Depicts**: ${depicts.join(', ')}\n`;
+      }
+      if (asset.workflow_id) {
+        response += `- **Workflow**: ${asset.workflow_id}\n`;
+      }
+      response += `- **Created**: ${asset.created}\n`;
+      response += `\n`;
+    }
+
+    return {
+      content: [{
+        type: 'text',
+        text: response,
+      }],
+    };
+  }
+
+  private async handleGetCanonStatus(args: typeof GetCanonStatusArgsSchema._type) {
+    await this.ensureIndexed();
+
+    const allNotes = this.vaultReader.getAllNotes();
+
+    // Group notes by status
+    const byStatus: Record<string, any[]> = {
+      draft: [],
+      pending: [],
+      canon: [],
+      'non-canon': [],
+      archived: [],
+    };
+
+    for (const note of allNotes) {
+      const status = note.frontmatter.status || 'draft';
+      const type = note.frontmatter.type;
+
+      // Apply filters
+      if (args.status && status !== args.status) continue;
+      if (args.type && type !== args.type) continue;
+
+      if (byStatus[status]) {
+        byStatus[status].push({
+          id: note.id,
+          title: note.frontmatter.title || note.fileName,
+          type: type,
+          path: note.filePath,
+        });
+      }
+    }
+
+    let response = `# Canon Status Overview\n\n`;
+
+    const statusLabels: Record<string, string> = {
+      draft: 'Draft (Work in Progress)',
+      pending: 'Pending Review',
+      canon: 'Canon (Approved)',
+      'non-canon': 'Non-Canon',
+      archived: 'Archived',
+    };
+
+    for (const [status, notes] of Object.entries(byStatus)) {
+      if (args.status && status !== args.status) continue;
+
+      response += `## ${statusLabels[status]} (${notes.length})\n\n`;
+
+      if (notes.length === 0) {
+        response += `*No entities*\n\n`;
+      } else {
+        for (const note of notes) {
+          response += `- **${note.title}** (${note.type}) — \`${note.id}\`\n`;
+        }
+        response += `\n`;
+      }
+    }
+
+    // Summary
+    const total = Object.values(byStatus).reduce((sum, arr) => sum + arr.length, 0);
+    response += `---\n**Total**: ${total} entities\n`;
+
+    return {
+      content: [{
+        type: 'text',
+        text: response,
+      }],
+    };
+  }
+
+  private async handleSubmitForReview(args: typeof SubmitForReviewArgsSchema._type) {
+    await this.ensureIndexed();
+
+    // Find the note
+    const note = this.vaultReader.getAllNotes().find(n => n.id === args.id);
+
+    if (!note) {
+      return {
+        content: [{
+          type: 'text',
+          text: `Entity not found: "${args.id}"`,
+        }],
+        isError: true,
+      };
+    }
+
+    const currentStatus = note.frontmatter.status || 'draft';
+
+    if (currentStatus !== 'draft') {
+      return {
+        content: [{
+          type: 'text',
+          text: `Cannot submit for review: Entity "${args.id}" is currently "${currentStatus}", not "draft".\n\nOnly draft entities can be submitted for review.`,
+        }],
+        isError: true,
+      };
+    }
+
+    // Note: This tool reports what needs to change but doesn't modify files directly.
+    // The user should update the frontmatter manually or use Obsidian.
+    let response = `# Submit for Review: ${note.frontmatter.title || note.fileName}\n\n`;
+    response += `**Entity**: ${args.id}\n`;
+    response += `**Current Status**: ${currentStatus}\n`;
+    response += `**New Status**: pending\n\n`;
+
+    if (args.notes) {
+      response += `**Review Notes**: ${args.notes}\n\n`;
+    }
+
+    response += `## Action Required\n\n`;
+    response += `Update the frontmatter in \`${note.filePath}\`:\n\n`;
+    response += `\`\`\`yaml\n`;
+    response += `status: pending\n`;
+    response += `\`\`\`\n\n`;
+    response += `The MCP server will detect the change automatically.\n`;
+
+    return {
+      content: [{
+        type: 'text',
+        text: response,
+      }],
+    };
+  }
+
+  private async handleValidateConsistency(args: typeof ValidateConsistencyArgsSchema._type) {
+    await this.ensureIndexed();
+
+    const allNotes = this.vaultReader.getAllNotes();
+    const issues: string[] = [];
+
+    // Filter notes if specific ID or type requested
+    let notesToCheck = allNotes;
+    if (args.id) {
+      notesToCheck = allNotes.filter(n => n.id === args.id);
+      if (notesToCheck.length === 0) {
+        return {
+          content: [{
+            type: 'text',
+            text: `Entity not found: "${args.id}"`,
+          }],
+          isError: true,
+        };
+      }
+    }
+    if (args.type) {
+      notesToCheck = notesToCheck.filter(n => n.frontmatter.type === args.type);
+    }
+
+    // Check 1: Duplicate IDs
+    const idCounts = new Map<string, string[]>();
+    for (const note of allNotes) {
+      const paths = idCounts.get(note.id) || [];
+      paths.push(note.filePath);
+      idCounts.set(note.id, paths);
+    }
+    for (const [id, paths] of idCounts) {
+      if (paths.length > 1) {
+        issues.push(`**Duplicate ID** \`${id}\` found in:\n${paths.map(p => `  - ${p}`).join('\n')}`);
+      }
+    }
+
+    // Check 2: Broken wikilinks
+    for (const note of notesToCheck) {
+      for (const link of note.links) {
+        const linkLower = link.toLowerCase();
+        // Check if link resolves to any note
+        const found = allNotes.some(n =>
+          n.id === link ||
+          (n.frontmatter.title || n.fileName).toLowerCase() === linkLower ||
+          n.fileName.toLowerCase() === linkLower ||
+          n.fileName.toLowerCase() === linkLower + '.md'
+        );
+        if (!found) {
+          issues.push(`**Broken link** in \`${note.filePath}\`: [[${link}]]`);
+        }
+      }
+    }
+
+    // Check 3: Missing required fields
+    for (const note of notesToCheck) {
+      if (!note.frontmatter.type) {
+        issues.push(`**Missing type** in \`${note.filePath}\``);
+      }
+      if (!note.frontmatter.id && !note.id) {
+        issues.push(`**Missing ID** in \`${note.filePath}\``);
+      }
+    }
+
+    // Check 4: Canon entities referencing non-canon
+    const canonNotes = allNotes.filter(n => n.frontmatter.status === 'canon');
+    for (const note of canonNotes) {
+      if (!notesToCheck.includes(note) && !args.id) continue;
+
+      for (const link of note.links) {
+        const linkedNote = allNotes.find(n =>
+          n.id === link ||
+          (n.frontmatter.title || n.fileName).toLowerCase() === link.toLowerCase()
+        );
+        if (linkedNote && linkedNote.frontmatter.status === 'draft') {
+          issues.push(`**Canon → Draft reference**: \`${note.filePath}\` links to draft entity [[${link}]]`);
+        }
+      }
+    }
+
+    // Format response
+    let response = `# Consistency Validation\n\n`;
+
+    if (args.id) {
+      response += `**Checking**: ${args.id}\n\n`;
+    } else if (args.type) {
+      response += `**Checking**: All ${args.type} entities\n\n`;
+    } else {
+      response += `**Checking**: Full vault (${allNotes.length} entities)\n\n`;
+    }
+
+    if (issues.length === 0) {
+      response += `✅ **No issues found!**\n\nAll checked entities are consistent.`;
+    } else {
+      response += `⚠️ **Found ${issues.length} issue(s)**:\n\n`;
+      for (const issue of issues) {
+        response += `${issue}\n\n`;
+      }
+    }
+
+    return {
+      content: [{
+        type: 'text',
+        text: response,
       }],
     };
   }

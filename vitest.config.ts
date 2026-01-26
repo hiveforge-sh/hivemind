@@ -14,6 +14,8 @@ export default defineConfig({
         'src/**/*.d.ts',
         'src/**/index.ts',
         'src/types/**',
+        'src/cli.ts',
+        'src/server.ts',
       ],
       thresholds: {
         branches: 30,
