@@ -8,8 +8,6 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import {
-  QueryCharacterArgsSchema,
-  QueryLocationArgsSchema,
   SearchVaultArgsSchema,
   StoreWorkflowArgsSchema,
   GenerateImageArgsSchema,
@@ -21,6 +19,16 @@ import {
   ValidateConsistencyArgsSchema,
   type HivemindConfig,
 } from './types/index.js';
+import { templateRegistry } from './templates/registry.js';
+import {
+  generateToolsForEntityTypes,
+  parseQueryToolName,
+  parseListToolName,
+  formatEntityWithRelationships,
+  formatEntityList,
+  QueryEntityArgsSchema,
+  ListEntityArgsSchema,
+} from './mcp/tool-generator.js';
 import { VaultReader } from './vault/reader.js';
 import { VaultWatcher } from './vault/watcher.js';
 import { HivemindDatabase } from './graph/database.js';
@@ -99,60 +107,18 @@ export class HivemindServer {
   private setupHandlers(): void {
     // List available tools
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
+      // Generate dynamic tools from active template
+      const activeTemplate = templateRegistry.getActive();
+      const dynamicTools = activeTemplate
+        ? generateToolsForEntityTypes(activeTemplate.entityTypes)
+        : [];
+
       return {
         tools: [
-          {
-            name: 'query_character',
-            description: 'Retrieve detailed information about a character from the worldbuilding vault',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                id: {
-                  type: 'string',
-                  description: 'Character ID or name to query',
-                },
-                includeContent: {
-                  type: 'boolean',
-                  description: 'Include content body in response (default: true)',
-                  default: true,
-                },
-                contentLimit: {
-                  type: 'number',
-                  description: 'Maximum characters of content to return (default: 500, max: 5000)',
-                  default: 500,
-                  minimum: 100,
-                  maximum: 5000,
-                },
-              },
-              required: ['id'],
-            },
-          },
-          {
-            name: 'query_location',
-            description: 'Retrieve information about a location from the worldbuilding vault',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                id: {
-                  type: 'string',
-                  description: 'Location ID or name to query',
-                },
-                includeContent: {
-                  type: 'boolean',
-                  description: 'Include content body in response (default: true)',
-                  default: true,
-                },
-                contentLimit: {
-                  type: 'number',
-                  description: 'Maximum characters of content to return (default: 500, max: 5000)',
-                  default: 500,
-                  minimum: 100,
-                  maximum: 5000,
-                },
-              },
-              required: ['id'],
-            },
-          },
+          // Dynamic entity tools (query_X and list_X for each entity type)
+          ...dynamicTools,
+
+          // Static tools
           {
             name: 'search_vault',
             description: 'Search across all worldbuilding content using hybrid search (keyword + semantic + graph)',
@@ -464,15 +430,28 @@ export class HivemindServer {
       const { name, arguments: args } = request.params;
 
       try {
+        // Check for dynamic query_<entityType> tools
+        const queryTypeName = parseQueryToolName(name);
+        if (queryTypeName) {
+          const entityType = templateRegistry.getEntityType(queryTypeName);
+          if (entityType) {
+            const parsed = QueryEntityArgsSchema.parse(args);
+            return await this.handleGenericQuery(queryTypeName, entityType, parsed);
+          }
+        }
+
+        // Check for dynamic list_<entityType> tools
+        const listTypeName = parseListToolName(name);
+        if (listTypeName) {
+          const entityType = templateRegistry.getEntityType(listTypeName);
+          if (entityType) {
+            const parsed = ListEntityArgsSchema.parse(args);
+            return await this.handleGenericList(listTypeName, entityType, parsed);
+          }
+        }
+
+        // Static tools
         switch (name) {
-          case 'query_character': {
-            const parsed = QueryCharacterArgsSchema.parse(args);
-            return await this.handleQueryCharacter(parsed);
-          }
-          case 'query_location': {
-            const parsed = QueryLocationArgsSchema.parse(args);
-            return await this.handleQueryLocation(parsed);
-          }
           case 'search_vault': {
             const parsed = SearchVaultArgsSchema.parse(args);
             return await this.handleSearchVault(parsed);
@@ -602,24 +581,31 @@ export class HivemindServer {
     });
   }
 
-  private async handleQueryCharacter(args: { id: string; includeContent?: boolean; contentLimit?: number }) {
+  /**
+   * Generic query handler for dynamically generated query_<entityType> tools.
+   */
+  private async handleGenericQuery(
+    typeName: string,
+    entityType: { name: string; displayName: string; pluralName: string; fields: any[] },
+    args: { id: string; includeContent?: boolean; contentLimit?: number }
+  ) {
     await this.ensureIndexed();
 
     // Use search engine to get node with relationships
     const result = await this.searchEngine.getNodeWithRelationships(args.id);
 
     if (!result) {
-      // Try fuzzy search
-      const searchResults = await this.searchEngine.search(args.id, { 
+      // Try fuzzy search with type filter
+      const searchResults = await this.searchEngine.search(args.id, {
         limit: 5,
-        filters: { type: ['character'] }
+        filters: { type: [typeName] }
       });
 
       if (searchResults.nodes.length === 0) {
         return {
           content: [{
             type: 'text',
-            text: `Character not found: "${args.id}"\n\nTry searching with: search_vault`,
+            text: `${entityType.displayName} not found: "${args.id}"\n\nTry searching with: search_vault`,
           }],
         };
       }
@@ -629,13 +615,24 @@ export class HivemindServer {
       return {
         content: [{
           type: 'text',
-          text: `Character "${args.id}" not found. Did you mean:\n\n${suggestions}`,
+          text: `${entityType.displayName} "${args.id}" not found. Did you mean:\n\n${suggestions}`,
         }],
       };
     }
 
-    // Format comprehensive response with relationships
-    const response = this.formatCharacterWithRelationships(
+    // Verify type matches
+    if (result.node.type !== typeName) {
+      return {
+        content: [{
+          type: 'text',
+          text: `Entity "${args.id}" is a ${result.node.type}, not a ${typeName}.\n\nUse query_${result.node.type} instead.`,
+        }],
+      };
+    }
+
+    // Format response using generic formatter
+    const response = formatEntityWithRelationships(
+      entityType,
       result,
       args.includeContent ?? true,
       args.contentLimit ?? 500
@@ -649,43 +646,43 @@ export class HivemindServer {
     };
   }
 
-  private async handleQueryLocation(args: { id: string; includeContent?: boolean; contentLimit?: number }) {
+  /**
+   * Generic list handler for dynamically generated list_<entityType> tools.
+   */
+  private async handleGenericList(
+    typeName: string,
+    entityType: { name: string; displayName: string; pluralName: string; fields: any[] },
+    args: { limit?: number; status?: string; includeContent?: boolean; contentLimit?: number }
+  ) {
     await this.ensureIndexed();
 
-    // Use search engine to get node with relationships
-    const result = await this.searchEngine.getNodeWithRelationships(args.id);
+    // Build filters
+    const filters: any = { type: [typeName] };
+    if (args.status) {
+      filters.status = [args.status];
+    }
 
-    if (!result) {
-      // Try fuzzy search
-      const searchResults = await this.searchEngine.search(args.id, { 
-        limit: 5,
-        filters: { type: ['location'] }
-      });
+    // Search with empty query returns all matching entities
+    const results = await this.searchEngine.search('', {
+      limit: args.limit ?? 20,
+      filters,
+    });
 
-      if (searchResults.nodes.length === 0) {
-        return {
-          content: [{
-            type: 'text',
-            text: `Location not found: "${args.id}"\n\nTry searching with: search_vault`,
-          }],
-        };
-      }
-
-      // Return suggestions
-      const suggestions = searchResults.nodes.map(n => `- ${n.title} (${n.id})`).join('\n');
+    if (results.nodes.length === 0) {
       return {
         content: [{
           type: 'text',
-          text: `Location "${args.id}" not found. Did you mean:\n\n${suggestions}`,
+          text: `No ${entityType.pluralName.toLowerCase()} found${args.status ? ` with status "${args.status}"` : ''}.`,
         }],
       };
     }
 
-    // Format comprehensive response with relationships
-    const response = this.formatLocationWithRelationships(
-      result,
-      args.includeContent ?? true,
-      args.contentLimit ?? 500
+    // Format response using generic formatter
+    const response = formatEntityList(
+      entityType,
+      results.nodes,
+      args.includeContent ?? false,
+      args.contentLimit ?? 200
     );
 
     return {
@@ -917,124 +914,6 @@ File watcher keeps index updated automatically.
       
       this.isIndexed = true;
     }
-  }
-
-  private formatCharacterWithRelationships(result: any, includeContent = true, contentLimit = 500): string {
-    const { node, relatedNodes } = result;
-    const props = node.properties;
-
-    let response = `# ${node.title}\n\n`;
-    response += `**Type**: Character | **Status**: ${node.status} | **ID**: \`${node.id}\`\n\n`;
-
-    // Basic info
-    if (props.age) response += `**Age**: ${props.age} | `;
-    if (props.gender) response += `**Gender**: ${props.gender} | `;
-    if (props.race) response += `**Race**: ${props.race}`;
-    response += `\n\n`;
-
-    // Content (if requested)
-    if (includeContent && node.content) {
-      response += `## Description\n`;
-      const content = node.content.trim();
-      if (content.length > contentLimit) {
-        response += `${content.substring(0, contentLimit)}...\n\n`;
-        response += `*[Truncated at ${contentLimit} chars. Full content: ${content.length} chars]*\n\n`;
-      } else {
-        response += `${content}\n\n`;
-      }
-    }
-
-    // Appearance
-    if (props.appearance) {
-      response += `## Appearance\n`;
-      if (typeof props.appearance === 'object') {
-        for (const [key, value] of Object.entries(props.appearance)) {
-          response += `- **${key}**: ${value}\n`;
-        }
-      } else {
-        response += `${props.appearance}\n`;
-      }
-      response += `\n`;
-    }
-
-    // Personality
-    if (props.personality) {
-      response += `## Personality\n`;
-      if (typeof props.personality === 'object') {
-        for (const [key, value] of Object.entries(props.personality)) {
-          response += `- **${key}**: ${JSON.stringify(value)}\n`;
-        }
-      } else {
-        response += `${props.personality}\n`;
-      }
-      response += `\n`;
-    }
-
-    // Relationships (from graph)
-    if (relatedNodes.length > 0) {
-      response += `## Relationships\n`;
-      const characters = relatedNodes.filter((n: any) => n.type === 'character');
-      const locations = relatedNodes.filter((n: any) => n.type === 'location');
-      
-      if (characters.length > 0) {
-        response += `**Characters**: ${characters.map((c: any) => c.title).join(', ')}\n`;
-      }
-      if (locations.length > 0) {
-        response += `**Locations**: ${locations.map((l: any) => l.title).join(', ')}\n`;
-      }
-      response += `\n`;
-    }
-
-    response += `---\n*Source: ${node.filePath}*\n`;
-    response += `*Last updated: ${new Date(node.updated).toLocaleString()}*`;
-
-    return response;
-  }
-
-  private formatLocationWithRelationships(result: any, includeContent = true, contentLimit = 500): string {
-    const { node, relatedNodes } = result;
-    const props = node.properties;
-
-    let response = `# ${node.title}\n\n`;
-    response += `**Type**: Location | **Status**: ${node.status} | **ID**: \`${node.id}\`\n\n`;
-
-    // Basic info
-    if (props.region) response += `**Region**: ${props.region} | `;
-    if (props.category) response += `**Category**: ${props.category} | `;
-    if (props.climate) response += `**Climate**: ${props.climate}`;
-    response += `\n\n`;
-
-    // Content (if requested)
-    if (includeContent && node.content) {
-      response += `## Description\n`;
-      const content = node.content.trim();
-      if (content.length > contentLimit) {
-        response += `${content.substring(0, contentLimit)}...\n\n`;
-        response += `*[Truncated at ${contentLimit} chars. Full content: ${content.length} chars]*\n\n`;
-      } else {
-        response += `${content}\n\n`;
-      }
-    }
-
-    // Connected entities (from graph)
-    if (relatedNodes.length > 0) {
-      response += `## Connected Entities\n`;
-      const characters = relatedNodes.filter((n: any) => n.type === 'character');
-      const locations = relatedNodes.filter((n: any) => n.type === 'location');
-      
-      if (characters.length > 0) {
-        response += `**Inhabitants**: ${characters.map((c: any) => c.title).join(', ')}\n`;
-      }
-      if (locations.length > 0) {
-        response += `**Connected Locations**: ${locations.map((l: any) => l.title).join(', ')}\n`;
-      }
-      response += `\n`;
-    }
-
-    response += `---\n*Source: ${node.filePath}*\n`;
-    response += `*Last updated: ${new Date(node.updated).toLocaleString()}*`;
-
-    return response;
   }
 
   private formatSearchResults(results: any, includeContent = false, contentLimit = 300): string {
