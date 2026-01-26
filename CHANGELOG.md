@@ -1,3 +1,10 @@
+# [2.2.0](https://github.com/hiveforge-io/hivemind/compare/v2.1.1...v2.2.0) (2026-01-26)
+
+
+### Features
+
+* **06-01:** create template configuration interfaces ([0eab470](https://github.com/hiveforge-io/hivemind/commit/0eab47057c141400f57b5ab6ca742ab9b003a569))
+
 ## [2.1.1](https://github.com/hiveforge-io/hivemind/compare/v2.1.0...v2.1.1) (2026-01-26)
 
 
