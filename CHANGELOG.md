@@ -1,3 +1,15 @@
+# [2.6.0](https://github.com/hiveforge-sh/hivemind/compare/v2.5.0...v2.6.0) (2026-01-26)
+
+
+### Bug Fixes
+
+* **search:** handle empty query in FTS5 search ([b6e6126](https://github.com/hiveforge-sh/hivemind/commit/b6e6126979bd71854bd35566735786fa74eb6c7b))
+
+
+### Features
+
+* **11-01:** add template initialization to server startup ([fafb0eb](https://github.com/hiveforge-sh/hivemind/commit/fafb0ebef310a8991d3c313a7d45d9a6e64df3d6))
+
 # [2.5.0](https://github.com/hiveforge-sh/hivemind/compare/v2.4.0...v2.5.0) (2026-01-26)
 
 
