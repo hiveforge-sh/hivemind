@@ -140,9 +140,9 @@ Obsidian Vault → File Watcher → Markdown Parser → Knowledge Graph
 
 ## Development Status
 
-**Current Phase**: Milestone 1.0 Complete ✅
+**Current**: Milestone 1.0 Complete ✅ | **Next**: Milestone 2.0 Template System 🚧
 
-### What's Included
+### v1.0 — MVP + Core Features (Shipped)
 
 - [x] MCP server with hybrid search (vector, graph, keyword)
 - [x] Vault templates for all entity types (Character, Location, Event, Faction, Lore, Asset)
@@ -152,9 +152,18 @@ Obsidian Vault → File Watcher → Markdown Parser → Knowledge Graph
 - [x] Obsidian plugin with image generation
 - [x] CI/CD with semantic-release and CodeQL scanning
 
-**Up Next:**
+### v2.0 — Template System (In Progress)
+
+Make Hivemind domain-agnostic with pluggable templates:
+
+- [ ] Template registry with config-driven entity definitions
+- [ ] Built-in templates: worldbuilding, research, people-management
+- [ ] Custom entity types via config (no coding required)
+- [ ] Auto-generated MCP tools per entity type
+- [ ] Custom relationship types per template
+
+**Also pending:**
 - [ ] Obsidian community plugin submission
-- [ ] Template System (make Hivemind domain-agnostic)
 
 ## MCP Tools
 
