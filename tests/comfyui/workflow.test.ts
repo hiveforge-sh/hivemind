@@ -3,7 +3,7 @@ import { WorkflowManager } from '../../src/comfyui/workflow.js';
 import { HivemindDatabase } from '../../src/graph/database.js';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'fs';
+import { mkdtempSync, rmSync, mkdirSync } from 'fs';
 import { promises as fs } from 'fs';
 
 describe('WorkflowManager', () => {
