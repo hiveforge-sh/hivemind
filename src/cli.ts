@@ -126,7 +126,7 @@ async function fix() {
   const skippedLogPath = join(vaultPath, '.hivemind', 'skipped-files.log');
 
   if (!existsSync(skippedLogPath)) {
-    console.log('✅ No skipped files log found. Run "npx hivemind start" first to scan vault.');
+    console.log('✅ No skipped files log found. Run "npx @hiveforge/hivemind-mcp start" first to scan vault.');
     return;
   }
 
@@ -212,7 +212,7 @@ async function fix() {
     }
 
     console.log(`\n✅ Done! Fixed: ${fixed}, Skipped: ${skipped}`);
-    console.log('   Run "npx hivemind start" to re-index vault.');
+    console.log('   Run "npx @hiveforge/hivemind-mcp start" to re-index vault.');
 
   } finally {
     rl.close();
@@ -336,7 +336,7 @@ async function validate() {
   // Check config exists
   if (!existsSync(configPath)) {
     console.error('❌ config.json not found');
-    console.log('   Run "npx hivemind init" to create one');
+    console.log('   Run "npx @hiveforge/hivemind-mcp init" to create one');
     process.exit(1);
   }
 
