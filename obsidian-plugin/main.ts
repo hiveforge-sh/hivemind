@@ -1,5 +1,7 @@
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
 import { spawn, ChildProcess } from 'child_process';
+import { FolderMapper } from '../src/templates/folder-mapper.js';
+import type { ResolveResult } from '../src/templates/types.js';
 
 interface HivemindSettings {
   mcpServerPath: string;
@@ -25,80 +27,8 @@ interface MCPResponse {
   isError?: boolean;
 }
 
-// Folder-to-type mappings for auto-inference
-const FOLDER_TYPE_MAPPINGS: Map<string, string> = new Map([
-  // Character mappings
-  ['characters', 'character'],
-  ['people', 'character'],
-  ['npcs', 'character'],
-  ['pcs', 'character'],
-  ['cast', 'character'],
-
-  // Location mappings
-  ['locations', 'location'],
-  ['places', 'location'],
-  ['geography', 'location'],
-  ['world', 'location'],
-  ['regions', 'location'],
-  ['cities', 'location'],
-  ['towns', 'location'],
-
-  // Event mappings
-  ['events', 'event'],
-  ['timeline', 'event'],
-  ['history', 'event'],
-  ['sessions', 'event'],
-
-  // Faction mappings
-  ['factions', 'faction'],
-  ['organizations', 'faction'],
-  ['groups', 'faction'],
-  ['guilds', 'faction'],
-  ['houses', 'faction'],
-
-  // Lore mappings
-  ['lore', 'lore'],
-  ['mythology', 'lore'],
-  ['magic', 'lore'],
-  ['culture', 'lore'],
-  ['religion', 'lore'],
-
-  // Asset mappings
-  ['assets', 'asset'],
-  ['images', 'asset'],
-  ['media', 'asset'],
-
-  // Reference mappings
-  ['references', 'reference'],
-  ['sources', 'reference'],
-  ['inspiration', 'reference'],
-  ['notes', 'reference'],
-  ['meta', 'reference'],
-]);
-
-/**
- * Infer entity type from file path based on folder names
- */
-function inferTypeFromPath(filePath: string): string | null {
-  const parts = filePath.toLowerCase().split(/[/\\]/);
-
-  for (const part of parts) {
-    // Exact match
-    const exactMatch = FOLDER_TYPE_MAPPINGS.get(part);
-    if (exactMatch) {
-      return exactMatch;
-    }
-
-    // Prefix match (e.g., 'characters-main' matches 'characters')
-    for (const [pattern, entityType] of FOLDER_TYPE_MAPPINGS) {
-      if (part.startsWith(pattern)) {
-        return entityType;
-      }
-    }
-  }
-
-  return null;
-}
+// Folder-to-type mappings are now handled by shared FolderMapper
+// (imported from ../src/templates/folder-mapper.js)
 
 // Frontmatter template definitions
 const FRONTMATTER_TEMPLATES: Record<string, any> = {
@@ -234,9 +164,13 @@ export default class HivemindPlugin extends Plugin {
   }> = new Map();
   private requestId: number = 1;
   private statusBarItem: HTMLElement;
+  private folderMapper?: FolderMapper;
 
   async onload() {
     await this.loadSettings();
+
+    // Initialize folder mapper with defaults
+    this.folderMapper = await FolderMapper.createWithDefaults();
 
     // Add status bar item
     this.statusBarItem = this.addStatusBarItem();
@@ -532,16 +466,20 @@ export default class HivemindPlugin extends Plugin {
       const frontmatter = cache?.frontmatter || {};
       let noteType = frontmatter.type;
 
-      // If no type, try to infer from folder path
-      if (!noteType) {
-        const inferredType = inferTypeFromPath(file.path);
+      // If no type, use shared FolderMapper to infer from folder path
+      if (!noteType && this.folderMapper) {
+        const result = await this.folderMapper.resolveType(file.path);
 
-        if (inferredType) {
-          // Show inference confirmation modal
-          new TypeInferenceModal(this.app, this, file, inferredType).open();
+        if (result.confidence === 'exact') {
+          // Single type - show inference confirmation modal
+          new TypeInferenceModal(this.app, this, file, result.types[0]).open();
+          return;
+        } else if (result.confidence === 'ambiguous') {
+          // Multiple types - show selection modal with suggested types
+          new TypeSelectionModal(this.app, this, file, result.types).open();
           return;
         } else {
-          // Show type selection modal
+          // No match - show full type selection
           new TypeSelectionModal(this.app, this, file).open();
           return;
         }
@@ -1424,11 +1362,13 @@ class TypeInferenceModal extends Modal {
 class TypeSelectionModal extends Modal {
   plugin: HivemindPlugin;
   file: TFile;
+  suggestedTypes?: string[];  // Optional suggested types from folder mapping
 
-  constructor(app: App, plugin: HivemindPlugin, file: TFile) {
+  constructor(app: App, plugin: HivemindPlugin, file: TFile, suggestedTypes?: string[]) {
     super(app);
     this.plugin = plugin;
     this.file = file;
+    this.suggestedTypes = suggestedTypes;
   }
 
   onOpen() {
@@ -1446,13 +1386,6 @@ class TypeSelectionModal extends Modal {
       cls: 'setting-item-description'
     });
 
-    // Create type buttons grid
-    const typeGrid = contentEl.createDiv({ cls: 'type-selection-grid' });
-    typeGrid.style.display = 'grid';
-    typeGrid.style.gridTemplateColumns = 'repeat(3, 1fr)';
-    typeGrid.style.gap = '10px';
-    typeGrid.style.marginTop = '20px';
-
     const typeDescriptions: Record<string, string> = {
       character: 'NPCs, PCs, and historical figures',
       location: 'Places, regions, and buildings',
@@ -1463,7 +1396,58 @@ class TypeSelectionModal extends Modal {
       reference: 'Out-of-world reference material'
     };
 
+    // If we have suggested types (from ambiguous mapping), show them first
+    if (this.suggestedTypes && this.suggestedTypes.length > 0) {
+      contentEl.createEl('h3', { text: 'Suggested types based on folder:' });
+
+      const suggestedGrid = contentEl.createDiv({ cls: 'type-selection-grid' });
+      suggestedGrid.style.display = 'grid';
+      suggestedGrid.style.gridTemplateColumns = 'repeat(3, 1fr)';
+      suggestedGrid.style.gap = '10px';
+      suggestedGrid.style.marginTop = '10px';
+      suggestedGrid.style.marginBottom = '20px';
+
+      for (const type of this.suggestedTypes) {
+        const description = typeDescriptions[type] || 'Custom type';
+        const typeBtn = suggestedGrid.createEl('button', {
+          cls: 'type-selection-btn mod-cta'
+        });
+        typeBtn.style.padding = '15px';
+        typeBtn.style.textAlign = 'center';
+        typeBtn.style.cursor = 'pointer';
+
+        typeBtn.createEl('div', {
+          text: type.charAt(0).toUpperCase() + type.slice(1),
+          cls: 'type-name'
+        }).style.fontWeight = 'bold';
+
+        typeBtn.createEl('div', {
+          text: description,
+          cls: 'type-desc'
+        }).style.fontSize = '0.8em';
+
+        typeBtn.addEventListener('click', async () => {
+          await this.applyType(type);
+          this.close();
+        });
+      }
+
+      contentEl.createEl('h3', { text: 'Or choose a different type:' });
+    }
+
+    // Create type buttons grid for all types
+    const typeGrid = contentEl.createDiv({ cls: 'type-selection-grid' });
+    typeGrid.style.display = 'grid';
+    typeGrid.style.gridTemplateColumns = 'repeat(3, 1fr)';
+    typeGrid.style.gap = '10px';
+    typeGrid.style.marginTop = '20px';
+
     for (const [type, description] of Object.entries(typeDescriptions)) {
+      // Skip types already shown in suggested section
+      if (this.suggestedTypes && this.suggestedTypes.includes(type)) {
+        continue;
+      }
+
       const typeBtn = typeGrid.createEl('button', {
         cls: 'type-selection-btn'
       });
