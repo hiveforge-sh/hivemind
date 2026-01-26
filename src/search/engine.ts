@@ -33,29 +33,61 @@ export class SearchEngine {
     const startTime = Date.now();
     const limit = options?.limit || 10;
 
-    // Use FTS5 for full-text search
-    const ftsResults = this.db.search(query, limit * 2); // Get more than needed for filtering
-    
-    // Get full node details
-    let nodes = ftsResults
-      .map(result => this.db.getNode(result.id))
-      .filter(node => node !== undefined);
+    let nodes: any[];
+    let totalResults: number;
+    const trimmedQuery = query.trim();
 
-    // Apply filters
-    if (options?.filters) {
-      nodes = nodes.filter(node => {
-        if (options.filters?.type && !options.filters.type.includes(node!.type)) {
-          return false;
-        }
-        if (options.filters?.status && !options.filters.status.includes(node!.status)) {
-          return false;
-        }
-        return true;
-      });
+    // Handle empty query - bypass FTS5 and get nodes directly
+    if (!trimmedQuery) {
+      // Get nodes directly from database based on filters
+      if (options?.filters?.type && options.filters.type.length === 1) {
+        // Single type filter - use optimized getNodesByType
+        nodes = this.db.getNodesByType(options.filters.type[0]);
+      } else {
+        // No type filter or multiple types - get all nodes
+        nodes = this.db.getAllNodes();
+      }
+
+      // Apply filters
+      if (options?.filters) {
+        nodes = nodes.filter(node => {
+          if (options.filters?.type && options.filters.type.length > 1 && !options.filters.type.includes(node.type)) {
+            return false;
+          }
+          if (options.filters?.status && !options.filters.status.includes(node.status)) {
+            return false;
+          }
+          return true;
+        });
+      }
+
+      totalResults = nodes.length;
+      nodes = nodes.slice(0, limit);
+    } else {
+      // Use FTS5 for full-text search
+      const ftsResults = this.db.search(trimmedQuery, limit * 2); // Get more than needed for filtering
+
+      // Get full node details
+      nodes = ftsResults
+        .map(result => this.db.getNode(result.id))
+        .filter(node => node !== undefined);
+
+      // Apply filters
+      if (options?.filters) {
+        nodes = nodes.filter(node => {
+          if (options.filters?.type && !options.filters.type.includes(node!.type)) {
+            return false;
+          }
+          if (options.filters?.status && !options.filters.status.includes(node!.status)) {
+            return false;
+          }
+          return true;
+        });
+      }
+
+      totalResults = ftsResults.length;
+      nodes = nodes.slice(0, limit);
     }
-
-    // Limit results
-    nodes = nodes.slice(0, limit);
 
     // Optionally include relationships
     let relationships: any[] = [];
@@ -74,9 +106,9 @@ export class SearchEngine {
       nodes,
       relationships: options?.includeRelationships ? relationships : undefined,
       metadata: {
-        source: 'fts',
+        source: trimmedQuery ? 'fts' : 'graph',
         executionTime: Date.now() - startTime,
-        totalResults: ftsResults.length,
+        totalResults,
       },
     };
   }
