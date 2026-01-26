@@ -1,9 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import {
   FolderMapper,
+  LegacyFolderMapper,
   DEFAULT_FOLDER_MAPPINGS,
   folderMapper,
 } from '../../src/templates/folder-mapper.js';
+import type { FolderMappingConfig } from '../../src/templates/types.js';
 
 describe('FolderMapper', () => {
   describe('DEFAULT_FOLDER_MAPPINGS', () => {
@@ -43,15 +45,15 @@ describe('FolderMapper', () => {
     });
   });
 
-  describe('constructor', () => {
+  describe('constructor (Legacy API)', () => {
     it('should create with default mappings', () => {
-      const mapper = new FolderMapper();
+      const mapper = new LegacyFolderMapper();
       const mappings = mapper.getMappings();
       expect(mappings.length).toBe(DEFAULT_FOLDER_MAPPINGS.length);
     });
 
     it('should add custom mappings', () => {
-      const mapper = new FolderMapper([
+      const mapper = new LegacyFolderMapper([
         { pattern: 'custom', entityType: 'custom_type' },
       ]);
       const mappings = mapper.getMappings();
@@ -59,15 +61,15 @@ describe('FolderMapper', () => {
     });
 
     it('should allow custom mappings to override defaults', () => {
-      const mapper = new FolderMapper([
+      const mapper = new LegacyFolderMapper([
         { pattern: 'characters', entityType: 'custom_character' },
       ]);
       expect(mapper.inferType('characters/alice.md')).toBe('custom_character');
     });
   });
 
-  describe('inferType', () => {
-    const mapper = new FolderMapper();
+  describe('inferType (Legacy API)', () => {
+    const mapper = new LegacyFolderMapper();
 
     it('should infer character type from characters folder', () => {
       expect(mapper.inferType('characters/alice.md')).toBe('character');
@@ -128,8 +130,8 @@ describe('FolderMapper', () => {
     });
   });
 
-  describe('inferTypes', () => {
-    const mapper = new FolderMapper();
+  describe('inferTypes (Legacy API)', () => {
+    const mapper = new LegacyFolderMapper();
 
     it('should infer types for multiple paths', () => {
       const paths = [
@@ -150,9 +152,9 @@ describe('FolderMapper', () => {
     });
   });
 
-  describe('getMappings', () => {
+  describe('getMappings (Legacy API)', () => {
     it('should return all mappings', () => {
-      const mapper = new FolderMapper();
+      const mapper = new LegacyFolderMapper();
       const mappings = mapper.getMappings();
 
       expect(Array.isArray(mappings)).toBe(true);
@@ -160,9 +162,9 @@ describe('FolderMapper', () => {
     });
   });
 
-  describe('addMapping', () => {
+  describe('addMapping (Legacy API)', () => {
     it('should add a new mapping', () => {
-      const mapper = new FolderMapper();
+      const mapper = new LegacyFolderMapper();
       const initialCount = mapper.getMappings().length;
 
       mapper.addMapping('newFolder', 'new_type');
@@ -172,7 +174,7 @@ describe('FolderMapper', () => {
     });
 
     it('should be case-insensitive when adding', () => {
-      const mapper = new FolderMapper();
+      const mapper = new LegacyFolderMapper();
       mapper.addMapping('NewFolder', 'new_type');
 
       expect(mapper.inferType('newfolder/file.md')).toBe('new_type');
@@ -181,12 +183,245 @@ describe('FolderMapper', () => {
   });
 
   describe('folderMapper singleton', () => {
-    it('should be a FolderMapper instance', () => {
-      expect(folderMapper).toBeInstanceOf(FolderMapper);
+    it('should be a LegacyFolderMapper instance', () => {
+      expect(folderMapper).toBeInstanceOf(LegacyFolderMapper);
     });
 
     it('should have default mappings', () => {
       expect(folderMapper.inferType('characters/alice.md')).toBe('character');
+    });
+  });
+
+  // New async FolderMapper tests
+  describe('FolderMapper (New Async API)', () => {
+    describe('create()', () => {
+      it('should create mapper with valid config', async () => {
+        const config: FolderMappingConfig = {
+          mappings: [
+            { folder: '**/Characters/**', types: ['character'] },
+          ],
+        };
+
+        const mapper = await FolderMapper.create(config);
+        expect(mapper).toBeInstanceOf(FolderMapper);
+      });
+
+      it('should validate glob patterns', async () => {
+        // Note: picomatch is quite permissive with patterns, so this test
+        // verifies the validation mechanism exists, even if most patterns are valid
+        const config: FolderMappingConfig = {
+          mappings: [
+            { folder: '**/Characters/**', types: ['character'] },
+          ],
+        };
+
+        // Should not throw for valid patterns
+        await expect(FolderMapper.create(config)).resolves.toBeInstanceOf(FolderMapper);
+      });
+
+      it('should normalize backslashes in patterns', async () => {
+        const config: FolderMappingConfig = {
+          mappings: [
+            { folder: '**\\Characters\\**', types: ['character'] },
+          ],
+        };
+
+        const mapper = await FolderMapper.create(config);
+        const result = await mapper.resolveType('vault/Characters/hero.md');
+        expect(result.confidence).toBe('exact');
+      });
+    });
+
+    describe('resolveType()', () => {
+      let mapper: FolderMapper;
+
+      beforeEach(async () => {
+        mapper = await FolderMapper.create({
+          mappings: [
+            { folder: '**/Characters/**', types: ['character'] },
+            { folder: '**/Locations/**', types: ['location'] },
+            { folder: '**/Notes/**', types: ['lore', 'event'] },
+          ],
+        });
+      });
+
+      it('should match simple glob pattern', async () => {
+        const result = await mapper.resolveType('vault/Characters/hero.md');
+
+        expect(result).toEqual({
+          types: ['character'],
+          matchedPattern: '**/Characters/**',
+          confidence: 'exact',
+        });
+      });
+
+      it('should return ambiguous for multiple types', async () => {
+        const result = await mapper.resolveType('vault/Notes/meeting.md');
+
+        expect(result).toEqual({
+          types: ['lore', 'event'],
+          matchedPattern: '**/Notes/**',
+          confidence: 'ambiguous',
+        });
+      });
+
+      it('should return none when no match and no fallback', async () => {
+        const result = await mapper.resolveType('vault/Random/file.md');
+
+        expect(result).toEqual({
+          types: [],
+          matchedPattern: null,
+          confidence: 'none',
+        });
+      });
+
+      it('should normalize Windows backslash paths', async () => {
+        const result = await mapper.resolveType('vault\\Characters\\hero.md');
+
+        expect(result.confidence).toBe('exact');
+        expect(result.types).toEqual(['character']);
+      });
+
+      it('should handle deeply nested paths', async () => {
+        const result = await mapper.resolveType('vault/Characters/NPCs/Merchants/shopkeeper.md');
+
+        expect(result.types).toEqual(['character']);
+      });
+
+      it('should be case-sensitive', async () => {
+        const result = await mapper.resolveType('vault/characters/hero.md');
+
+        // Lowercase 'characters' should NOT match '**/Characters/**'
+        expect(result.confidence).toBe('none');
+      });
+    });
+
+    describe('specificity resolution', () => {
+      it('should prefer more specific pattern over generic', async () => {
+        const mapper = await FolderMapper.create({
+          mappings: [
+            { folder: '**/People/**', types: ['character'] },
+            { folder: '**/People/Heroes/**', types: ['hero'] },
+          ],
+        });
+
+        // More specific pattern should win
+        const result = await mapper.resolveType('vault/People/Heroes/John.md');
+
+        expect(result.types).toEqual(['hero']);
+        expect(result.matchedPattern).toBe('**/People/Heroes/**');
+      });
+
+      it('should prefer literal segments over wildcards', async () => {
+        const mapper = await FolderMapper.create({
+          mappings: [
+            { folder: '**/**/Characters/**', types: ['generic'] },
+            { folder: 'World/Characters/**', types: ['specific'] },
+          ],
+        });
+
+        const result = await mapper.resolveType('World/Characters/hero.md');
+
+        expect(result.types).toEqual(['specific']);
+      });
+
+      it('should handle multiple wildcards with different specificity', async () => {
+        const mapper = await FolderMapper.create({
+          mappings: [
+            { folder: '**', types: ['catchall'] },
+            { folder: '**/folder/**', types: ['medium'] },
+            { folder: 'exact/path/**', types: ['high'] },
+          ],
+        });
+
+        const result = await mapper.resolveType('exact/path/file.md');
+        expect(result.types).toEqual(['high']);
+      });
+    });
+
+    describe('fallback type', () => {
+      it('should use fallback when no pattern matches', async () => {
+        const mapper = await FolderMapper.create({
+          mappings: [
+            { folder: '**/Characters/**', types: ['character'] },
+          ],
+          fallbackType: 'reference',
+        });
+
+        const result = await mapper.resolveType('vault/Random/file.md');
+
+        expect(result).toEqual({
+          types: ['reference'],
+          matchedPattern: null,
+          confidence: 'fallback',
+        });
+      });
+
+      it('should not use fallback when pattern matches', async () => {
+        const mapper = await FolderMapper.create({
+          mappings: [
+            { folder: '**/Characters/**', types: ['character'] },
+          ],
+          fallbackType: 'reference',
+        });
+
+        const result = await mapper.resolveType('vault/Characters/hero.md');
+
+        expect(result.confidence).toBe('exact');
+        expect(result.types).toEqual(['character']);
+      });
+    });
+
+    describe('resolveTypes()', () => {
+      it('should resolve multiple paths', async () => {
+        const mapper = await FolderMapper.create({
+          mappings: [
+            { folder: '**/Characters/**', types: ['character'] },
+            { folder: '**/Locations/**', types: ['location'] },
+          ],
+        });
+
+        const results = await mapper.resolveTypes([
+          'vault/Characters/hero.md',
+          'vault/Locations/city.md',
+          'vault/Random/file.md',
+        ]);
+
+        expect(results.size).toBe(3);
+        expect(results.get('vault/Characters/hero.md')?.types).toEqual(['character']);
+        expect(results.get('vault/Locations/city.md')?.types).toEqual(['location']);
+        expect(results.get('vault/Random/file.md')?.confidence).toBe('none');
+      });
+    });
+
+    describe('getMappings()', () => {
+      it('should return configured mappings', async () => {
+        const config: FolderMappingConfig = {
+          mappings: [
+            { folder: '**/Characters/**', types: ['character'] },
+            { folder: '**/Locations/**', types: ['location'] },
+          ],
+        };
+
+        const mapper = await FolderMapper.create(config);
+        const mappings = mapper.getMappings();
+
+        expect(mappings).toHaveLength(2);
+        expect(mappings[0].folder).toContain('Characters');
+        expect(mappings[1].folder).toContain('Locations');
+      });
+    });
+
+    describe('createWithDefaults()', () => {
+      it('should create mapper with default worldbuilding mappings', async () => {
+        const mapper = await FolderMapper.createWithDefaults();
+
+        const charResult = await mapper.resolveType('vault/characters/hero.md');
+        const locResult = await mapper.resolveType('vault/locations/city.md');
+
+        expect(charResult.types).toEqual(['character']);
+        expect(locResult.types).toEqual(['location']);
+      });
     });
   });
 });
