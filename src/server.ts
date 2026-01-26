@@ -20,6 +20,7 @@ import {
   type HivemindConfig,
 } from './types/index.js';
 import { templateRegistry } from './templates/registry.js';
+import { initializeTemplates } from './templates/loader.js';
 import {
   generateToolsForEntityTypes,
   parseQueryToolName,
@@ -1529,6 +1530,16 @@ File watcher keeps index updated automatically.
   }
 
   async start(): Promise<void> {
+    // Initialize template system
+    console.error('[Server] Initializing template system...');
+    try {
+      const config = initializeTemplates();
+      console.error(`[Server] Template initialized: ${config.activeTemplate}`);
+    } catch (err) {
+      console.error('[Server] Warning: Template init failed:', err);
+      // Continue without templates - backwards compatibility
+    }
+
     // Initial vault scan
     console.error('Performing initial vault scan...');
     await this.vaultReader.scanVault();
