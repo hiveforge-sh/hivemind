@@ -25,6 +25,81 @@ interface MCPResponse {
   isError?: boolean;
 }
 
+// Folder-to-type mappings for auto-inference
+const FOLDER_TYPE_MAPPINGS: Map<string, string> = new Map([
+  // Character mappings
+  ['characters', 'character'],
+  ['people', 'character'],
+  ['npcs', 'character'],
+  ['pcs', 'character'],
+  ['cast', 'character'],
+
+  // Location mappings
+  ['locations', 'location'],
+  ['places', 'location'],
+  ['geography', 'location'],
+  ['world', 'location'],
+  ['regions', 'location'],
+  ['cities', 'location'],
+  ['towns', 'location'],
+
+  // Event mappings
+  ['events', 'event'],
+  ['timeline', 'event'],
+  ['history', 'event'],
+  ['sessions', 'event'],
+
+  // Faction mappings
+  ['factions', 'faction'],
+  ['organizations', 'faction'],
+  ['groups', 'faction'],
+  ['guilds', 'faction'],
+  ['houses', 'faction'],
+
+  // Lore mappings
+  ['lore', 'lore'],
+  ['mythology', 'lore'],
+  ['magic', 'lore'],
+  ['culture', 'lore'],
+  ['religion', 'lore'],
+
+  // Asset mappings
+  ['assets', 'asset'],
+  ['images', 'asset'],
+  ['media', 'asset'],
+
+  // Reference mappings
+  ['references', 'reference'],
+  ['sources', 'reference'],
+  ['inspiration', 'reference'],
+  ['notes', 'reference'],
+  ['meta', 'reference'],
+]);
+
+/**
+ * Infer entity type from file path based on folder names
+ */
+function inferTypeFromPath(filePath: string): string | null {
+  const parts = filePath.toLowerCase().split(/[/\\]/);
+
+  for (const part of parts) {
+    // Exact match
+    const exactMatch = FOLDER_TYPE_MAPPINGS.get(part);
+    if (exactMatch) {
+      return exactMatch;
+    }
+
+    // Prefix match (e.g., 'characters-main' matches 'characters')
+    for (const [pattern, entityType] of FOLDER_TYPE_MAPPINGS) {
+      if (part.startsWith(pattern)) {
+        return entityType;
+      }
+    }
+  }
+
+  return null;
+}
+
 // Frontmatter template definitions
 const FRONTMATTER_TEMPLATES: Record<string, any> = {
   character: {
@@ -106,6 +181,45 @@ const FRONTMATTER_TEMPLATES: Record<string, any> = {
     resources: [],
     territory: [],
     assets: []
+  },
+  lore: {
+    id: '',
+    type: 'lore',
+    status: 'draft',
+    title: '',
+    importance: 'minor',
+    tags: [],
+    aliases: [],
+    name: '',
+    category: '',
+    related_entities: [],
+    source: ''
+  },
+  asset: {
+    id: '',
+    type: 'asset',
+    status: 'draft',
+    title: '',
+    tags: [],
+    aliases: [],
+    asset_type: 'image',
+    file_path: '',
+    depicts: []
+  },
+  reference: {
+    id: '',
+    type: 'reference',
+    status: 'draft',
+    title: '',
+    importance: 'minor',
+    tags: [],
+    aliases: [],
+    name: '',
+    category: '',
+    source_url: '',
+    related_entities: [],
+    author: '',
+    date_accessed: ''
   }
 };
 
@@ -414,14 +528,23 @@ export default class HivemindPlugin extends Plugin {
       // Get the file content
       const content = await this.app.vault.read(file);
       const cache = this.app.metadataCache.getFileCache(file);
-      
-      const frontmatter = cache?.frontmatter || {};
-      const noteType = frontmatter.type;
 
-      // If no type, ask user to specify
+      const frontmatter = cache?.frontmatter || {};
+      let noteType = frontmatter.type;
+
+      // If no type, try to infer from folder path
       if (!noteType) {
-        new Notice('Note must have a "type" field in frontmatter (character, location, event, faction, etc.)');
-        return;
+        const inferredType = inferTypeFromPath(file.path);
+
+        if (inferredType) {
+          // Show inference confirmation modal
+          new TypeInferenceModal(this.app, this, file, inferredType).open();
+          return;
+        } else {
+          // Show type selection modal
+          new TypeSelectionModal(this.app, this, file).open();
+          return;
+        }
       }
 
       // Get template for this type
@@ -435,7 +558,7 @@ export default class HivemindPlugin extends Plugin {
       const missingFields = this.findMissingFields(frontmatter, template);
 
       if (Object.keys(missingFields).length === 0) {
-        new Notice('✅ All required frontmatter fields are present!');
+        new Notice('All required frontmatter fields are present!');
         return;
       }
 
@@ -1182,6 +1305,231 @@ class MissingFrontmatterModal extends Modal {
     }
     
     return result;
+  }
+
+  onClose() {
+    const { contentEl } = this;
+    contentEl.empty();
+  }
+}
+
+// Type Inference Modal - shows inferred type, asks for confirmation
+class TypeInferenceModal extends Modal {
+  plugin: HivemindPlugin;
+  file: TFile;
+  inferredType: string;
+
+  constructor(app: App, plugin: HivemindPlugin, file: TFile, inferredType: string) {
+    super(app);
+    this.plugin = plugin;
+    this.file = file;
+    this.inferredType = inferredType;
+  }
+
+  onOpen() {
+    const { contentEl } = this;
+
+    contentEl.createEl('h2', { text: 'Inferred Entity Type' });
+
+    contentEl.createEl('p', {
+      text: `Based on the file location, this appears to be a:`
+    });
+
+    const typeDisplay = contentEl.createEl('div', {
+      cls: 'inferred-type-display'
+    });
+    typeDisplay.style.fontSize = '1.5em';
+    typeDisplay.style.fontWeight = 'bold';
+    typeDisplay.style.textAlign = 'center';
+    typeDisplay.style.padding = '20px';
+    typeDisplay.style.margin = '10px 0';
+    typeDisplay.style.backgroundColor = 'var(--background-secondary)';
+    typeDisplay.style.borderRadius = '8px';
+    typeDisplay.setText(this.inferredType.toUpperCase());
+
+    contentEl.createEl('p', {
+      text: `File: ${this.file.path}`,
+      cls: 'setting-item-description'
+    });
+
+    // Buttons
+    const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container' });
+    buttonContainer.style.display = 'flex';
+    buttonContainer.style.gap = '10px';
+    buttonContainer.style.justifyContent = 'flex-end';
+    buttonContainer.style.marginTop = '20px';
+
+    const cancelBtn = buttonContainer.createEl('button', { text: 'Cancel' });
+    cancelBtn.addEventListener('click', () => {
+      this.close();
+    });
+
+    const chooseOtherBtn = buttonContainer.createEl('button', { text: 'Choose Different Type' });
+    chooseOtherBtn.addEventListener('click', () => {
+      this.close();
+      new TypeSelectionModal(this.app, this.plugin, this.file).open();
+    });
+
+    const confirmBtn = buttonContainer.createEl('button', {
+      text: `Use "${this.inferredType}"`,
+      cls: 'mod-cta'
+    });
+    confirmBtn.addEventListener('click', async () => {
+      await this.applyType(this.inferredType);
+      this.close();
+    });
+  }
+
+  async applyType(entityType: string) {
+    try {
+      const template = FRONTMATTER_TEMPLATES[entityType];
+      if (!template) {
+        new Notice(`Unknown type: ${entityType}`);
+        return;
+      }
+
+      const fileName = this.file.basename;
+      const id = this.generateId(fileName, entityType);
+
+      // Create frontmatter with auto-filled values
+      const frontmatter = {
+        ...template,
+        id: id,
+        name: fileName,
+        title: fileName
+      };
+
+      await this.plugin.insertMissingFrontmatter(this.file, {}, frontmatter);
+      new Notice(`Added ${entityType} frontmatter to ${this.file.name}`);
+    } catch (error) {
+      new Notice('Failed to add frontmatter: ' + (error as Error).message);
+    }
+  }
+
+  generateId(name: string, entityType: string): string {
+    const slug = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+    return `${entityType}-${slug}`;
+  }
+
+  onClose() {
+    const { contentEl } = this;
+    contentEl.empty();
+  }
+}
+
+// Type Selection Modal - lets user pick an entity type
+class TypeSelectionModal extends Modal {
+  plugin: HivemindPlugin;
+  file: TFile;
+
+  constructor(app: App, plugin: HivemindPlugin, file: TFile) {
+    super(app);
+    this.plugin = plugin;
+    this.file = file;
+  }
+
+  onOpen() {
+    const { contentEl } = this;
+
+    contentEl.createEl('h2', { text: 'Select Entity Type' });
+
+    contentEl.createEl('p', {
+      text: 'Choose the type of entity for this note:',
+      cls: 'setting-item-description'
+    });
+
+    contentEl.createEl('p', {
+      text: `File: ${this.file.path}`,
+      cls: 'setting-item-description'
+    });
+
+    // Create type buttons grid
+    const typeGrid = contentEl.createDiv({ cls: 'type-selection-grid' });
+    typeGrid.style.display = 'grid';
+    typeGrid.style.gridTemplateColumns = 'repeat(3, 1fr)';
+    typeGrid.style.gap = '10px';
+    typeGrid.style.marginTop = '20px';
+
+    const typeDescriptions: Record<string, string> = {
+      character: 'NPCs, PCs, and historical figures',
+      location: 'Places, regions, and buildings',
+      event: 'Historical and current events',
+      faction: 'Organizations and groups',
+      lore: 'Mythology, magic, and culture',
+      asset: 'Images and media files',
+      reference: 'Out-of-world reference material'
+    };
+
+    for (const [type, description] of Object.entries(typeDescriptions)) {
+      const typeBtn = typeGrid.createEl('button', {
+        cls: 'type-selection-btn'
+      });
+      typeBtn.style.padding = '15px';
+      typeBtn.style.textAlign = 'center';
+      typeBtn.style.cursor = 'pointer';
+
+      typeBtn.createEl('div', {
+        text: type.charAt(0).toUpperCase() + type.slice(1),
+        cls: 'type-name'
+      }).style.fontWeight = 'bold';
+
+      typeBtn.createEl('div', {
+        text: description,
+        cls: 'type-desc'
+      }).style.fontSize = '0.8em';
+
+      typeBtn.addEventListener('click', async () => {
+        await this.applyType(type);
+        this.close();
+      });
+    }
+
+    // Cancel button
+    const cancelContainer = contentEl.createDiv();
+    cancelContainer.style.textAlign = 'center';
+    cancelContainer.style.marginTop = '20px';
+
+    const cancelBtn = cancelContainer.createEl('button', { text: 'Cancel' });
+    cancelBtn.addEventListener('click', () => {
+      this.close();
+    });
+  }
+
+  async applyType(entityType: string) {
+    try {
+      const template = FRONTMATTER_TEMPLATES[entityType];
+      if (!template) {
+        new Notice(`Unknown type: ${entityType}`);
+        return;
+      }
+
+      const fileName = this.file.basename;
+      const id = this.generateId(fileName, entityType);
+
+      // Create frontmatter with auto-filled values
+      const frontmatter = {
+        ...template,
+        id: id,
+        name: fileName,
+        title: fileName
+      };
+
+      await this.plugin.insertMissingFrontmatter(this.file, {}, frontmatter);
+      new Notice(`Added ${entityType} frontmatter to ${this.file.name}`);
+    } catch (error) {
+      new Notice('Failed to add frontmatter: ' + (error as Error).message);
+    }
+  }
+
+  generateId(name: string, entityType: string): string {
+    const slug = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+    return `${entityType}-${slug}`;
   }
 
   onClose() {

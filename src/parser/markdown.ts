@@ -4,8 +4,21 @@ import type { Root, Heading as MdHeading, Text } from 'mdast';
 import type { VaultNote, Heading, BaseFrontmatter } from '../types/index.js';
 import { BaseFrontmatterSchema } from '../types/index.js';
 import { promises as fs } from 'fs';
+import type { z } from 'zod';
 
 export class MarkdownParser {
+  private frontmatterSchema: z.ZodObject<any>;
+
+  /**
+   * Create a new MarkdownParser.
+   *
+   * @param frontmatterSchema - Optional custom frontmatter schema for template-aware validation.
+   *                            Defaults to BaseFrontmatterSchema for backwards compatibility.
+   */
+  constructor(frontmatterSchema?: z.ZodObject<any>) {
+    this.frontmatterSchema = frontmatterSchema ?? BaseFrontmatterSchema;
+  }
+
   /**
    * Parse a markdown file and extract frontmatter, content, and links
    */
@@ -59,8 +72,9 @@ export class MarkdownParser {
    */
   private parseFrontmatter(raw: any): BaseFrontmatter {
     try {
-      // Validate with Zod schema
-      return BaseFrontmatterSchema.parse(raw);
+      // Validate with Zod schema (uses injected schema or default)
+      // Cast is safe because injected schemas extend BaseFrontmatterSchema
+      return this.frontmatterSchema.parse(raw) as BaseFrontmatter;
     } catch (error) {
       // Check if frontmatter is completely missing
       const hasFrontmatter = raw && Object.keys(raw).length > 0;

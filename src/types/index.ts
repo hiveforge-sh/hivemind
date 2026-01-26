@@ -7,26 +7,53 @@ import { z } from 'zod';
 export const NoteStatusSchema = z.enum(['draft', 'pending', 'canon', 'non-canon', 'archived']);
 export type NoteStatus = z.infer<typeof NoteStatusSchema>;
 
-export const NoteTypeSchema = z.enum(['character', 'location', 'event', 'faction', 'system', 'asset', 'lore']);
+/** Base entity types that are always supported */
+export const BASE_NOTE_TYPES = ['character', 'location', 'event', 'faction', 'system', 'asset', 'lore'] as const;
+
+/**
+ * Factory function for dynamic NoteType support.
+ * Allows custom types (e.g., 'reference') beyond the hardcoded base types.
+ *
+ * @param additionalTypes - Custom entity type names to include
+ * @returns Zod enum schema with base + additional types
+ */
+export function createNoteTypeSchema(additionalTypes: string[] = []): z.ZodEnum<[string, ...string[]]> {
+  const allTypes = [...BASE_NOTE_TYPES, ...additionalTypes] as [string, ...string[]];
+  return z.enum(allTypes);
+}
+
+// Default for backwards compatibility
+export const NoteTypeSchema = createNoteTypeSchema();
 export type NoteType = z.infer<typeof NoteTypeSchema>;
 
 export const ImportanceSchema = z.enum(['major', 'minor', 'background']);
 export type Importance = z.infer<typeof ImportanceSchema>;
 
-// Base frontmatter schema
-export const BaseFrontmatterSchema = z.object({
-  id: z.string(),
-  type: NoteTypeSchema,
-  status: NoteStatusSchema.default('draft'),
-  title: z.string().optional(),
-  world: z.string().optional(),
-  importance: ImportanceSchema.optional(),
-  tags: z.array(z.string()).optional().default([]),
-  aliases: z.array(z.string()).optional().default([]),
-  created: z.string().optional(),
-  updated: z.string().optional(),
-  canon_authority: z.enum(['high', 'medium', 'low']).optional(),
-});
+/**
+ * Factory function for dynamic BaseFrontmatter schema.
+ * Uses a custom NoteType schema for template-aware validation.
+ *
+ * @param noteTypeSchema - Custom NoteType schema (from createNoteTypeSchema)
+ * @returns Base frontmatter schema with the custom type validation
+ */
+export function createBaseFrontmatterSchema(noteTypeSchema: z.ZodEnum<[string, ...string[]]>) {
+  return z.object({
+    id: z.string(),
+    type: noteTypeSchema,
+    status: NoteStatusSchema.default('draft'),
+    title: z.string().optional(),
+    world: z.string().optional(),
+    importance: ImportanceSchema.optional(),
+    tags: z.array(z.string()).optional().default([]),
+    aliases: z.array(z.string()).optional().default([]),
+    created: z.string().optional(),
+    updated: z.string().optional(),
+    canon_authority: z.enum(['high', 'medium', 'low']).optional(),
+  });
+}
+
+// Base frontmatter schema (default for backwards compatibility)
+export const BaseFrontmatterSchema = createBaseFrontmatterSchema(NoteTypeSchema);
 
 export type BaseFrontmatter = z.infer<typeof BaseFrontmatterSchema>;
 

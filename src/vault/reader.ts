@@ -1,7 +1,9 @@
 import { promises as fs } from 'fs';
 import { join, relative } from 'path';
 import type { VaultConfig, VaultNote } from '../types/index.js';
+import { createNoteTypeSchema, createBaseFrontmatterSchema } from '../types/index.js';
 import { MarkdownParser } from '../parser/markdown.js';
+import { templateRegistry } from '../templates/registry.js';
 
 export interface ParseError {
   filePath: string;
@@ -25,7 +27,20 @@ export class VaultReader {
 
   constructor(config: VaultConfig) {
     this.config = config;
-    this.parser = new MarkdownParser();
+
+    // Create template-aware parser with custom entity types
+    const activeTemplate = templateRegistry.getActive();
+    if (activeTemplate) {
+      // Get custom entity type names from the active template
+      const customTypes = activeTemplate.entityTypes.map(e => e.name);
+      const noteTypeSchema = createNoteTypeSchema(customTypes);
+      const frontmatterSchema = createBaseFrontmatterSchema(noteTypeSchema);
+      this.parser = new MarkdownParser(frontmatterSchema);
+    } else {
+      // No active template - use default schema
+      this.parser = new MarkdownParser();
+    }
+
     this.index = {
       notes: new Map(),
       notesByType: new Map(),

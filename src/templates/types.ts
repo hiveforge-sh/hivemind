@@ -129,3 +129,17 @@ export interface TemplateRegistryEntry extends TemplateDefinition {
   /** Fast lookup map from entity type name to config */
   entityTypeMap: Map<string, EntityTypeConfig>;
 }
+
+/**
+ * Mapping from folder name/pattern to entity type.
+ *
+ * Used by FolderMapper to infer entity types from file paths.
+ * Supports both exact folder name matches and glob-like patterns.
+ */
+export interface FolderMapping {
+  /** Folder name or pattern to match (case-insensitive) */
+  pattern: string;
+
+  /** Entity type to assign when pattern matches */
+  entityType: string;
+}

@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 
 import { readFileSync, writeFileSync, existsSync } from 'fs';
-import { resolve, join } from 'path';
+import { resolve, join, basename } from 'path';
 import * as readline from 'readline/promises';
 import { stdin as input, stdout as output } from 'process';
+import { FolderMapper } from './templates/folder-mapper.js';
+import { templateRegistry } from './templates/registry.js';
+import { worldbuildingTemplate } from './templates/builtin/worldbuilding.js';
 
 const DEFAULT_CONFIG = {
   vault: {
@@ -110,9 +113,224 @@ async function start() {
   await startServer();
 }
 
+/**
+ * Fix command: helps add frontmatter to skipped files
+ */
+async function fix() {
+  const vaultPath = getVaultPath();
+  if (!vaultPath) {
+    console.error('❌ Could not determine vault path. Use --vault flag or create config.json');
+    process.exit(1);
+  }
+
+  const skippedLogPath = join(vaultPath, '.hivemind', 'skipped-files.log');
+
+  if (!existsSync(skippedLogPath)) {
+    console.log('✅ No skipped files log found. Run "npx hivemind start" first to scan vault.');
+    return;
+  }
+
+  console.log('🔧 Hivemind Fix - Add frontmatter to skipped files\n');
+
+  // Read and parse skipped files log
+  const logContent = readFileSync(skippedLogPath, 'utf-8');
+  const skippedFiles = parseSkippedFilesLog(logContent);
+
+  if (skippedFiles.length === 0) {
+    console.log('✅ No skipped files found!');
+    return;
+  }
+
+  console.log(`Found ${skippedFiles.length} file(s) needing frontmatter.\n`);
+
+  // Initialize folder mapper
+  const folderMapper = new FolderMapper();
+
+  // Initialize template registry for entity types
+  if (!templateRegistry.has('worldbuilding')) {
+    templateRegistry.register(worldbuildingTemplate, 'builtin');
+    templateRegistry.activate('worldbuilding');
+  }
+  const activeTemplate = templateRegistry.getActive();
+  const entityTypes = activeTemplate?.entityTypes.map(e => e.name) || ['character', 'location', 'event', 'faction', 'lore', 'asset', 'reference'];
+
+  const rl = readline.createInterface({ input, output });
+
+  try {
+    let fixed = 0;
+    let skipped = 0;
+
+    for (const filePath of skippedFiles) {
+      const fullPath = join(vaultPath, filePath);
+
+      if (!existsSync(fullPath)) {
+        console.log(`⚠️  File not found: ${filePath}`);
+        skipped++;
+        continue;
+      }
+
+      // Infer type from folder
+      const inferredType = folderMapper.inferType(filePath);
+      const fileName = basename(filePath, '.md');
+
+      console.log(`\n📄 ${filePath}`);
+
+      if (inferredType) {
+        console.log(`   Inferred type: ${inferredType}`);
+        const confirm = await rl.question(`   Use '${inferredType}'? (Y/n/skip): `);
+
+        if (confirm.toLowerCase() === 'skip' || confirm.toLowerCase() === 's') {
+          console.log('   Skipped.');
+          skipped++;
+          continue;
+        }
+
+        if (confirm.toLowerCase() === 'n' || confirm.toLowerCase() === 'no') {
+          // Let user choose type
+          const selectedType = await selectType(rl, entityTypes);
+          if (selectedType) {
+            await addFrontmatter(fullPath, selectedType, fileName);
+            fixed++;
+          } else {
+            skipped++;
+          }
+        } else {
+          // Use inferred type
+          await addFrontmatter(fullPath, inferredType, fileName);
+          fixed++;
+        }
+      } else {
+        console.log('   Could not infer type from folder.');
+        const selectedType = await selectType(rl, entityTypes);
+        if (selectedType) {
+          await addFrontmatter(fullPath, selectedType, fileName);
+          fixed++;
+        } else {
+          skipped++;
+        }
+      }
+    }
+
+    console.log(`\n✅ Done! Fixed: ${fixed}, Skipped: ${skipped}`);
+    console.log('   Run "npx hivemind start" to re-index vault.');
+
+  } finally {
+    rl.close();
+  }
+}
+
+/**
+ * Get vault path from config or args
+ */
+function getVaultPath(): string | null {
+  // Check for --vault flag in args
+  const vaultIndex = process.argv.indexOf('--vault');
+  if (vaultIndex !== -1 && process.argv[vaultIndex + 1]) {
+    return resolve(process.argv[vaultIndex + 1]);
+  }
+
+  // Check for config.json
+  const configPath = resolve(process.cwd(), 'config.json');
+  if (existsSync(configPath)) {
+    try {
+      const config = JSON.parse(readFileSync(configPath, 'utf-8'));
+      if (config.vault?.path) {
+        return resolve(config.vault.path);
+      }
+    } catch {
+      // Ignore config parse errors
+    }
+  }
+
+  // Fall back to current directory
+  return process.cwd();
+}
+
+/**
+ * Parse skipped files from log content
+ */
+function parseSkippedFilesLog(content: string): string[] {
+  const files: string[] = [];
+  const lines = content.split('\n');
+
+  for (const line of lines) {
+    // Match lines like "  • path/to/file.md"
+    const match = line.match(/^\s+[•]\s+(.+\.md)$/);
+    if (match) {
+      files.push(match[1].trim());
+    }
+  }
+
+  return files;
+}
+
+/**
+ * Let user select an entity type
+ */
+async function selectType(rl: readline.Interface, types: string[]): Promise<string | null> {
+  console.log('   Available types:');
+  types.forEach((t, i) => console.log(`     ${i + 1}. ${t}`));
+  console.log(`     0. Skip this file`);
+
+  const choice = await rl.question('   Enter number: ');
+  const num = parseInt(choice, 10);
+
+  if (num === 0 || isNaN(num) || num < 1 || num > types.length) {
+    return null;
+  }
+
+  return types[num - 1];
+}
+
+/**
+ * Add frontmatter to a file
+ */
+async function addFrontmatter(filePath: string, entityType: string, name: string): Promise<void> {
+  const content = readFileSync(filePath, 'utf-8');
+
+  // Generate unique ID
+  const id = generateId(name, entityType);
+
+  // Create frontmatter
+  const frontmatter = [
+    '---',
+    `id: ${id}`,
+    `type: ${entityType}`,
+    `status: draft`,
+    `name: "${name}"`,
+    `tags: []`,
+    `aliases: []`,
+    '---',
+    '',
+  ].join('\n');
+
+  // Check if file already has frontmatter
+  if (content.trimStart().startsWith('---')) {
+    console.log('   ⚠️  File already has frontmatter block, skipping...');
+    return;
+  }
+
+  // Prepend frontmatter
+  const newContent = frontmatter + content;
+  writeFileSync(filePath, newContent, 'utf-8');
+  console.log(`   ✅ Added frontmatter (id: ${id})`);
+}
+
+/**
+ * Generate a unique ID from name and type
+ */
+function generateId(name: string, entityType: string): string {
+  const slug = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+
+  return `${entityType}-${slug}`;
+}
+
 async function validate() {
   const configPath = resolve(process.cwd(), 'config.json');
-  
+
   console.log('🔍 Validating Hivemind configuration...\n');
 
   // Check config exists
@@ -198,12 +416,16 @@ if (command === '--vault') {
     case 'validate':
       validate();
       break;
+    case 'fix':
+      fix();
+      break;
     default:
       console.log('Hivemind MCP Server\n');
       console.log('Usage:');
       console.log('  npx @hiveforge/hivemind-mcp init              - Interactive configuration setup');
       console.log('  npx @hiveforge/hivemind-mcp validate          - Validate configuration');
       console.log('  npx @hiveforge/hivemind-mcp start             - Start the MCP server');
+      console.log('  npx @hiveforge/hivemind-mcp fix               - Add frontmatter to skipped files');
       console.log('  npx @hiveforge/hivemind-mcp --vault <path>    - Start with specified vault path');
       console.log('  npx @hiveforge/hivemind-mcp --vault .         - Start with current directory as vault');
       process.exit(command ? 1 : 0);
