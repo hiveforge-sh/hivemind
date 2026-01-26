@@ -113,8 +113,8 @@ obsidian-plugin/
 - [x] MCP server communication
 - [x] Workflow browsing
 - [x] Image generation from notes
+- [x] Canon status management (via MCP tools)
 - [ ] Asset gallery view
-- [ ] Canon status management
 - [ ] Drag-and-drop workflow upload
 - [ ] Real-time generation progress
 - [ ] Batch image generation
