@@ -17,13 +17,24 @@ This is a sample vault demonstrating the **worldbuilding** template for Hivemind
 vault/
 ├── Characters/
 │   ├── Elara Brightwood.md
+│   ├── Lord Aldric Northwind.md
 │   └── Marcus Stone.md
 ├── Locations/
+│   ├── Frosthold.md
 │   └── Tidewatch.md
 ├── Events/
+│   └── The Usurpers War.md
 ├── Factions/
+│   └── House Northwind.md
 ├── Lore/
-├── Assets/
+│   └── The Age of Shadows.md
+├── Templates/
+│   ├── Asset.md
+│   ├── Character.md
+│   ├── Event.md
+│   ├── Faction.md
+│   ├── Location.md
+│   └── Lore.md
 └── config.json
 ```
 
