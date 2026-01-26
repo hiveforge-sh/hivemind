@@ -61,12 +61,15 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
+    "@inquirer/prompts": "^8.2.0",
     "@modelcontextprotocol/sdk": "^1.0.4",
     "axios": "^1.13.2",
     "better-sqlite3": "^12.6.2",
     "chokidar": "^5.0.0",
+    "clipboardy": "^5.1.0",
     "express": "^5.2.1",
     "gray-matter": "^4.0.3",
+    "picocolors": "^1.1.1",
     "remark": "^15.0.1",
     "remark-wiki-link": "^2.0.1",
     "ws": "^8.19.0",
