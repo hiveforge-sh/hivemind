@@ -5,7 +5,7 @@ import { resolve, join, basename, dirname } from 'path';
 import { homedir } from 'os';
 import * as readline from 'readline/promises';
 import { stdin as input, stdout as output } from 'process';
-import { FolderMapper } from './templates/folder-mapper.js';
+import { LegacyFolderMapper } from './templates/folder-mapper.js';
 import { templateRegistry } from './templates/registry.js';
 import { worldbuildingTemplate } from './templates/builtin/worldbuilding.js';
 import { researchTemplate } from './templates/builtin/research.js';
@@ -83,8 +83,8 @@ async function fix() {
 
   console.log(`Found ${skippedFiles.length} file(s) needing frontmatter.\n`);
 
-  // Initialize folder mapper
-  const folderMapper = new FolderMapper();
+  // Initialize folder mapper (using legacy API for backwards compatibility)
+  const folderMapper = new LegacyFolderMapper();
 
   // Initialize template registry for entity types
   if (!templateRegistry.has('worldbuilding')) {
