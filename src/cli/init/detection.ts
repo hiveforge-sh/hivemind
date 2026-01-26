@@ -7,7 +7,7 @@ import { bold, dim } from '../shared/colors.js';
  *
  * Flow:
  * 1. Scan vault for folder patterns
- * 2. If match found with medium/high confidence, ask user to confirm
+ * 2. If match found (2+ matching folders), ask user to confirm
  * 3. If user declines or no match, fall through to manual selection
  *
  * @param vaultPath - Absolute path to vault directory
@@ -17,8 +17,8 @@ export async function detectAndConfirmTemplate(vaultPath: string): Promise<strin
   const detector = new TemplateDetector();
   const detection = await detector.detectTemplate(vaultPath);
 
-  // If detection found with reasonable confidence
-  if (detection && detection.confidence !== 'low') {
+  // If detection found (any confidence level - 2+ matching folders is enough to ask)
+  if (detection) {
     console.log(`\nDetected: ${bold(detection.templateId)} template`);
     console.log(dim(`Matched folders: ${detection.matchedPatterns.join(', ')}`));
     console.log(dim(`Confidence: ${detection.confidence}`));
