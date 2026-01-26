@@ -140,7 +140,7 @@ Obsidian Vault → File Watcher → Markdown Parser → Knowledge Graph
 
 ## Development Status
 
-**Current**: Milestone 1.0 Complete ✅ | **Next**: Milestone 2.0 Template System 🚧
+**Current**: Milestone 2.0 Template System 🚧 | Phases 6-8 Complete ✅
 
 ### v1.0 — MVP + Core Features (Shipped)
 
@@ -156,23 +156,33 @@ Obsidian Vault → File Watcher → Markdown Parser → Knowledge Graph
 
 Make Hivemind domain-agnostic with pluggable templates:
 
-- [ ] Template registry with config-driven entity definitions
-- [ ] Built-in templates: worldbuilding, research, people-management
-- [ ] Custom entity types via config (no coding required)
-- [ ] Auto-generated MCP tools per entity type
+- [x] Template registry with config-driven entity definitions
+- [x] Dynamic Zod schema generation from config
+- [x] Auto-generated MCP tools per entity type (`query_<type>`, `list_<type>`)
+- [x] Worldbuilding template extraction (backwards compatible)
 - [ ] Custom relationship types per template
+- [ ] Built-in templates: research, people-management
 
 **Also pending:**
 - [ ] Obsidian community plugin submission
 
 ## MCP Tools
 
-### Query Tools
+### Dynamic Entity Tools (Auto-Generated)
+
+Tools are automatically generated for each entity type defined in the active template:
+
+| Tool Pattern | Description |
+|--------------|-------------|
+| `query_<type>` | Get entity by ID/name with relationships and content |
+| `list_<type>` | List all entities of type with optional filters |
+
+**Worldbuilding template** generates: `query_character`, `list_character`, `query_location`, `list_location`, `query_event`, `list_event`, `query_faction`, `list_faction`, `query_lore`, `list_lore`, `query_asset`, `list_asset`, `query_reference`, `list_reference`
+
+### Search
 | Tool | Description |
 |------|-------------|
-| `query_character` | Get character with relationships and content |
-| `query_location` | Get location with hierarchy and connected entities |
-| `search_vault` | Hybrid search across all content with filters |
+| `search_vault` | Hybrid search across all content with type/status filters |
 
 ### Asset Management
 | Tool | Description |
