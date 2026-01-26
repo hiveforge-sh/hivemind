@@ -1,3 +1,10 @@
+# [2.4.0](https://github.com/hiveforge-sh/hivemind/compare/v2.3.0...v2.4.0) (2026-01-26)
+
+
+### Features
+
+* complete v2.0 template system with relationships and built-in templates ([b1619c6](https://github.com/hiveforge-sh/hivemind/commit/b1619c6168230f35e8e339f29bb03e4f0608758b))
+
 # [2.3.0](https://github.com/hiveforge-sh/hivemind/compare/v2.2.0...v2.3.0) (2026-01-26)
 
 
