@@ -37,9 +37,9 @@ export const CharacterFrontmatterSchema = BaseFrontmatterSchema.extend({
   age: z.number().optional(),
   gender: z.string().optional(),
   race: z.string().optional(),
-  appearance: z.record(z.any()).optional(),
-  personality: z.record(z.any()).optional(),
-  relationships: z.array(z.record(z.any())).optional(),
+  appearance: z.record(z.string(), z.any()).optional(),
+  personality: z.record(z.string(), z.any()).optional(),
+  relationships: z.array(z.record(z.string(), z.any())).optional(),
   assets: z.array(z.string()).optional(),
 });
 
@@ -57,7 +57,7 @@ export const LocationFrontmatterSchema = BaseFrontmatterSchema.extend({
   climate: z.string().optional(),
   terrain: z.array(z.string()).optional(),
   inhabitants: z.array(z.string()).optional(),
-  connections: z.array(z.record(z.any())).optional(),
+  connections: z.array(z.record(z.string(), z.any())).optional(),
   assets: z.array(z.string()).optional(),
 });
 
@@ -126,7 +126,7 @@ export const AssetFrontmatterSchema = BaseFrontmatterSchema.extend({
   negative_prompt: z.string().optional(),
   model: z.string().optional(),
   seed: z.number().optional(),
-  parameters: z.record(z.any()).optional(),
+  parameters: z.record(z.string(), z.any()).optional(),
   approved_by: z.string().optional(),
   approval_date: z.string().optional(),
 });
@@ -331,7 +331,7 @@ export const StoreWorkflowArgsSchema = z.object({
   id: z.string().describe('Unique workflow identifier'),
   name: z.string().describe('Human-readable workflow name'),
   description: z.string().optional().describe('Workflow description'),
-  workflow: z.record(z.any()).describe('ComfyUI workflow JSON'),
+  workflow: z.record(z.string(), z.any()).describe('ComfyUI workflow JSON'),
   contextFields: z.array(z.string()).optional().describe('Fields to inject from context (e.g., appearance, personality)'),
   outputPath: z.string().optional().describe('Custom output path for generated images'),
 });
@@ -343,7 +343,7 @@ export const GenerateImageArgsSchema = z.object({
   contextId: z.string().describe('ID of character/location to use as context'),
   contextType: z.enum(['character', 'location']).describe('Type of context entity'),
   seed: z.number().optional().describe('Random seed for generation (optional)'),
-  overrides: z.record(z.any()).optional().describe('Additional workflow parameter overrides'),
+  overrides: z.record(z.string(), z.any()).optional().describe('Additional workflow parameter overrides'),
 });
 
 export type GenerateImageArgs = z.infer<typeof GenerateImageArgsSchema>;
@@ -354,7 +354,7 @@ export const StoreAssetArgsSchema = z.object({
   depicts: z.array(z.string()).optional().describe('Entity IDs depicted in asset'),
   workflowId: z.string().optional().describe('Workflow used to generate asset'),
   prompt: z.string().optional().describe('Generation prompt'),
-  parameters: z.record(z.any()).optional().describe('Generation parameters (seed, steps, cfg, etc.)'),
+  parameters: z.record(z.string(), z.any()).optional().describe('Generation parameters (seed, steps, cfg, etc.)'),
 });
 
 export type StoreAssetArgs = z.infer<typeof StoreAssetArgsSchema>;

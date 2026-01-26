@@ -6,6 +6,7 @@ import {
   ListResourcesRequestSchema,
   ReadResourceRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
+import { z } from 'zod';
 import {
   QueryCharacterArgsSchema,
   QueryLocationArgsSchema,
@@ -1063,7 +1064,7 @@ File watcher keeps index updated automatically.
     return response;
   }
 
-  private async handleStoreWorkflow(args: typeof StoreWorkflowArgsSchema._type) {
+  private async handleStoreWorkflow(args: z.infer<typeof StoreWorkflowArgsSchema>) {
     const workflow = await this.workflowManager!.storeWorkflow(args);
     
     return {
@@ -1137,7 +1138,7 @@ File watcher keeps index updated automatically.
     };
   }
 
-  private async handleGenerateImage(args: typeof GenerateImageArgsSchema._type) {
+  private async handleGenerateImage(args: z.infer<typeof GenerateImageArgsSchema>) {
     await this.ensureIndexed();
 
     // Get workflow
@@ -1273,7 +1274,7 @@ File watcher keeps index updated automatically.
     };
   }
 
-  private async handleStoreAsset(args: typeof StoreAssetArgsSchema._type) {
+  private async handleStoreAsset(args: z.infer<typeof StoreAssetArgsSchema>) {
     const assetId = `asset-${Date.now()}`;
     
     this.database.db.prepare(`
@@ -1307,7 +1308,7 @@ File watcher keeps index updated automatically.
     };
   }
 
-  private async handleQueryAsset(args: typeof QueryAssetArgsSchema._type) {
+  private async handleQueryAsset(args: z.infer<typeof QueryAssetArgsSchema>) {
     const asset = this.database.db.prepare(`
       SELECT * FROM assets WHERE id = ?
     `).get(args.id) as any;
@@ -1357,7 +1358,7 @@ File watcher keeps index updated automatically.
     };
   }
 
-  private async handleListAssets(args: typeof ListAssetsArgsSchema._type) {
+  private async handleListAssets(args: z.infer<typeof ListAssetsArgsSchema>) {
     let query = 'SELECT * FROM assets WHERE 1=1';
     const params: any[] = [];
 
@@ -1417,7 +1418,7 @@ File watcher keeps index updated automatically.
     };
   }
 
-  private async handleGetCanonStatus(args: typeof GetCanonStatusArgsSchema._type) {
+  private async handleGetCanonStatus(args: z.infer<typeof GetCanonStatusArgsSchema>) {
     await this.ensureIndexed();
 
     const allNotes = this.vaultReader.getAllNotes();
@@ -1486,7 +1487,7 @@ File watcher keeps index updated automatically.
     };
   }
 
-  private async handleSubmitForReview(args: typeof SubmitForReviewArgsSchema._type) {
+  private async handleSubmitForReview(args: z.infer<typeof SubmitForReviewArgsSchema>) {
     await this.ensureIndexed();
 
     // Find the note
@@ -1540,7 +1541,7 @@ File watcher keeps index updated automatically.
     };
   }
 
-  private async handleValidateConsistency(args: typeof ValidateConsistencyArgsSchema._type) {
+  private async handleValidateConsistency(args: z.infer<typeof ValidateConsistencyArgsSchema>) {
     await this.ensureIndexed();
 
     const allNotes = this.vaultReader.getAllNotes();
