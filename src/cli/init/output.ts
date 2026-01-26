@@ -1,8 +1,62 @@
-import { writeFileSync } from 'fs';
-import { resolve } from 'path';
+import { writeFileSync, existsSync, mkdirSync } from 'fs';
+import { resolve, dirname } from 'path';
+import { exec } from 'child_process';
 import { copyToClipboard } from '../shared/clipboard.js';
 import { promptConfirm } from './prompts.js';
 import { success, error, dim, bold } from '../shared/colors.js';
+
+/**
+ * Get the Claude Desktop config file path based on platform.
+ */
+export function getClaudeDesktopConfigPath(): string {
+  const platform = process.platform;
+
+  if (platform === 'win32') {
+    const appData = process.env.APPDATA || resolve(process.env.USERPROFILE || '', 'AppData', 'Roaming');
+    return resolve(appData, 'Claude', 'claude_desktop_config.json');
+  } else if (platform === 'darwin') {
+    const home = process.env.HOME || '';
+    return resolve(home, 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json');
+  } else {
+    // Linux - use XDG config or fallback
+    const configHome = process.env.XDG_CONFIG_HOME || resolve(process.env.HOME || '', '.config');
+    return resolve(configHome, 'Claude', 'claude_desktop_config.json');
+  }
+}
+
+/**
+ * Open folder in system file explorer.
+ * Returns true if command was executed, false on error.
+ */
+export function openInExplorer(filePath: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const folder = dirname(filePath);
+    const platform = process.platform;
+
+    // Ensure folder exists
+    if (!existsSync(folder)) {
+      try {
+        mkdirSync(folder, { recursive: true });
+      } catch {
+        resolve(false);
+        return;
+      }
+    }
+
+    let command: string;
+    if (platform === 'win32') {
+      command = `explorer "${folder}"`;
+    } else if (platform === 'darwin') {
+      command = `open "${folder}"`;
+    } else {
+      command = `xdg-open "${folder}"`;
+    }
+
+    exec(command, (err) => {
+      resolve(!err);
+    });
+  });
+}
 
 /**
  * Hivemind config.json structure.
@@ -104,6 +158,20 @@ export async function outputNextSteps(
       const copied = await copyToClipboard(snippet);
       if (copied) {
         console.log(success('\nCopied to clipboard!'));
+
+        // Offer to open Claude Desktop config location
+        const claudeConfigPath = getClaudeDesktopConfigPath();
+        console.log(dim(`\nClaude Desktop config: ${claudeConfigPath}`));
+
+        const shouldOpen = await promptConfirm('Open config folder?', true);
+        if (shouldOpen) {
+          const opened = await openInExplorer(claudeConfigPath);
+          if (opened) {
+            console.log(success('Opened config folder.'));
+          } else {
+            console.log(dim('Could not open folder automatically.'));
+          }
+        }
       } else {
         console.log(dim('\nCould not copy to clipboard (clipboard may not be available).'));
       }
