@@ -32,10 +32,7 @@ export const FieldConfigSchema = z
         'Field name must be camelCase alphanumeric (e.g., "age", "statusCode")'
       ),
     type: z.enum(['string', 'number', 'boolean', 'enum', 'array', 'date', 'record'], {
-      errorMap: () => ({
-        message:
-          'Field type must be one of: string, number, boolean, enum, array, date, record',
-      }),
+      message: 'Field type must be one of: string, number, boolean, enum, array, date, record',
     }),
     required: z.boolean().optional(),
     default: z.unknown().optional(),

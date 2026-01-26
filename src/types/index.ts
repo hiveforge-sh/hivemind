@@ -15,15 +15,18 @@ export const BASE_NOTE_TYPES = ['character', 'location', 'event', 'faction', 'sy
  * Allows custom types (e.g., 'reference') beyond the hardcoded base types.
  *
  * @param additionalTypes - Custom entity type names to include
- * @returns Zod enum schema with base + additional types
+ * @returns Zod schema that validates against base + additional types
  */
-export function createNoteTypeSchema(additionalTypes: string[] = []): z.ZodEnum<[string, ...string[]]> {
-  const allTypes = [...BASE_NOTE_TYPES, ...additionalTypes] as [string, ...string[]];
-  return z.enum(allTypes);
+export function createNoteTypeSchema(additionalTypes: string[] = []): z.ZodType<string> {
+  const allTypes = [...BASE_NOTE_TYPES, ...additionalTypes];
+  return z.string().refine(
+    (val) => allTypes.includes(val),
+    { message: `Invalid entity type. Valid types: ${allTypes.join(', ')}` }
+  );
 }
 
 // Default for backwards compatibility
-export const NoteTypeSchema = createNoteTypeSchema();
+export const NoteTypeSchema = z.enum(BASE_NOTE_TYPES);
 export type NoteType = z.infer<typeof NoteTypeSchema>;
 
 export const ImportanceSchema = z.enum(['major', 'minor', 'background']);
@@ -36,7 +39,7 @@ export type Importance = z.infer<typeof ImportanceSchema>;
  * @param noteTypeSchema - Custom NoteType schema (from createNoteTypeSchema)
  * @returns Base frontmatter schema with the custom type validation
  */
-export function createBaseFrontmatterSchema(noteTypeSchema: z.ZodEnum<[string, ...string[]]>) {
+export function createBaseFrontmatterSchema(noteTypeSchema: z.ZodType<string>) {
   return z.object({
     id: z.string(),
     type: noteTypeSchema,
