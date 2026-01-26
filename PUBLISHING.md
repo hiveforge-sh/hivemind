@@ -6,7 +6,7 @@
 - [x] LICENSE file created (MIT)
 - [x] .npmignore created to exclude dev files
 - [x] README.md updated with installation instructions
-- [x] CLI tool added (npx hivemind-mcp)
+- [x] CLI tool added (npx @hiveforge/hivemind-mcp)
 - [x] Build tested (npm run build)
 - [x] Package tested (npm pack --dry-run)
 
@@ -38,11 +38,11 @@ npm publish
 
 ### Post-publish
 
-1. **Verify on npm**: https://www.npmjs.com/package/hivemind-mcp
+1. **Verify on npm**: https://www.npmjs.com/package/@hiveforge/hivemind-mcp
 
 2. **Test installation**:
    ```bash
-   npx hivemind-mcp@latest init
+   npx @hiveforge/hivemind-mcp@latest init
    ```
 
 3. **Tag release on GitHub**:
