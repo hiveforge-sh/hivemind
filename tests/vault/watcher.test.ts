@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { VaultWatcher, FileChangeEvent } from '../../src/vault/watcher.js';
+import { VaultWatcher } from '../../src/vault/watcher.js';
 import type { VaultConfig } from '../../src/types/index.js';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'fs';
+import { mkdtempSync, rmSync, mkdirSync } from 'fs';
 
 describe('VaultWatcher', () => {
   let tempDir: string;
