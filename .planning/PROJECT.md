@@ -2,29 +2,34 @@
 
 ## What This Is
 
-An MCP server and Obsidian vault template for worldbuilders and content creators. The vault serves as a canonical source of truth for fictional worlds — characters, locations, events, lore, and approved AI-generated assets. AI tools (Claude, Copilot, Gemini, ComfyUI) query the MCP for context, ensuring generated content stays consistent with established canon. Approved outputs and their generation settings feed back into the vault, creating a closed loop of consistent world-building.
+A domain-agnostic MCP server for knowledge management with pluggable templates. Ships with three built-in templates (worldbuilding, research, people-management) and supports custom entity definitions via config.json. AI tools query the MCP for context, ensuring generated content stays consistent with your canonical source of truth. The template system auto-generates MCP tools per entity type, enabling seamless integration across any knowledge domain.
 
 ## Core Value
 
 Consistent AI output. Give any AI tool context from your canon, get results that belong in your world — every time, across every tool.
 
-## Current Milestone: v2.0 Template System
+## Current State: v2.0 Shipped
 
-**Goal:** Make Hivemind domain-agnostic with pluggable templates — worldbuilding becomes just one use case among many.
+**Shipped:** 2026-01-26
 
-**Target features:**
+**What's in v2.0:**
 - Built-in templates (worldbuilding, research, people-management)
 - Custom entity types via config file (no coding required)
-- Auto-generated MCP tools (query_X, list_X per entity type)
-- Custom relationship types per template
+- Auto-generated MCP tools (query_X, list_X per entity type) — 16 tools for worldbuilding
+- Custom relationship types per template with validation
 - Full migration — worldbuilding refactored from hardcoded to template definition
-- Backwards compatible with existing worldbuilding vaults
+- 100% backwards compatible with existing worldbuilding vaults
+- 463 tests passing, 9,913 lines TypeScript
+
+**Next Milestone Goals:**
+- Obsidian community plugin submission
+- Advanced features (timeline queries, visualization, multi-world support)
 
 ## Requirements
 
 ### Validated
 
-<!-- Shipped and confirmed valuable in v1.0 -->
+<!-- Shipped and confirmed valuable -->
 
 - ✓ MCP server that reads Obsidian vault structure — v1.0
 - ✓ Query interface for canonical content (characters, locations, events, lore) — v1.0
@@ -33,19 +38,22 @@ Consistent AI output. Give any AI tool context from your canon, get results that
 - ✓ ComfyUI workflow storage and retrieval — v1.0
 - ✓ Canon status workflow (draft → approved) — v1.0
 - ✓ Documentation for other users to adopt — v1.0
+- ✓ Template registry with pluggable template definitions — v2.0
+- ✓ Built-in templates: worldbuilding, research, people-management — v2.0
+- ✓ Custom template definitions via config.json — v2.0
+- ✓ Auto-generated MCP tools per entity type (16 tools) — v2.0
+- ✓ Custom relationship types per template — v2.0
+- ✓ Dynamic Zod schema generation from template config — v2.0
+- ✓ Migration of hardcoded worldbuilding to template system — v2.0
+- ✓ Backwards compatibility for existing vaults — v2.0
 
 ### Active
 
-<!-- Current scope for v2.0 Template System -->
+<!-- Current scope for next milestone -->
 
-- [ ] Template registry with pluggable template definitions
-- [ ] Built-in templates: worldbuilding, research, people-management
-- [ ] Custom template definitions via config.json
-- [ ] Auto-generated MCP tools per entity type
-- [ ] Custom relationship types per template
-- [ ] Dynamic Zod schema generation from template config
-- [ ] Migration of hardcoded worldbuilding to template system
-- [ ] Backwards compatibility for existing vaults
+- [ ] Obsidian community plugin submission
+- [ ] Timeline queries with date range filtering
+- [ ] Relationship graph visualization
 
 ### Out of Scope
 
@@ -85,9 +93,11 @@ Consistent AI output. Give any AI tool context from your canon, get results that
 | MCP architecture over vault-only | Enables programmatic context delivery to AI tools instead of manual copy-paste | ✓ Good |
 | Shareable from day one | Design for reuse, not just personal use — benefits others with similar needs | ✓ Good |
 | Store both outputs and generation settings | Full provenance allows reproduction of successful generations | ✓ Good |
-| Full migration to template system | Worldbuilding as template, not hardcoded — cleaner architecture, one system | — Pending |
-| Custom relationship types | Each template domain has its own semantics (manages vs allies_with) | — Pending |
-| Config-based entity definitions | No coding required for custom templates — accessibility | — Pending |
+| Full migration to template system | Worldbuilding as template, not hardcoded — cleaner architecture, one system | ✓ Good |
+| Custom relationship types | Each template domain has its own semantics (manages vs allies_with) | ✓ Good |
+| Config-based entity definitions | No coding required for custom templates — accessibility | ✓ Good |
+| Initialize templates before vault scan | Templates needed before entity parsing | ✓ Good |
+| Deprecation via _meta field | MCP SDK lacks native deprecation, one year migration window | ✓ Good |
 
 ---
-*Last updated: 2026-01-25 after starting Milestone v2.0*
+*Last updated: 2026-01-26 after v2.0 milestone*
