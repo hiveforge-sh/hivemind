@@ -1,3 +1,10 @@
+## [2.1.1](https://github.com/hiveforge-io/hivemind/compare/v2.1.0...v2.1.1) (2026-01-26)
+
+
+### Bug Fixes
+
+* update code for zod v4 compatibility ([24d320c](https://github.com/hiveforge-io/hivemind/commit/24d320c06f0729ced2b9b78f87f43f0daf1507b8))
+
 # [2.1.0](https://github.com/hiveforge-io/hivemind/compare/v2.0.0...v2.1.0) (2026-01-25)
 
 
