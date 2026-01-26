@@ -1,3 +1,10 @@
+## [2.6.1](https://github.com/hiveforge-sh/hivemind/compare/v2.6.0...v2.6.1) (2026-01-26)
+
+
+### Bug Fixes
+
+* **tests:** use compiled CLI to prevent timeouts on Windows CI ([ec0007f](https://github.com/hiveforge-sh/hivemind/commit/ec0007fcaef40bd98ef2fb330f83c909b178fef0))
+
 # [2.6.0](https://github.com/hiveforge-sh/hivemind/compare/v2.5.0...v2.6.0) (2026-01-26)
 
 
