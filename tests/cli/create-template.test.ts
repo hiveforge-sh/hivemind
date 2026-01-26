@@ -1,10 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, writeFileSync, readFileSync, rmSync, existsSync } from 'fs';
-import { join } from 'path';
+import { join, resolve } from 'path';
 import { tmpdir } from 'os';
 import { execSync } from 'child_process';
 import type { TemplateDefinition } from '../../src/templates/types.js';
 import { TemplateDefinitionSchema } from '../../src/templates/validator.js';
+
+const CLI_PATH = resolve(__dirname, '../../dist/cli.js');
 
 /**
  * Tests for the create-template CLI wizard.
@@ -206,18 +208,9 @@ describe('CLI: create-template', () => {
 
   describe('CLI invocation', () => {
     it('should show create-template in help output', () => {
-      try {
-        const result = execSync(`npx tsx "${join(process.cwd(), 'src/cli.ts')}"`, {
-          cwd: tempDir,
-          encoding: 'utf-8',
-          timeout: 15000,
-        });
-        expect(result).toContain('create-template');
-      } catch (err: any) {
-        // Even if it exits with error, check stdout
-        expect(err.stdout || '').toContain('create-template');
-      }
-    }, 20000);
+      const result = execSync(`node "${CLI_PATH}"`, { encoding: 'utf-8' });
+      expect(result).toContain('create-template');
+    }, 15000);
   });
 
   describe('template file format', () => {

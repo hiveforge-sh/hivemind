@@ -1,8 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, writeFileSync, rmSync } from 'fs';
-import { join } from 'path';
+import { join, resolve } from 'path';
 import { tmpdir } from 'os';
 import { execSync } from 'child_process';
+
+const CLI_PATH = resolve(__dirname, '../../dist/cli.js');
 
 describe('CLI: validate-template', () => {
   let tempDir: string;
@@ -51,7 +53,7 @@ describe('CLI: validate-template', () => {
   };
 
   const runCli = (args: string[], cwd?: string): { stdout: string; stderr: string; exitCode: number } => {
-    const cmd = `npx tsx "${join(process.cwd(), 'src/cli.ts')}" ${args.join(' ')}`;
+    const cmd = `node "${CLI_PATH}" ${args.join(' ')}`;
     try {
       const stdout = execSync(cmd, {
         cwd: cwd || tempDir,

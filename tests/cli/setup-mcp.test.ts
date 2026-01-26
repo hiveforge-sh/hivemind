@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, writeFileSync, rmSync } from 'fs';
-import { join } from 'path';
+import { join, resolve } from 'path';
 import { tmpdir, homedir, platform } from 'os';
+
+const CLI_PATH = resolve(__dirname, '../../dist/cli.js');
 
 // Test the helper functions directly by importing them
 // Since the CLI module uses top-level await/execution, we test the core logic
@@ -135,15 +137,11 @@ describe('CLI: setup-mcp helper logic', () => {
 });
 
 describe('CLI: setup-mcp command availability', () => {
-  it('should show setup-mcp in help text', async () => {
-    const { execSync } = await import('child_process');
+  it('should show setup-mcp in help text', () => {
+    const { execSync } = require('child_process');
 
     // Run the CLI without arguments to get help text
-    const result = execSync('npx tsx src/cli.ts', {
-      cwd: process.cwd(),
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
+    const result = execSync(`node "${CLI_PATH}"`, { encoding: 'utf-8' });
 
     expect(result).toContain('setup-mcp');
     expect(result).toContain('Generate MCP client config');
