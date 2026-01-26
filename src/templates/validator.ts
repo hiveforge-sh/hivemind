@@ -143,6 +143,14 @@ export const TemplateAuthorSchema = z.object({
 }) satisfies z.ZodType<TemplateAuthor>;
 
 /**
+ * Zod schema for folder mapping rule validation.
+ */
+export const FolderMappingRuleSchema = z.object({
+  folder: z.string().min(1, 'Folder pattern is required'),
+  types: z.array(z.string().min(1)).min(1, 'At least one type is required'),
+});
+
+/**
  * Zod schema for template definition validation.
  *
  * Validates:
@@ -181,6 +189,7 @@ export const TemplateDefinitionSchema = z.object({
     .string()
     .regex(/^\d+\.\d+\.\d+$/, 'minHivemindVersion must follow semantic versioning')
     .optional(),
+  folderMappings: z.array(FolderMappingRuleSchema).optional(),
 }) satisfies z.ZodType<TemplateDefinition>;
 
 /**

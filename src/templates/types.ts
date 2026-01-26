@@ -185,6 +185,9 @@ export interface TemplateDefinition {
 
   /** Minimum Hivemind version required */
   minHivemindVersion?: string;
+
+  /** Folder-to-type mappings for this template */
+  folderMappings?: FolderMappingRule[];
 }
 
 /**
