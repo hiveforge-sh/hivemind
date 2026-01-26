@@ -12,6 +12,8 @@ import type {
   RelationshipTypeConfig,
   TemplateDefinition,
   TemplateConfig,
+  TemplateAuthor,
+  TemplateCategory,
 } from './types.js';
 
 /**
@@ -120,14 +122,37 @@ export const RelationshipTypeConfigSchema = z
   ) satisfies z.ZodType<RelationshipTypeConfig>;
 
 /**
+ * Template categories for discovery and filtering.
+ */
+export const TemplateCategorySchema = z.enum([
+  'productivity',
+  'creative',
+  'engineering',
+  'research',
+  'business',
+  'other',
+]) satisfies z.ZodType<TemplateCategory>;
+
+/**
+ * Zod schema for template author information.
+ */
+export const TemplateAuthorSchema = z.object({
+  name: z.string().min(1, 'Author name cannot be empty'),
+  url: z.string().url('Author URL must be a valid URL').optional(),
+  email: z.string().email('Author email must be a valid email').optional(),
+}) satisfies z.ZodType<TemplateAuthor>;
+
+/**
  * Zod schema for template definition validation.
  *
  * Validates:
  * - Template ID is lowercase alphanumeric with hyphens
  * - Version follows semantic versioning (X.Y.Z)
  * - Entity types array is valid and non-empty
+ * - Optional metadata fields for discovery
  */
 export const TemplateDefinitionSchema = z.object({
+  // Required fields
   id: z
     .string()
     .min(1, 'Template ID cannot be empty')
@@ -144,6 +169,18 @@ export const TemplateDefinitionSchema = z.object({
     .array(EntityTypeConfigSchema)
     .min(1, 'Template must define at least one entity type'),
   relationshipTypes: z.array(RelationshipTypeConfigSchema).optional(),
+
+  // Discovery metadata (optional)
+  category: TemplateCategorySchema.optional(),
+  tags: z.array(z.string()).optional(),
+  author: TemplateAuthorSchema.optional(),
+  repository: z.string().url('Repository must be a valid URL').optional(),
+  sampleVault: z.string().optional(),
+  license: z.string().optional(),
+  minHivemindVersion: z
+    .string()
+    .regex(/^\d+\.\d+\.\d+$/, 'minHivemindVersion must follow semantic versioning')
+    .optional(),
 }) satisfies z.ZodType<TemplateDefinition>;
 
 /**

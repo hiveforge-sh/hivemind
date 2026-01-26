@@ -4,6 +4,7 @@ import { HivemindServer } from './server.js';
 import type { HivemindConfig } from './types/index.js';
 import { readFileSync, existsSync } from 'fs';
 import { join, resolve } from 'path';
+import { validateConfig, formatValidationErrors } from './config/schema.js';
 
 function parseArgs(): { vault?: string } {
   const args: { vault?: string } = {};
@@ -20,7 +21,7 @@ function parseArgs(): { vault?: string } {
 
 function loadConfig(): HivemindConfig {
   const args = parseArgs();
-  
+
   // CLI vault flag takes highest priority
   if (args.vault) {
     const vaultPath = resolve(args.vault);
@@ -42,7 +43,7 @@ function loadConfig(): HivemindConfig {
       },
     };
   }
-  
+
   // Try to load config from multiple locations
   const configPaths = [
     join(process.cwd(), 'config.json'),
@@ -53,8 +54,42 @@ function loadConfig(): HivemindConfig {
   for (const configPath of configPaths) {
     if (existsSync(configPath)) {
       console.error(`Loading config from: ${configPath}`);
-      const configData = readFileSync(configPath, 'utf-8');
-      return JSON.parse(configData) as HivemindConfig;
+
+      let configData: string;
+      let parsed: unknown;
+
+      try {
+        configData = readFileSync(configPath, 'utf-8');
+      } catch (err) {
+        console.error(`❌ Cannot read config file: ${configPath}`);
+        console.error(`   ${err instanceof Error ? err.message : String(err)}`);
+        process.exit(1);
+      }
+
+      try {
+        parsed = JSON.parse(configData);
+      } catch (err) {
+        console.error('❌ config.json contains invalid JSON:');
+        if (err instanceof SyntaxError) {
+          console.error(`   ${err.message}`);
+        } else {
+          console.error(`   ${err instanceof Error ? err.message : String(err)}`);
+        }
+        console.error('\n   Tip: Use a JSON validator to check your config file.');
+        console.error('   Run: npx @hiveforge/hivemind-mcp validate');
+        process.exit(1);
+      }
+
+      // Validate config against schema
+      const validation = validateConfig(parsed);
+      if (!validation.success) {
+        console.error('❌ Invalid config.json:');
+        console.error(formatValidationErrors(validation.errors!));
+        console.error('\n   Run: npx @hiveforge/hivemind-mcp validate');
+        process.exit(1);
+      }
+
+      return validation.config as HivemindConfig;
     }
   }
 

@@ -114,6 +114,31 @@ export interface EntityTypeConfig {
 }
 
 /**
+ * Template category for discovery and filtering.
+ */
+export type TemplateCategory =
+  | 'productivity'
+  | 'creative'
+  | 'engineering'
+  | 'research'
+  | 'business'
+  | 'other';
+
+/**
+ * Author information for template attribution.
+ */
+export interface TemplateAuthor {
+  /** Author's display name */
+  name: string;
+
+  /** Author's website or profile URL (optional) */
+  url?: string;
+
+  /** Author's email for contact (optional) */
+  email?: string;
+}
+
+/**
  * Complete template definition.
  *
  * A template is a collection of entity types that work together
@@ -137,6 +162,29 @@ export interface TemplateDefinition {
 
   /** Custom relationship type definitions */
   relationshipTypes?: RelationshipTypeConfig[];
+
+  // ===== Discovery metadata (optional) =====
+
+  /** Category for filtering and discovery */
+  category?: TemplateCategory;
+
+  /** Searchable tags for discovery */
+  tags?: string[];
+
+  /** Author information */
+  author?: TemplateAuthor;
+
+  /** Source repository URL */
+  repository?: string;
+
+  /** Path to sample vault (relative to Hivemind root) */
+  sampleVault?: string;
+
+  /** License identifier (e.g., "MIT", "Apache-2.0") */
+  license?: string;
+
+  /** Minimum Hivemind version required */
+  minHivemindVersion?: string;
 }
 
 /**

@@ -22,6 +22,17 @@ export const researchTemplate: TemplateDefinition = {
   version: '1.0.0',
   description: 'Template for academic research with papers, citations, concepts, and notes',
 
+  // Discovery metadata
+  category: 'research',
+  tags: ['academic', 'papers', 'citations', 'literature-review', 'knowledge-management'],
+  author: {
+    name: 'HiveForge',
+    url: 'https://github.com/hiveforge-sh',
+  },
+  repository: 'https://github.com/hiveforge-sh/hivemind',
+  sampleVault: 'samples/research',
+  license: 'MIT',
+
   // Relationship type definitions for the knowledge graph
   relationshipTypes: [
     // Citation relationships

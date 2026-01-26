@@ -1,0 +1,9 @@
+{
+  "vault": {
+    "path": ".",
+    "watchForChanges": true
+  },
+  "template": {
+    "activeTemplate": "ux-research"
+  }
+}

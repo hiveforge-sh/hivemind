@@ -24,6 +24,17 @@ export const worldbuildingTemplate: TemplateDefinition = {
   version: '1.0.0',
   description: 'Template for fictional world creation with characters, locations, events, factions, lore, and assets',
 
+  // Discovery metadata
+  category: 'creative',
+  tags: ['fiction', 'worldbuilding', 'rpg', 'games', 'writing', 'storytelling'],
+  author: {
+    name: 'HiveForge',
+    url: 'https://github.com/hiveforge-sh',
+  },
+  repository: 'https://github.com/hiveforge-sh/hivemind',
+  sampleVault: 'samples/worldbuilding',
+  license: 'MIT',
+
   // Relationship type definitions for the knowledge graph
   relationshipTypes: [
     // Character relationships

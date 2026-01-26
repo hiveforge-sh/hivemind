@@ -14,6 +14,8 @@
 
 A domain-agnostic MCP (Model Context Protocol) server for Obsidian vaults that provides AI tools with consistent, structured context from your knowledge base.
 
+**The AI Memory Firewall**: Hivemind's core value isn't just better answers — it's *preventing AI from inventing context*. Your knowledge graph becomes a truth anchor that keeps AI grounded in facts you control.
+
 ## What is Hivemind?
 
 Hivemind bridges your Obsidian vault and AI tools (Claude, ComfyUI, etc.) via the Model Context Protocol. With pluggable templates, it supports multiple domains out of the box:
@@ -21,19 +23,35 @@ Hivemind bridges your Obsidian vault and AI tools (Claude, ComfyUI, etc.) via th
 - **Worldbuilding** — Characters, Locations, Events, Factions, Lore, Assets
 - **Research** — Papers, Citations, Concepts, Notes
 - **People Management** — People, Goals, Teams, 1:1 Meetings
+- **Software Architecture** — Systems, Components, ADRs, Constraints *(community)*
+- **UX Research** — Interviews, Insights, Hypotheses, Personas *(community)*
 
 Or define your own custom entity types via `config.json` — no code required.
 
 ## Features
 
-- **Pluggable Templates**: Built-in templates for worldbuilding, research, and people management — or define your own
+- **Pluggable Templates**: Built-in templates for worldbuilding, research, people management, and software architecture — or define your own
 - **HybridRAG Search**: Combines vector, graph, and keyword search for accurate context retrieval
 - **Obsidian Native**: Works with standard markdown, YAML frontmatter, and wikilinks
 - **Custom Relationships**: Define relationship types per template with bidirectionality and validation
 - **Asset Provenance**: Track AI-generated images and their generation settings
-- **Local-First**: Your data stays on your machine, with optional cloud deployment
-- **Canon Management**: Draft → Pending → Canon approval workflow
+- **Local-First**: Your data stays on your machine — critical for sensitive domains like people management and architecture decisions
+- **Canon Management**: Draft → Pending → Canon approval workflow with consistency validation
 - **High Performance**: <300ms query latency, supports 1000+ note vaults
+
+### Canon Workflow: Not Just for Fiction
+
+The canon workflow applies far beyond worldbuilding:
+
+| Domain | What Gets Canon Status |
+|--------|----------------------|
+| **Worldbuilding** | Approved lore, character facts, timeline events |
+| **Architecture** | Accepted ADRs, design decisions, constraints |
+| **Brand** | Voice guidelines, approved messaging, visual identity |
+| **Security** | Approved policies, access controls, compliance rules |
+| **People Management** | Finalized goals, approved team structures |
+
+AI that references non-canon content gets flagged. AI that violates canon constraints gets corrected. This is **governance without meetings**.
 
 ## Quick Start
 
@@ -132,13 +150,15 @@ If you prefer to configure manually, create a `config.json`:
 
 ### Choosing a Template
 
-Set `activeTemplate` to one of the built-in templates:
+Set `activeTemplate` to one of the built-in or community templates:
 
 | Template | Use Case | Entity Types |
 |----------|----------|--------------|
 | `worldbuilding` | Fiction writers, game masters | Characters, Locations, Events, Factions, Lore, Assets, References |
 | `research` | Academics, knowledge workers | Papers, Citations, Concepts, Notes |
 | `people-management` | Managers, team leads | People, Goals, Teams, 1:1 Meetings |
+| `software-architecture` | Engineers, architects | Systems, Components, Decisions (ADRs), Constraints, Interfaces |
+| `ux-research` | UX researchers, product teams | Interviews, Insights, Hypotheses, Personas, Experiments |
 
 ### Custom Templates
 
@@ -177,6 +197,35 @@ Define custom entity types directly in your `config.json`:
 
 See [samples/](samples/) for complete example vaults for each template.
 
+### CLI Template Tools
+
+Create, manage, and validate templates using the command line:
+
+```bash
+# List available templates (built-in + community)
+npx @hiveforge/hivemind-mcp list-templates
+
+# Add a template from the registry, URL, or local file
+npx @hiveforge/hivemind-mcp add-template software-architecture
+npx @hiveforge/hivemind-mcp add-template https://example.com/template.json
+npx @hiveforge/hivemind-mcp add-template ./my-template.json
+
+# Interactive template creation wizard
+npx @hiveforge/hivemind-mcp create-template
+
+# Validate a template file
+npx @hiveforge/hivemind-mcp validate-template template.json
+
+# Check template compatibility with your Hivemind version
+npx @hiveforge/hivemind-mcp check-compatibility
+npx @hiveforge/hivemind-mcp check-compatibility software-architecture
+
+# Generate template catalog JSON (for documentation sites)
+npx @hiveforge/hivemind-mcp generate-catalog
+```
+
+Want to contribute a template? See [CONTRIBUTING_TEMPLATES.md](CONTRIBUTING_TEMPLATES.md).
+
 ## Architecture
 
 ```
@@ -198,7 +247,16 @@ Obsidian Vault → File Watcher → Markdown Parser → Knowledge Graph
 
 ## Development Status
 
-**Current**: v2.0 Template System Complete ✅
+**Current**: v2.1 Community Templates Complete ✅
+
+### v2.1 — Community Templates (Complete)
+
+- [x] CLI tools: `create-template`, `validate-template`, `add-template`, `list-templates`
+- [x] Community templates: software-architecture, ux-research
+- [x] Enhanced metadata: category, tags, author, repository, license
+- [x] Template catalog generation for docs sites
+- [x] Version compatibility checking with `minHivemindVersion`
+- [x] Template contribution guide
 
 ### v2.0 — Template System (Complete)
 
@@ -226,7 +284,7 @@ Hivemind is now domain-agnostic with pluggable templates:
 
 - [ ] Obsidian community plugin submission
 - [ ] Timeline queries with date range filtering
-- [ ] First-run setup wizard
+- [ ] Web-based template builder
 
 ## MCP Tools
 
@@ -239,13 +297,15 @@ Tools are automatically generated for each entity type defined in the active tem
 | `query_<type>` | Get entity by ID/name with relationships and content |
 | `list_<type>` | List all entities of type with optional filters |
 
-**Built-in template tools:**
+**Built-in and community template tools:**
 
 | Template | Generated Tools |
 |----------|-----------------|
 | `worldbuilding` | `query_character`, `query_location`, `query_event`, `query_faction`, `query_lore`, `query_asset`, `query_reference` + list variants |
 | `research` | `query_paper`, `query_citation`, `query_concept`, `query_note` + list variants |
 | `people-management` | `query_person`, `query_goal`, `query_team`, `query_one_on_one` + list variants |
+| `software-architecture` | `query_system`, `query_component`, `query_decision`, `query_constraint`, `query_interface` + list variants |
+| `ux-research` | `query_interview`, `query_insight`, `query_hypothesis`, `query_persona`, `query_experiment` + list variants |
 
 ### Search
 | Tool | Description |
@@ -284,10 +344,12 @@ Tools are automatically generated for each entity type defined in the active tem
 
 - [Setup Guide](docs/SETUP_GUIDE.md) — Getting started with Hivemind
 - [Vault Migration Guide](docs/VAULT_MIGRATION_GUIDE.md) — Migrating existing vaults
+- [Canon Workflow for Enterprise](docs/CANON_WORKFLOW_ENTERPRISE.md) — Using canon workflow for ADRs, research, and more
 - [MCP Compatibility](docs/MCP_COMPATIBILITY.md) — Supported AI clients
 - [ComfyUI Integration](docs/COMFYUI_INTEGRATION.md) — AI image generation
 - [Obsidian Plugin Workflow](docs/OBSIDIAN_PLUGIN_WORKFLOW.md) — Plugin development
-- [Sample Vaults](samples/README.md) — Example vaults for each built-in template
+- [Sample Vaults](samples/README.md) — Example vaults for each template
+- [Contributing Templates](CONTRIBUTING_TEMPLATES.md) — How to create and contribute templates
 
 ## License
 

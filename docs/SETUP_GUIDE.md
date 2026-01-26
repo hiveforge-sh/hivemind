@@ -36,13 +36,27 @@ title: Display Name
 
 ### Choosing a Template
 
-Hivemind includes three built-in templates:
+Hivemind includes built-in and community templates:
+
+**Built-in Templates:**
 
 | Template | Use Case | Entity Types |
 |----------|----------|--------------|
 | `worldbuilding` | Fiction, games, RPG | character, location, event, faction, lore, asset, reference |
 | `research` | Academic, knowledge | paper, citation, concept, note |
 | `people-management` | Teams, HR | person, goal, team, one_on_one |
+
+**Community Templates:**
+
+| Template | Use Case | Entity Types |
+|----------|----------|--------------|
+| `software-architecture` | Engineers, architects | system, component, decision (ADR), constraint, interface |
+| `ux-research` | UX researchers, product | interview, insight, hypothesis, persona, experiment |
+
+List all available templates:
+```bash
+npx @hiveforge/hivemind-mcp list-templates
+```
 
 ### Example: Worldbuilding Character
 
@@ -236,6 +250,19 @@ Hivemind automatically builds a knowledge graph from your wikilinks:
 - `member_of` / `has_member` - person ↔ team
 - `owns_goal` - person → goal
 
+**Software Architecture** (Community):
+- `depends_on` - system/component dependencies
+- `part_of` / `contains` - component ↔ system
+- `supersedes` / `superseded_by` - decision evolution
+- `motivated_by` - decision ↔ constraint
+- `exposes` / `consumes` - component ↔ interface
+
+**UX Research** (Community):
+- `supports` / `contradicts` - evidence relationships
+- `derived_from` - insight/hypothesis ↔ interview
+- `validates` / `invalidates` - experiment ↔ hypothesis
+- `informed_by` - persona ↔ interview
+
 ## Troubleshooting
 
 ### "No notes found"
@@ -292,9 +319,31 @@ cp -r node_modules/@hiveforge/hivemind-mcp/samples/research ~/my-research
 
 # People Management
 cp -r node_modules/@hiveforge/hivemind-mcp/samples/people-management ~/my-team
+
+# Software Architecture (Community)
+cp -r node_modules/@hiveforge/hivemind-mcp/samples/architecture ~/my-architecture
+
+# UX Research (Community)
+cp -r node_modules/@hiveforge/hivemind-mcp/samples/ux-research ~/my-ux-research
 ```
 
 Or browse the samples on GitHub: https://github.com/hiveforge-sh/hivemind/tree/master/samples
+
+## CLI Commands Reference
+
+| Command | Description |
+|---------|-------------|
+| `init` | Interactive configuration setup |
+| `validate` | Validate your configuration |
+| `start` | Start the MCP server |
+| `fix` | Add frontmatter to skipped files |
+| `list-templates` | List available templates |
+| `add-template <name\|url>` | Add a template from registry or URL |
+| `create-template` | Interactive template creation wizard |
+| `validate-template [file]` | Validate a template file |
+| `generate-catalog [file]` | Generate template catalog JSON |
+| `check-compatibility [name]` | Check template compatibility |
+| `--vault <path>` | Start with specified vault path |
 
 ## Next Steps
 

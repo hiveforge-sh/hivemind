@@ -12,13 +12,14 @@
 import { readFileSync, existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import type { TemplateConfig } from './types.js';
-import { validateTemplateConfig } from './validator.js';
+import type { TemplateConfig, TemplateDefinition } from './types.js';
+import { validateTemplateConfig, TemplateDefinitionSchema, TemplateValidationError } from './validator.js';
 import { templateRegistry } from './registry.js';
 import { schemaFactory } from './schema-factory.js';
 import { worldbuildingTemplate } from './builtin/worldbuilding.js';
 import { researchTemplate } from './builtin/research.js';
 import { peopleManagementTemplate } from './builtin/people-management.js';
+import { communityTemplates } from './community/index.js';
 
 /**
  * Find the config.json file.
@@ -54,10 +55,11 @@ export function findConfigFile(configPath?: string): string | null {
 }
 
 /**
- * Load template configuration from config.json.
+ * Load template configuration from config.json and/or standalone template.json.
  *
  * Searches for config.json in multiple locations and extracts the template
- * section. Returns defaults if config file not found or template section missing.
+ * section. Also checks for standalone template.json in the same directory,
+ * which takes precedence over inline template definitions.
  *
  * @param configPath - Optional explicit path to config file
  * @returns Template configuration object
@@ -91,6 +93,47 @@ export function loadTemplateConfig(configPath?: string): TemplateConfig {
     templates: [],
   };
 
+  // Check for standalone template.json alongside config.json
+  const configDir = dirname(configFilePath);
+  const standaloneTemplatePath = resolve(configDir, 'template.json');
+
+  if (existsSync(standaloneTemplatePath)) {
+    try {
+      const standaloneTemplate = loadTemplateFile(standaloneTemplatePath);
+
+      // Ensure templates array exists
+      if (!templateConfig.templates) {
+        templateConfig.templates = [];
+      }
+
+      // Check if template with same ID already exists in config
+      const existingIndex = templateConfig.templates.findIndex(
+        (t: TemplateDefinition) => t.id === standaloneTemplate.id
+      );
+
+      if (existingIndex >= 0) {
+        // Standalone template takes precedence - replace existing
+        templateConfig.templates[existingIndex] = standaloneTemplate;
+      } else {
+        // Add standalone template to the list
+        templateConfig.templates.push(standaloneTemplate);
+      }
+
+      // If no activeTemplate specified, use the standalone template
+      if (!templateConfig.activeTemplate || templateConfig.activeTemplate === 'worldbuilding') {
+        templateConfig.activeTemplate = standaloneTemplate.id;
+      }
+    } catch (err) {
+      // If it's a validation error, rethrow with context
+      if (err instanceof TemplateValidationError) {
+        throw err;
+      }
+      throw new Error(
+        `Failed to load standalone template.json: ${err instanceof Error ? err.message : String(err)}`
+      );
+    }
+  }
+
   // Validate the template config
   return validateTemplateConfig(templateConfig);
 }
@@ -110,6 +153,25 @@ export function registerBuiltinTemplates(): void {
   templateRegistry.register(worldbuildingTemplate, 'builtin');
   templateRegistry.register(researchTemplate, 'builtin');
   templateRegistry.register(peopleManagementTemplate, 'builtin');
+}
+
+/**
+ * Register all community-contributed templates.
+ *
+ * Community templates are registered as 'config' source (not 'builtin')
+ * to distinguish them from core templates while still making them available
+ * for activation.
+ *
+ * This function should be called after built-in templates and before user
+ * templates so that user templates can override community templates if needed.
+ */
+export function registerCommunityTemplates(): void {
+  for (const template of communityTemplates) {
+    // Skip if template with same ID is already registered
+    if (!templateRegistry.has(template.id)) {
+      templateRegistry.register(template, 'config');
+    }
+  }
 }
 
 /**
@@ -167,10 +229,11 @@ export function pregenerateSchemas(): void {
  *
  * Performs complete setup:
  * 1. Register built-in templates
- * 2. Load config from file
- * 3. Register user-defined templates
- * 4. Activate selected template
- * 5. Pre-generate schemas
+ * 2. Register community templates
+ * 3. Load config from file
+ * 4. Register user-defined templates
+ * 5. Activate selected template
+ * 6. Pre-generate schemas
  *
  * This is the main entry point for template system initialization.
  * Call this at application startup before using any template features.
@@ -190,19 +253,95 @@ export function initializeTemplates(configPath?: string): TemplateConfig {
   // 1. Register built-in templates
   registerBuiltinTemplates();
 
-  // 2. Load config
+  // 2. Register community templates
+  registerCommunityTemplates();
+
+  // 3. Load config
   const config = loadTemplateConfig(configPath);
 
-  // 3. Register user templates
+  // 4. Register user templates
   registerUserTemplates(config);
 
-  // 4. Activate selected template
+  // 5. Activate selected template
   activateTemplate(config);
 
-  // 5. Pre-generate schemas
+  // 6. Pre-generate schemas
   pregenerateSchemas();
 
   return config;
+}
+
+/**
+ * Load a standalone template file from disk.
+ *
+ * Reads a JSON file containing a template definition and validates it
+ * against the TemplateDefinitionSchema.
+ *
+ * @param filePath - Path to the template JSON file
+ * @returns Validated template definition
+ * @throws {Error} If file cannot be read or parsed
+ * @throws {TemplateValidationError} If template fails validation
+ *
+ * @example
+ * ```ts
+ * const template = loadTemplateFile('./template.json');
+ * console.log(`Loaded template: ${template.name}`);
+ * ```
+ */
+export function loadTemplateFile(filePath: string): TemplateDefinition {
+  const resolvedPath = resolve(filePath);
+
+  let fileContent: string;
+  try {
+    fileContent = readFileSync(resolvedPath, 'utf-8');
+  } catch (err) {
+    throw new Error(
+      `Failed to read template file at ${resolvedPath}: ${err instanceof Error ? err.message : String(err)}`
+    );
+  }
+
+  let templateData: unknown;
+  try {
+    templateData = JSON.parse(fileContent);
+  } catch (err) {
+    throw new Error(
+      `Failed to parse template file as JSON: ${err instanceof Error ? err.message : String(err)}`
+    );
+  }
+
+  const result = TemplateDefinitionSchema.safeParse(templateData);
+  if (!result.success) {
+    throw new TemplateValidationError('Invalid template definition', result.error.issues);
+  }
+
+  return result.data;
+}
+
+/**
+ * Validate a template file without loading it into the registry.
+ *
+ * Useful for CLI tools and pre-flight validation. Returns the validated
+ * template if successful, throws TemplateValidationError with details if not.
+ *
+ * @param filePath - Path to the template JSON file
+ * @returns Validated template definition
+ * @throws {Error} If file cannot be read or parsed
+ * @throws {TemplateValidationError} If template fails validation
+ *
+ * @example
+ * ```ts
+ * try {
+ *   const template = validateTemplateFile('./template.json');
+ *   console.log(`Template "${template.name}" is valid!`);
+ * } catch (err) {
+ *   if (err instanceof TemplateValidationError) {
+ *     console.error(err.toUserMessage());
+ *   }
+ * }
+ * ```
+ */
+export function validateTemplateFile(filePath: string): TemplateDefinition {
+  return loadTemplateFile(filePath);
 }
 
 /**

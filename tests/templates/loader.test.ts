@@ -6,12 +6,16 @@ import {
   findConfigFile,
   loadTemplateConfig,
   registerBuiltinTemplates,
+  registerCommunityTemplates,
   registerUserTemplates,
   activateTemplate,
   pregenerateSchemas,
   initializeTemplates,
   getEntitySchema,
+  loadTemplateFile,
+  validateTemplateFile,
 } from '../../src/templates/loader.js';
+import { TemplateValidationError } from '../../src/templates/validator.js';
 import { templateRegistry } from '../../src/templates/registry.js';
 import { schemaFactory } from '../../src/templates/schema-factory.js';
 import type { TemplateConfig, TemplateDefinition } from '../../src/templates/types.js';
@@ -312,6 +316,138 @@ describe('Template Loader', () => {
       templateRegistry.clear();
       registerBuiltinTemplates(); // But don't activate
       expect(() => getEntitySchema('character')).toThrow();
+    });
+  });
+
+  describe('loadTemplateFile', () => {
+    it('should load valid template from file', () => {
+      const templatePath = join(tempDir, 'template.json');
+      writeFileSync(templatePath, JSON.stringify(validUserTemplate, null, 2));
+
+      const template = loadTemplateFile(templatePath);
+      expect(template.id).toBe('custom');
+      expect(template.name).toBe('Custom Template');
+      expect(template.entityTypes).toHaveLength(1);
+    });
+
+    it('should throw for non-existent file', () => {
+      expect(() => loadTemplateFile(join(tempDir, 'nonexistent.json'))).toThrow(/Failed to read/);
+    });
+
+    it('should throw for invalid JSON', () => {
+      const badPath = join(tempDir, 'bad.json');
+      writeFileSync(badPath, '{ invalid json }');
+      expect(() => loadTemplateFile(badPath)).toThrow(/Failed to parse/);
+    });
+
+    it('should throw TemplateValidationError for invalid template', () => {
+      const invalidPath = join(tempDir, 'invalid.json');
+      writeFileSync(invalidPath, JSON.stringify({
+        id: 'INVALID', // Uppercase not allowed
+        name: 'Test',
+        version: '1.0.0',
+        entityTypes: [{ name: 'test', displayName: 'Test', pluralName: 'Tests', fields: [] }],
+      }));
+      expect(() => loadTemplateFile(invalidPath)).toThrow(TemplateValidationError);
+    });
+
+    it('should validate relationship types', () => {
+      const templateWithRels = {
+        ...validUserTemplate,
+        relationshipTypes: [{
+          id: 'has_item',
+          displayName: 'Has Item',
+          sourceTypes: ['character'],
+          targetTypes: ['item'],
+          bidirectional: false,
+        }],
+      };
+      const templatePath = join(tempDir, 'template-with-rels.json');
+      writeFileSync(templatePath, JSON.stringify(templateWithRels, null, 2));
+
+      const template = loadTemplateFile(templatePath);
+      expect(template.relationshipTypes).toHaveLength(1);
+      expect(template.relationshipTypes![0].id).toBe('has_item');
+    });
+  });
+
+  describe('validateTemplateFile', () => {
+    it('should return validated template for valid file', () => {
+      const templatePath = join(tempDir, 'template.json');
+      writeFileSync(templatePath, JSON.stringify(validUserTemplate, null, 2));
+
+      const template = validateTemplateFile(templatePath);
+      expect(template.id).toBe('custom');
+    });
+
+    it('should throw for invalid template', () => {
+      const invalidPath = join(tempDir, 'invalid.json');
+      writeFileSync(invalidPath, JSON.stringify({
+        id: '', // Empty not allowed
+        name: 'Test',
+        version: '1.0.0',
+        entityTypes: [],
+      }));
+      expect(() => validateTemplateFile(invalidPath)).toThrow(TemplateValidationError);
+    });
+  });
+
+  describe('loadTemplateConfig with standalone template.json', () => {
+    it('should load standalone template.json alongside config.json', () => {
+      // Create config.json
+      writeConfig({
+        vault: { path: '.' },
+        template: { activeTemplate: 'worldbuilding' },
+      });
+
+      // Create template.json in same directory
+      const templatePath = join(tempDir, 'template.json');
+      writeFileSync(templatePath, JSON.stringify(validUserTemplate, null, 2));
+
+      const config = loadTemplateConfig(join(tempDir, 'config.json'));
+
+      // The standalone template should be loaded and active
+      expect(config.activeTemplate).toBe('custom');
+      expect(config.templates).toBeDefined();
+      expect(config.templates!.some(t => t.id === 'custom')).toBe(true);
+    });
+
+    it('should prefer standalone template over inline with same ID', () => {
+      const inlineTemplate = {
+        ...validUserTemplate,
+        name: 'Inline Version',
+      };
+
+      const standaloneTemplate = {
+        ...validUserTemplate,
+        name: 'Standalone Version',
+      };
+
+      writeConfig({
+        template: {
+          activeTemplate: 'custom',
+          templates: [inlineTemplate],
+        },
+      });
+
+      const templatePath = join(tempDir, 'template.json');
+      writeFileSync(templatePath, JSON.stringify(standaloneTemplate, null, 2));
+
+      const config = loadTemplateConfig(join(tempDir, 'config.json'));
+
+      // Standalone should take precedence
+      const customTemplate = config.templates!.find(t => t.id === 'custom');
+      expect(customTemplate?.name).toBe('Standalone Version');
+    });
+  });
+
+  describe('registerCommunityTemplates', () => {
+    it('should register community templates without error', () => {
+      templateRegistry.clear();
+      registerBuiltinTemplates();
+
+      // This should not throw even if there are no community templates
+      expect(() => registerCommunityTemplates()).not.toThrow();
     });
   });
 });

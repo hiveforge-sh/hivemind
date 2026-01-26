@@ -38,6 +38,12 @@ jobs:
       - name: Build MCP server
         run: npm run build
 
+      - name: Validate templates
+        run: |
+          echo "Validating built-in and community templates..."
+          node dist/cli.js list-templates
+        shell: bash
+
       - name: Run tests
         run: npm test
 
@@ -54,6 +60,45 @@ jobs:
           flags: unittests
           name: codecov-umbrella
           fail_ci_if_error: false
+
+  validate-templates:
+    name: Validate Templates
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: List all templates
+        run: node dist/cli.js list-templates
+
+      - name: Validate sample vault configs
+        run: |
+          echo "Checking sample vault configurations..."
+          for dir in samples/*/; do
+            if [ -f "${dir}config.json" ]; then
+              echo "Validating ${dir}config.json"
+              cat "${dir}config.json" | jq .
+            fi
+          done
+        shell: bash
+
+      - name: Run template-specific tests
+        run: npx vitest run tests/templates/community-templates.test.ts tests/templates/builtin-templates.test.ts
 
   test-plugin:
     name: Build Obsidian plugin on ${{ matrix.os }}

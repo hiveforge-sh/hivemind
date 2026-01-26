@@ -22,6 +22,17 @@ export const peopleManagementTemplate: TemplateDefinition = {
   version: '1.0.0',
   description: 'Template for managing people, goals, teams, and 1:1 meetings',
 
+  // Discovery metadata
+  category: 'business',
+  tags: ['management', 'team', 'hr', 'one-on-one', 'goals', 'okr'],
+  author: {
+    name: 'HiveForge',
+    url: 'https://github.com/hiveforge-sh',
+  },
+  repository: 'https://github.com/hiveforge-sh/hivemind',
+  sampleVault: 'samples/people-management',
+  license: 'MIT',
+
   // Relationship type definitions for the knowledge graph
   relationshipTypes: [
     // Team membership

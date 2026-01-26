@@ -1,8 +1,34 @@
 # Hivemind Sample Vaults
 
-This directory contains sample vaults demonstrating each built-in template.
+This directory contains sample vaults demonstrating each built-in and community template.
 
 ## Available Templates
+
+### Software Architecture (Community)
+
+For engineers, architects, and technical leads tracking systems and decisions.
+
+**Entity Types**: Systems, Components, Decisions (ADRs), Constraints, Interfaces
+
+```bash
+# Use the software-architecture template
+cp -r samples/architecture ~/my-architecture
+```
+
+[View architecture samples](./architecture/)
+
+### UX Research (Community)
+
+For UX researchers, product managers, and design teams synthesizing user research.
+
+**Entity Types**: Interviews, Insights, Hypotheses, Personas, Experiments
+
+```bash
+# Use the ux-research template
+cp -r samples/ux-research ~/my-research
+```
+
+[View ux-research samples](./ux-research/)
 
 ### Worldbuilding
 
@@ -66,10 +92,11 @@ Each sample vault includes a `config.json` file that specifies the template:
 }
 ```
 
-Change `activeTemplate` to use a different built-in template:
+Change `activeTemplate` to use a different template:
 - `worldbuilding` (default)
 - `research`
 - `people-management`
+- `software-architecture` (community)
 
 ## Custom Templates
 
