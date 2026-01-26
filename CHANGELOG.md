@@ -1,3 +1,18 @@
+# [2.3.0](https://github.com/hiveforge-sh/hivemind/compare/v2.2.0...v2.3.0) (2026-01-26)
+
+
+### Bug Fixes
+
+* **cli:** correct package name in CLI help messages ([f8cf572](https://github.com/hiveforge-sh/hivemind/commit/f8cf572ffc989932c4d2e7e57d33be53c34f31c6))
+* resolve npm audit vulnerability and Zod 4 type errors ([977bac7](https://github.com/hiveforge-sh/hivemind/commit/977bac714098b430ef6c45f9f200aa88ca139392))
+* **tests:** handle macOS symlinks in path comparisons ([cd6c191](https://github.com/hiveforge-sh/hivemind/commit/cd6c1914fc49301d2b73aa496eddd44c4db1abbb))
+
+
+### Features
+
+* add frontmatter authoring tools, custom types, and folder mapping ([723471e](https://github.com/hiveforge-sh/hivemind/commit/723471ed5d90504b76b25f957b2f22a735657b8b))
+* **mcp:** add dynamic tool generation from template entity types ([3123aba](https://github.com/hiveforge-sh/hivemind/commit/3123abaf067230335c5f0d1224706d8ffd927aba))
+
 # [2.2.0](https://github.com/hiveforge-io/hivemind/compare/v2.1.1...v2.2.0) (2026-01-26)
 
 
