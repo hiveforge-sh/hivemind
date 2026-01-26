@@ -15,6 +15,8 @@ import { TemplateValidationError, TemplateDefinitionSchema } from './templates/v
 import { communityTemplates, getCommunityTemplate, listCommunityTemplateIds } from './templates/community/index.js';
 import type { TemplateDefinition, FieldConfig, EntityTypeConfig } from './templates/types.js';
 import { checkTemplateCompatibility, getHivemindVersion } from './templates/version.js';
+import { initCommand } from './cli/init/index.js';
+import { outputMissingConfigError } from './cli/init/output.js';
 
 /**
  * All available templates from registry (built-in + community)
@@ -32,125 +34,20 @@ for (const template of communityTemplates) {
   AVAILABLE_TEMPLATES[template.id] = template;
 }
 
-async function init() {
-  console.log('\nHivemind Setup Wizard');
-  console.log('=====================\n');
-
-  const rl = readline.createInterface({ input, output });
-
-  try {
-    // Check if config already exists
-    const configPath = resolve(process.cwd(), 'config.json');
-    if (existsSync(configPath)) {
-      const overwrite = await rl.question('config.json already exists. Overwrite? (y/N): ');
-      if (overwrite.toLowerCase() !== 'y') {
-        console.log('Setup cancelled.');
-        rl.close();
-        return;
-      }
-    }
-
-    // Step 1: Vault path
-    console.log('Step 1/4: Vault Path\n');
-    const vaultPath = await rl.question('Enter your Obsidian vault path: ');
-    if (!vaultPath.trim()) {
-      console.error('❌ Vault path is required');
-      rl.close();
-      process.exit(1);
-    }
-
-    const resolvedPath = resolve(vaultPath.trim());
-    if (!existsSync(resolvedPath)) {
-      console.warn(`⚠️  Warning: Path does not exist: ${resolvedPath}`);
-      const proceed = await rl.question('Continue anyway? (y/N): ');
-      if (proceed.toLowerCase() !== 'y') {
-        console.log('Setup cancelled.');
-        rl.close();
-        return;
-      }
-    }
-
-    // Step 2: Template selection
-    console.log('\nStep 2/4: Template Selection\n');
-    console.log('Which template best fits your use case?');
-    console.log('  1. worldbuilding       - Fiction, games, RPGs (characters, locations, events)');
-    console.log('  2. research            - Academic, knowledge (papers, citations, concepts)');
-    console.log('  3. people-management   - Teams, HR (people, goals, teams, 1:1s)');
-    console.log('  4. software-architecture - Engineers (systems, ADRs, components)');
-    console.log('  5. ux-research         - UX, product (interviews, insights, personas)');
-
-    const templateChoice = await rl.question('\nEnter choice (1-5) [default: 1]: ');
-    const templates = ['worldbuilding', 'research', 'people-management', 'software-architecture', 'ux-research'];
-    const selectedTemplate = templates[parseInt(templateChoice) - 1] || 'worldbuilding';
-
-    // Step 3: Vector search
-    console.log('\nStep 3/4: Features\n');
-    const enableVector = await rl.question('Enable vector search? (requires embedding setup) (y/N): ');
-
-    // Step 4: Write config
-    const config = {
-      vault: {
-        path: resolvedPath,
-        watchForChanges: true,
-        debounceMs: 100,
-      },
-      server: {
-        transport: 'stdio' as const,
-      },
-      template: {
-        activeTemplate: selectedTemplate,
-      },
-      indexing: {
-        strategy: 'incremental' as const,
-        batchSize: 100,
-        enableVectorSearch: enableVector.toLowerCase() === 'y',
-        enableFullTextSearch: true,
-      },
-    };
-
-    writeFileSync(configPath, JSON.stringify(config, null, 2));
-    console.log(`\n✅ Created config.json`);
-    console.log(`   Template: ${selectedTemplate}`);
-
-    // Step 5: MCP client setup
-    console.log('\nStep 4/4: MCP Client Setup\n');
-    const setupMcpNow = await rl.question('Set up MCP client config now? (Y/n): ');
-
-    rl.close();
-
-    if (setupMcpNow.toLowerCase() !== 'n') {
-      await setupMcp();
-      return;
-    }
-
-    // Final next steps
-    console.log('\n📋 Next steps:');
-    console.log('  1. Run: npx @hiveforge/hivemind-mcp setup-mcp');
-    console.log('  2. Add frontmatter to your vault files');
-    console.log('  3. Start querying via your AI assistant\n');
-
-  } catch (error) {
-    console.error('Error during setup:', error);
-    rl.close();
-    process.exit(1);
-  }
-}
-
 async function start() {
   // Check if --vault flag is provided, skip config check in that case
   const hasVaultFlag = process.argv.includes('--vault');
-  
+
   if (!hasVaultFlag) {
     const configPath = resolve(process.cwd(), 'config.json');
     if (!existsSync(configPath)) {
-      console.error('❌ config.json not found. Run "npx @hiveforge/hivemind-mcp init" first.');
-      console.error('   Or use: npx @hiveforge/hivemind-mcp --vault <path>');
+      outputMissingConfigError();
       process.exit(1);
     }
   }
 
   console.log('🚀 Starting Hivemind MCP Server...\n');
-  
+
   // Import and start the server (index.js handles --vault flag parsing)
   const { startServer } = await import('./index.js');
   await startServer();
@@ -162,7 +59,7 @@ async function start() {
 async function fix() {
   const vaultPath = getVaultPath();
   if (!vaultPath) {
-    console.error('❌ Could not determine vault path. Use --vault flag or create config.json');
+    outputMissingConfigError();
     process.exit(1);
   }
 
@@ -1379,7 +1276,7 @@ if (command === '--vault') {
 } else {
   switch (command) {
     case 'init':
-      init();
+      initCommand();
       break;
     case 'start':
       start();
