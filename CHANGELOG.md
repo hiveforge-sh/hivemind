@@ -1,3 +1,10 @@
+# [2.5.0](https://github.com/hiveforge-sh/hivemind/compare/v2.4.0...v2.5.0) (2026-01-26)
+
+
+### Features
+
+* add developer experience improvements and community templates ([0653145](https://github.com/hiveforge-sh/hivemind/commit/065314506f1fd13ffc8747cdaf83fdaafe75fe07))
+
 # [2.4.0](https://github.com/hiveforge-sh/hivemind/compare/v2.3.0...v2.4.0) (2026-01-26)
 
 
