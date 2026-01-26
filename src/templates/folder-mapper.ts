@@ -125,6 +125,31 @@ export class FolderMapper {
   }
 
   /**
+   * Create a FolderMapper from template folderMappings.
+   *
+   * Converts template-style FolderMappingRule[] to FolderMappingConfig.
+   * Falls back to defaults if no mappings provided.
+   *
+   * @param folderMappings - Array of folder mapping rules from template
+   * @param fallbackType - Optional fallback type when no pattern matches
+   * @returns Promise resolving to configured FolderMapper
+   */
+  static async createFromTemplate(
+    folderMappings?: FolderMappingRule[],
+    fallbackType?: string
+  ): Promise<FolderMapper> {
+    // If template has mappings, use them
+    if (folderMappings && folderMappings.length > 0) {
+      return FolderMapper.create({
+        mappings: folderMappings,
+        fallbackType,
+      });
+    }
+    // Fall back to defaults (worldbuilding patterns)
+    return FolderMapper.createWithDefaults();
+  }
+
+  /**
    * Resolve a file path to entity type(s).
    *
    * Async API for future extensibility (e.g., loading config from disk).

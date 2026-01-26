@@ -1,7 +1,7 @@
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
 import { spawn, ChildProcess } from 'child_process';
 import { FolderMapper } from '../src/templates/folder-mapper.js';
-import type { ResolveResult } from '../src/templates/types.js';
+import type { ResolveResult, FolderMappingRule } from '../src/templates/types.js';
 
 interface HivemindSettings {
   mcpServerPath: string;
@@ -169,8 +169,8 @@ export default class HivemindPlugin extends Plugin {
   async onload() {
     await this.loadSettings();
 
-    // Initialize folder mapper with defaults
-    this.folderMapper = await FolderMapper.createWithDefaults();
+    // Initialize folder mapper with defaults (will be updated when MCP connects)
+    this.folderMapper = await FolderMapper.createFromTemplate();
 
     // Add status bar item
     this.statusBarItem = this.addStatusBarItem();
