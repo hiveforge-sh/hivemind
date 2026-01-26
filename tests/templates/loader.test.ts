@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, writeFileSync, rmSync, mkdirSync } from 'fs';
+import { mkdtempSync, writeFileSync, rmSync, mkdirSync, realpathSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import {
@@ -55,7 +55,8 @@ describe('Template Loader', () => {
     it('should find config file at explicit path', () => {
       const configPath = writeConfig({ template: { activeTemplate: 'worldbuilding' } });
       const found = findConfigFile(configPath);
-      expect(found).toBe(configPath);
+      // Use realpathSync to handle macOS symlinks (/var -> /private/var)
+      expect(realpathSync(found!)).toBe(realpathSync(configPath));
     });
 
     it('should return null for non-existent explicit path', () => {
@@ -81,7 +82,8 @@ describe('Template Loader', () => {
       process.chdir(tempDir);
       try {
         const found = findConfigFile();
-        expect(found).toBe(configPath);
+        // Use realpathSync to handle macOS symlinks (/var -> /private/var)
+        expect(realpathSync(found!)).toBe(realpathSync(configPath));
       } finally {
         process.chdir(originalCwd);
       }
