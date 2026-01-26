@@ -125,4 +125,4 @@ MIT
 
 ## Support
 
-For issues and feature requests, please visit the [Hivemind GitHub repository](https://github.com/hiveforge-io/hivemind).
+For issues and feature requests, please visit the [Hivemind GitHub repository](https://github.com/hiveforge-sh/hivemind).

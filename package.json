@@ -31,12 +31,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hiveforge-io/hivemind.git"
+    "url": "git+https://github.com/hiveforge-sh/hivemind.git"
   },
   "bugs": {
-    "url": "https://github.com/hiveforge-io/hivemind/issues"
+    "url": "https://github.com/hiveforge-sh/hivemind/issues"
   },
-  "homepage": "https://github.com/hiveforge-io/hivemind#readme",
+  "homepage": "https://github.com/hiveforge-sh/hivemind#readme",
   "keywords": [
     "mcp",
     "model-context-protocol",

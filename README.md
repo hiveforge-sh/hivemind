@@ -5,12 +5,12 @@
 # Hivemind MCP Server
 
 [![NPM Version](https://img.shields.io/npm/v/@hiveforge/hivemind-mcp.svg)](https://www.npmjs.com/package/@hiveforge/hivemind-mcp)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/hiveforge-io/hivemind/test.yml?branch=master&label=tests)](https://github.com/hiveforge-io/hivemind/actions/workflows/test.yml)
-[![Release](https://img.shields.io/github/actions/workflow/status/hiveforge-io/hivemind/release.yml?branch=master&label=release)](https://github.com/hiveforge-io/hivemind/actions/workflows/release.yml)
-[![codecov](https://codecov.io/gh/hiveforge-io/hivemind/branch/master/graph/badge.svg)](https://codecov.io/gh/hiveforge-io/hivemind)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/hiveforge-sh/hivemind/test.yml?branch=master&label=tests)](https://github.com/hiveforge-sh/hivemind/actions/workflows/test.yml)
+[![Release](https://img.shields.io/github/actions/workflow/status/hiveforge-sh/hivemind/release.yml?branch=master&label=release)](https://github.com/hiveforge-sh/hivemind/actions/workflows/release.yml)
+[![codecov](https://codecov.io/gh/hiveforge-sh/hivemind/branch/master/graph/badge.svg)](https://codecov.io/gh/hiveforge-sh/hivemind)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![GitHub issues](https://img.shields.io/github/issues/hiveforge-io/hivemind)](https://github.com/hiveforge-io/hivemind/issues)
-[![GitHub stars](https://img.shields.io/github/stars/hiveforge-io/hivemind)](https://github.com/hiveforge-io/hivemind/stargazers)
+[![GitHub issues](https://img.shields.io/github/issues/hiveforge-sh/hivemind)](https://github.com/hiveforge-sh/hivemind/issues)
+[![GitHub stars](https://img.shields.io/github/stars/hiveforge-sh/hivemind)](https://github.com/hiveforge-sh/hivemind/stargazers)
 
 An MCP (Model Context Protocol) server for Obsidian worldbuilding vaults that provides AI tools with consistent, canonical context from your fictional worlds.
 

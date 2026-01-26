@@ -60,7 +60,7 @@ obsidian-plugin/
   "minAppVersion": "1.4.0",
   "description": "Hivemind MCP integration...",
   "author": "HiveForge",
-  "authorUrl": "https://github.com/hiveforge-io/hivemind"
+  "authorUrl": "https://github.com/hiveforge-sh/hivemind"
 }
 ```
 
@@ -476,7 +476,7 @@ The automated workflow handles everything else! 🚀
 
 ## Links
 
-- **Main Repository**: https://github.com/hiveforge-io/hivemind
+- **Main Repository**: https://github.com/hiveforge-sh/hivemind
 - **npm Package**: https://www.npmjs.com/package/@hiveforge/hivemind-mcp
 - **Obsidian Plugin**: Install from GitHub releases
-- **Issues**: https://github.com/hiveforge-io/hivemind/issues
+- **Issues**: https://github.com/hiveforge-sh/hivemind/issues

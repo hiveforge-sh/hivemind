@@ -629,8 +629,8 @@ Store generated asset metadata.
 ## Support
 
 For issues, feature requests, or questions:
-- GitHub Issues: https://github.com/hiveforge-io/hivemind/issues
-- Documentation: https://github.com/hiveforge-io/hivemind
+- GitHub Issues: https://github.com/hiveforge-sh/hivemind/issues
+- Documentation: https://github.com/hiveforge-sh/hivemind
 
 ## License
 
