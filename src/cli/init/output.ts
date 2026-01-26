@@ -1,0 +1,139 @@
+import { writeFileSync } from 'fs';
+import { resolve } from 'path';
+import { copyToClipboard } from '../shared/clipboard.js';
+import { promptConfirm } from './prompts.js';
+import { success, error, dim, bold } from '../shared/colors.js';
+
+/**
+ * Hivemind config.json structure.
+ */
+export interface HivemindConfig {
+  vault: {
+    path: string;
+    watchForChanges: boolean;
+    debounceMs: number;
+  };
+  server: {
+    transport: 'stdio';
+  };
+  template: {
+    activeTemplate: string;
+  };
+  indexing: {
+    strategy: 'incremental';
+    batchSize: number;
+    enableVectorSearch: boolean;
+    enableFullTextSearch: boolean;
+  };
+}
+
+/**
+ * Generate Hivemind config object.
+ */
+export function generateConfig(vaultPath: string, templateId: string): HivemindConfig {
+  return {
+    vault: {
+      path: vaultPath,
+      watchForChanges: true,
+      debounceMs: 100,
+    },
+    server: {
+      transport: 'stdio',
+    },
+    template: {
+      activeTemplate: templateId,
+    },
+    indexing: {
+      strategy: 'incremental',
+      batchSize: 100,
+      enableVectorSearch: false,
+      enableFullTextSearch: true,
+    },
+  };
+}
+
+/**
+ * Generate Claude Desktop MCP config snippet.
+ */
+export function generateClaudeDesktopSnippet(vaultPath: string): string {
+  const config = {
+    mcpServers: {
+      hivemind: {
+        command: 'npx',
+        args: ['-y', '@hiveforge/hivemind-mcp', '--vault', vaultPath],
+      },
+    },
+  };
+
+  return JSON.stringify(config, null, 2);
+}
+
+/**
+ * Write config.json to disk.
+ */
+export function writeConfigFile(dir: string, config: HivemindConfig): string {
+  const configPath = resolve(dir, 'config.json');
+  writeFileSync(configPath, JSON.stringify(config, null, 2));
+  return configPath;
+}
+
+/**
+ * Output final summary and next steps.
+ * Offers to copy Claude Desktop config to clipboard.
+ */
+export async function outputNextSteps(
+  vaultPath: string,
+  templateId: string,
+  configPath: string,
+  isInteractive: boolean
+): Promise<void> {
+  console.log('\n' + success('Setup complete!'));
+  console.log(`\nCreated: ${bold(configPath)}`);
+  console.log(`Template: ${templateId}`);
+
+  // Generate and display Claude Desktop snippet
+  const snippet = generateClaudeDesktopSnippet(vaultPath);
+  console.log('\n' + bold('Claude Desktop configuration:'));
+  console.log(dim('Add this to your claude_desktop_config.json:\n'));
+  console.log(snippet);
+
+  // Offer to copy to clipboard (only in interactive mode)
+  if (isInteractive && process.stdin.isTTY) {
+    const shouldCopy = await promptConfirm('Copy to clipboard?', true);
+    if (shouldCopy) {
+      const copied = await copyToClipboard(snippet);
+      if (copied) {
+        console.log(success('\nCopied to clipboard!'));
+      } else {
+        console.log(dim('\nCould not copy to clipboard (clipboard may not be available).'));
+      }
+    }
+  }
+
+  // Next steps
+  console.log('\n' + bold('Next steps:'));
+  console.log('  1. Paste the config into Claude Desktop settings');
+  console.log('  2. Restart Claude Desktop');
+  console.log('  3. Add frontmatter to your vault files');
+  console.log('  4. Start querying via Claude!\n');
+
+  console.log(dim('Run `npx @hiveforge/hivemind-mcp validate` to check your setup.'));
+}
+
+/**
+ * Output error for missing config.json.
+ * Called when commands other than init are run without config.
+ */
+export function outputMissingConfigError(): void {
+  console.error(error('config.json not found.'));
+  console.error('\nRun `npx @hiveforge/hivemind-mcp init` to create one.');
+  console.error('Or use: `npx @hiveforge/hivemind-mcp --vault <path>`');
+}
+
+/**
+ * Output error for invalid vault path.
+ */
+export function outputInvalidVaultError(path: string): void {
+  console.error(error(`Invalid vault path: ${path}`));
+  console.error('\nThe path must be an existing directory.');
+}
