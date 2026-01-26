@@ -33,6 +33,25 @@ export const researchTemplate: TemplateDefinition = {
   sampleVault: 'samples/research',
   license: 'MIT',
 
+  folderMappings: [
+    // Paper mappings
+    { folder: '**/Papers/**', types: ['paper'] },
+    { folder: '**/Literature/**', types: ['paper'] },
+    { folder: '**/Articles/**', types: ['paper'] },
+    { folder: '**/Publications/**', types: ['paper'] },
+    // Concept mappings
+    { folder: '**/Concepts/**', types: ['concept'] },
+    { folder: '**/Theories/**', types: ['concept'] },
+    { folder: '**/Definitions/**', types: ['concept'] },
+    // Note mappings
+    { folder: '**/Notes/**', types: ['note'] },
+    { folder: '**/Ideas/**', types: ['note'] },
+    { folder: '**/Observations/**', types: ['note'] },
+    // Citation mappings
+    { folder: '**/Citations/**', types: ['citation'] },
+    { folder: '**/References/**', types: ['citation'] },
+  ],
+
   // Relationship type definitions for the knowledge graph
   relationshipTypes: [
     // Citation relationships

@@ -35,6 +35,51 @@ export const worldbuildingTemplate: TemplateDefinition = {
   sampleVault: 'samples/worldbuilding',
   license: 'MIT',
 
+  // Folder-to-type mappings for auto-detection
+  folderMappings: [
+    // Character mappings
+    { folder: '**/Characters/**', types: ['character'] },
+    { folder: '**/People/**', types: ['character'] },
+    { folder: '**/NPCs/**', types: ['character'] },
+    { folder: '**/PCs/**', types: ['character'] },
+    { folder: '**/Cast/**', types: ['character'] },
+    // Location mappings
+    { folder: '**/Locations/**', types: ['location'] },
+    { folder: '**/Places/**', types: ['location'] },
+    { folder: '**/Geography/**', types: ['location'] },
+    { folder: '**/World/**', types: ['location'] },
+    { folder: '**/Regions/**', types: ['location'] },
+    { folder: '**/Cities/**', types: ['location'] },
+    { folder: '**/Towns/**', types: ['location'] },
+    // Event mappings
+    { folder: '**/Events/**', types: ['event'] },
+    { folder: '**/Timeline/**', types: ['event'] },
+    { folder: '**/History/**', types: ['event'] },
+    { folder: '**/Sessions/**', types: ['event'] },
+    // Faction mappings
+    { folder: '**/Factions/**', types: ['faction'] },
+    { folder: '**/Organizations/**', types: ['faction'] },
+    { folder: '**/Groups/**', types: ['faction'] },
+    { folder: '**/Guilds/**', types: ['faction'] },
+    { folder: '**/Houses/**', types: ['faction'] },
+    // Lore mappings
+    { folder: '**/Lore/**', types: ['lore'] },
+    { folder: '**/Mythology/**', types: ['lore'] },
+    { folder: '**/Magic/**', types: ['lore'] },
+    { folder: '**/Culture/**', types: ['lore'] },
+    { folder: '**/Religion/**', types: ['lore'] },
+    // Asset mappings
+    { folder: '**/Assets/**', types: ['asset'] },
+    { folder: '**/Images/**', types: ['asset'] },
+    { folder: '**/Media/**', types: ['asset'] },
+    // Reference mappings
+    { folder: '**/References/**', types: ['reference'] },
+    { folder: '**/Sources/**', types: ['reference'] },
+    { folder: '**/Inspiration/**', types: ['reference'] },
+    { folder: '**/Notes/**', types: ['reference'] },
+    { folder: '**/Meta/**', types: ['reference'] },
+  ],
+
   // Relationship type definitions for the knowledge graph
   relationshipTypes: [
     // Character relationships

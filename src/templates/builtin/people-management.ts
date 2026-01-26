@@ -33,6 +33,26 @@ export const peopleManagementTemplate: TemplateDefinition = {
   sampleVault: 'samples/people-management',
   license: 'MIT',
 
+  folderMappings: [
+    // Person mappings
+    { folder: '**/People/**', types: ['person'] },
+    { folder: '**/Team/**', types: ['person'] },
+    { folder: '**/Staff/**', types: ['person'] },
+    { folder: '**/Contacts/**', types: ['person'] },
+    // Goal mappings
+    { folder: '**/Goals/**', types: ['goal'] },
+    { folder: '**/OKRs/**', types: ['goal'] },
+    { folder: '**/Objectives/**', types: ['goal'] },
+    // Team mappings
+    { folder: '**/Teams/**', types: ['team'] },
+    { folder: '**/Departments/**', types: ['team'] },
+    { folder: '**/Groups/**', types: ['team'] },
+    // One-on-one mappings
+    { folder: '**/1-on-1/**', types: ['one_on_one'] },
+    { folder: '**/One-on-Ones/**', types: ['one_on_one'] },
+    { folder: '**/Meetings/**', types: ['one_on_one'] },
+  ],
+
   // Relationship type definitions for the knowledge graph
   relationshipTypes: [
     // Team membership
