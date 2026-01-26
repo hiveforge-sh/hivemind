@@ -229,3 +229,54 @@ export interface FolderMapping {
   /** Entity type to assign when pattern matches */
   entityType: string;
 }
+
+/**
+ * Configuration for folder-to-type mappings.
+ * Lives inside template config - each template defines its own mappings.
+ */
+export interface FolderMappingConfig {
+  /** Array of folder-to-type mapping rules */
+  mappings: FolderMappingRule[];
+  /** Optional fallback type when no mapping matches */
+  fallbackType?: string;
+}
+
+/**
+ * Single folder-to-type mapping rule.
+ * Supports glob patterns and multiple types per folder.
+ */
+export interface FolderMappingRule {
+  /**
+   * Glob pattern to match folder paths
+   * Examples: "People/", "Notes/**", "&#42;&#42;/Characters/&#42;&#42;"
+   * Patterns are relative to vault root. Use forward slashes.
+   */
+  folder: string;
+
+  /**
+   * Entity type(s) to assign when pattern matches.
+   * Single type: file is assigned that type.
+   * Multiple types: consumer should prompt user to choose.
+   */
+  types: string[];
+}
+
+/**
+ * Result of resolving a file path to entity type(s).
+ */
+export interface ResolveResult {
+  /** Resolved entity type(s) */
+  types: string[];
+
+  /** Pattern that matched (null if fallback or no match) */
+  matchedPattern: string | null;
+
+  /**
+   * Confidence level:
+   * - 'exact': Single type from exact pattern match
+   * - 'ambiguous': Multiple types, consumer should prompt
+   * - 'fallback': Used fallback type (no pattern matched)
+   * - 'none': No match and no fallback
+   */
+  confidence: 'exact' | 'ambiguous' | 'fallback' | 'none';
+}
