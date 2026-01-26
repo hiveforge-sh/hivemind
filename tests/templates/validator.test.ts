@@ -83,9 +83,10 @@ describe('FieldConfigSchema', () => {
       expect(() => FieldConfigSchema.parse(field)).toThrow(/camelCase/);
     });
 
-    it('should reject field names with underscores', () => {
+    it('should accept field names with underscores', () => {
       const field = { name: 'my_field', type: 'string' };
-      expect(() => FieldConfigSchema.parse(field)).toThrow(/camelCase/);
+      const result = FieldConfigSchema.parse(field);
+      expect(result.name).toBe('my_field');
     });
 
     it('should reject field names with hyphens', () => {

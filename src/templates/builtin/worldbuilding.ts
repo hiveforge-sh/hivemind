@@ -24,6 +24,149 @@ export const worldbuildingTemplate: TemplateDefinition = {
   version: '1.0.0',
   description: 'Template for fictional world creation with characters, locations, events, factions, lore, and assets',
 
+  // Relationship type definitions for the knowledge graph
+  relationshipTypes: [
+    // Character relationships
+    {
+      id: 'knows',
+      displayName: 'Knows',
+      description: 'Characters who know each other',
+      sourceTypes: ['character'],
+      targetTypes: ['character'],
+      bidirectional: true,
+      reverseId: 'knows',
+    },
+    {
+      id: 'located_in',
+      displayName: 'Located In',
+      description: 'Character is located in or associated with a location',
+      sourceTypes: ['character'],
+      targetTypes: ['location'],
+      bidirectional: true,
+      reverseId: 'has_inhabitant',
+    },
+    {
+      id: 'has_inhabitant',
+      displayName: 'Has Inhabitant',
+      description: 'Location has an inhabitant character',
+      sourceTypes: ['location'],
+      targetTypes: ['character'],
+      bidirectional: false,
+    },
+
+    // Faction relationships
+    {
+      id: 'member_of',
+      displayName: 'Member Of',
+      description: 'Character is a member of a faction',
+      sourceTypes: ['character'],
+      targetTypes: ['faction'],
+      bidirectional: true,
+      reverseId: 'has_member',
+    },
+    {
+      id: 'has_member',
+      displayName: 'Has Member',
+      description: 'Faction has a member character',
+      sourceTypes: ['faction'],
+      targetTypes: ['character'],
+      bidirectional: false,
+    },
+    {
+      id: 'allied_with',
+      displayName: 'Allied With',
+      description: 'Factions that are allied',
+      sourceTypes: ['faction'],
+      targetTypes: ['faction'],
+      bidirectional: true,
+      reverseId: 'allied_with',
+    },
+    {
+      id: 'rivals_with',
+      displayName: 'Rivals With',
+      description: 'Factions that are rivals or enemies',
+      sourceTypes: ['faction'],
+      targetTypes: ['faction'],
+      bidirectional: true,
+      reverseId: 'rivals_with',
+    },
+
+    // Location relationships
+    {
+      id: 'connected_to',
+      displayName: 'Connected To',
+      description: 'Locations that are connected or adjacent',
+      sourceTypes: ['location'],
+      targetTypes: ['location'],
+      bidirectional: true,
+      reverseId: 'connected_to',
+    },
+    {
+      id: 'contains',
+      displayName: 'Contains',
+      description: 'Location contains another location (parent-child hierarchy)',
+      sourceTypes: ['location'],
+      targetTypes: ['location'],
+      bidirectional: true,
+      reverseId: 'contained_in',
+    },
+    {
+      id: 'contained_in',
+      displayName: 'Contained In',
+      description: 'Location is contained within another location',
+      sourceTypes: ['location'],
+      targetTypes: ['location'],
+      bidirectional: false,
+    },
+
+    // Event relationships
+    {
+      id: 'participated_in',
+      displayName: 'Participated In',
+      description: 'Character participated in an event',
+      sourceTypes: ['character'],
+      targetTypes: ['event'],
+      bidirectional: true,
+      reverseId: 'has_participant',
+    },
+    {
+      id: 'has_participant',
+      displayName: 'Has Participant',
+      description: 'Event has a participant character',
+      sourceTypes: ['event'],
+      targetTypes: ['character'],
+      bidirectional: false,
+    },
+    {
+      id: 'occurred_at',
+      displayName: 'Occurred At',
+      description: 'Event occurred at a location',
+      sourceTypes: ['event'],
+      targetTypes: ['location'],
+      bidirectional: true,
+      reverseId: 'hosted_event',
+    },
+    {
+      id: 'hosted_event',
+      displayName: 'Hosted Event',
+      description: 'Location hosted an event',
+      sourceTypes: ['location'],
+      targetTypes: ['event'],
+      bidirectional: false,
+    },
+
+    // Generic fallback relationship
+    {
+      id: 'related',
+      displayName: 'Related',
+      description: 'Generic relationship between any entities',
+      sourceTypes: 'any',
+      targetTypes: 'any',
+      bidirectional: true,
+      reverseId: 'related',
+    },
+  ],
+
   entityTypes: [
     // Character entity type
     {

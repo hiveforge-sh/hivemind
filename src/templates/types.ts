@@ -56,6 +56,38 @@ export interface FieldConfig {
 }
 
 /**
+ * Configuration for a relationship type between entity types.
+ *
+ * Defines valid relationships (e.g., "knows", "located_in") with
+ * source/target constraints, bidirectionality rules, and optional properties.
+ */
+export interface RelationshipTypeConfig {
+  /** Relationship identifier (snake_case, e.g., "knows", "allied_with") */
+  id: string;
+
+  /** Human-readable name (e.g., "Knows", "Allied With") */
+  displayName: string;
+
+  /** Description of this relationship type */
+  description?: string;
+
+  /** Valid source entity types, or 'any' for all */
+  sourceTypes: string[] | 'any';
+
+  /** Valid target entity types, or 'any' for all */
+  targetTypes: string[] | 'any';
+
+  /** Whether to auto-create reverse relationship */
+  bidirectional: boolean;
+
+  /** ID of reverse relationship type (required if bidirectional) */
+  reverseId?: string;
+
+  /** Optional properties stored on relationship edges */
+  properties?: FieldConfig[];
+}
+
+/**
  * Configuration for a custom entity type.
  *
  * Defines a new entity type (e.g., "character", "location") with its
@@ -102,6 +134,9 @@ export interface TemplateDefinition {
 
   /** Entity types included in this template */
   entityTypes: EntityTypeConfig[];
+
+  /** Custom relationship type definitions */
+  relationshipTypes?: RelationshipTypeConfig[];
 }
 
 /**
@@ -128,6 +163,9 @@ export interface TemplateRegistryEntry extends TemplateDefinition {
 
   /** Fast lookup map from entity type name to config */
   entityTypeMap: Map<string, EntityTypeConfig>;
+
+  /** Fast lookup map from relationship type ID to config */
+  relationshipTypeMap: Map<string, RelationshipTypeConfig>;
 }
 
 /**

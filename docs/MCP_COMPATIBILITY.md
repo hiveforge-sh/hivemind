@@ -1,259 +1,171 @@
-# MCP Compatibility: Which AI Tools Can Use Hivemind?
+# MCP Compatibility Guide
 
-## The Short Answer
+## Overview
 
-**Hivemind speaks MCP protocol** - it doesn't care which AI tool connects to it. ANY tool that implements the MCP client protocol can use it.
+Hivemind uses the **Model Context Protocol (MCP)** — an open standard created by Anthropic in November 2024. Any tool that implements MCP can connect to Hivemind.
 
-However, **not all AI tools support MCP yet** (as of Jan 2026).
+## Supported MCP Clients
 
----
+### Full Support
 
-## MCP Protocol Explained
+| Client | Status | Notes |
+|--------|--------|-------|
+| **Claude Desktop** | ✅ Native | Official Anthropic implementation |
+| **GitHub Copilot** | ✅ Native | MCP support via mcp-config.json |
+| **Claude Code** | ✅ Native | CLI tool with MCP support |
+| **MCP Inspector** | ✅ Native | Official debugging tool |
+| **Cline** | ✅ Community | VS Code extension |
 
-MCP (Model Context Protocol) is an **open standard** created by Anthropic in November 2024. Think of it like USB:
-- USB is a standard - any device can implement it
-- Once a device has a USB port, it can connect to ANY USB accessory
-- The accessory doesn't care if it's an iPhone, Android, or laptop
+### Configuration Examples
 
-**MCP is the same**:
-- MCP is a standard protocol
-- Hivemind implements MCP **server**
-- Any AI tool that implements MCP **client** can connect
-- Hivemind doesn't care which tool connects - it just speaks MCP
+#### Claude Desktop
 
----
+**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 
-## Current Tool Support (January 2026)
-
-### ✅ Full MCP Support
-
-**1. Claude Desktop (Anthropic)**
-- Native MCP support built-in
-- Official implementation by the protocol creators
-- Easy setup via config file
-
-**Setup**:
 ```json
-// ~/Library/Application Support/Claude/claude_desktop_config.json (Mac)
-// %APPDATA%/Claude/claude_desktop_config.json (Windows)
 {
   "mcpServers": {
     "hivemind": {
-      "command": "node",
-      "args": ["C:/Users/Preston/git/hivemind/dist/index.js"]
+      "command": "npx",
+      "args": ["-y", "@hiveforge/hivemind-mcp", "start"]
     }
   }
 }
 ```
 
-**Usage**: Just ask Claude to query your vault - it automatically uses the MCP tools.
+#### GitHub Copilot
 
----
+**Config**: `~/.copilot/mcp-config.json`
 
-**2. MCP Inspector (Anthropic)**
-- Official debugging/testing tool
-- Great for development
-- Command-line interface
-
-**Setup**:
-```bash
-npx @modelcontextprotocol/inspector node dist/index.js
-```
-
----
-
-### 🟡 Partial / Community Support
-
-**3. Cline (VS Code Extension)**
-- Community-built MCP client
-- Works in VS Code
-- May require additional configuration
-
-**4. LibreChat**
-- Open-source chat UI
-- MCP support via plugins
-- Self-hosted
-
----
-
-### ❓ Unknown / In Progress
-
-**5. GitHub Copilot**
-- **Current status**: No official MCP support announced (as of Jan 2026)
-- **BUT**: GitHub Copilot uses a different protocol (LSP-based)
-- **Workaround**: Could build a bridge/adapter
-- **Future**: GitHub may add MCP support (it's an open standard)
-
-**6. Google Gemini**
-- **Current status**: No official MCP support
-- **BUT**: Google has their own API system
-- **Workaround**: Could build API adapter
-- **Future**: May add MCP support if it gains traction
-
-**7. ChatGPT (OpenAI)**
-- **Current status**: Uses custom GPT Actions (not MCP)
-- **BUT**: OpenAI has their own plugin/action system
-- **Workaround**: Could expose Hivemind via HTTP API, wrap in GPT Action
-- **Future**: Unclear if OpenAI will adopt MCP
-
----
-
-## How to Use Hivemind with Different Tools
-
-### Scenario 1: Tool Has Native MCP Support ✅
-**Example**: Claude Desktop
-
-1. Install tool
-2. Add Hivemind to MCP config
-3. Start using - tool automatically discovers and uses Hivemind tools
-
-**No code changes needed in Hivemind!**
-
----
-
-### Scenario 2: Tool Has HTTP API (No MCP) 🔧
-**Example**: ChatGPT, Gemini API
-
-**Option A**: Use Hivemind's HTTP transport (Phase 2)
 ```json
 {
-  "server": {
-    "transport": "http",
-    "port": 3000
+  "mcpServers": {
+    "hivemind": {
+      "type": "local",
+      "command": "npx",
+      "args": ["-y", "@hiveforge/hivemind-mcp", "start"],
+      "tools": ["*"]
+    }
   }
 }
 ```
 
-Then build a wrapper/adapter:
+#### MCP Inspector (Debugging)
+
+```bash
+npx @modelcontextprotocol/inspector npx @hiveforge/hivemind-mcp start
 ```
-ChatGPT Plugin → HTTP Wrapper → Hivemind HTTP Server → Vault
+
+## How MCP Works
+
+Think of MCP like USB:
+- USB is a standard — any device can implement it
+- Once a device has a USB port, it can connect to ANY USB accessory
+- The accessory doesn't care if it's plugged into a phone, laptop, or car
+
+**MCP is the same**:
+- MCP is a protocol standard
+- Hivemind implements MCP **server**
+- Any tool that implements MCP **client** can connect
+- Hivemind doesn't care which tool connects — it just speaks MCP
+
+## Transport Modes
+
+Hivemind supports MCP via **stdio** transport (standard input/output):
+
+```
+AI Tool (MCP Client) ←stdio→ Hivemind (MCP Server) ←→ Your Vault
 ```
 
-**Option B**: Build custom integration
-- Expose Hivemind tools as REST API
-- Create GPT Action that calls the API
-- More work, but possible
+This is the most common mode for local tools like Claude Desktop.
 
----
+## What Hivemind Provides
 
-### Scenario 3: Tool Is CLI/Local (No MCP) 🛠️
-**Example**: Local Python script, custom CLI tool
+When connected via MCP, clients can use these tools:
 
-**Solution**: Use Hivemind as a library
+### Dynamic Entity Tools (per template)
+- `query_<type>` — Get entity by ID with relationships
+- `list_<type>` — List all entities of type
+
+### Search
+- `search_vault` — Full-text search across all content
+
+### Canon Workflow
+- `get_canon_status` — List entities by status
+- `submit_for_review` — Move draft to pending
+- `validate_consistency` — Check for issues
+
+### Asset Management
+- `store_asset` — Save asset metadata
+- `query_asset` — Get asset details
+- `list_assets` — Browse assets
+
+### ComfyUI (when enabled)
+- `store_workflow` — Save ComfyUI workflow
+- `get_workflow` — Retrieve workflow
+- `list_workflows` — Browse workflows
+- `generate_image` — Generate with context injection
+
+### Utility
+- `rebuild_index` — Force re-index
+- `get_vault_stats` — Vault statistics
+
+## Non-MCP Tools
+
+For tools that don't support MCP natively:
+
+### HTTP API Clients
+
+Hivemind can be wrapped with an HTTP adapter:
+
 ```typescript
-import { HivemindServer } from './hivemind';
+// Example: Express wrapper
+import { HivemindServer } from '@hiveforge/hivemind-mcp';
 
-const server = new HivemindServer(config);
-const result = await server.handleQueryCharacter({ id: "eddard-stark" });
+app.post('/query', async (req, res) => {
+  const result = await server.handleTool(req.body.tool, req.body.args);
+  res.json(result);
+});
 ```
 
-Or call it via stdio programmatically:
+### Python Scripts
+
+Call Hivemind programmatically:
+
 ```python
 import subprocess
 import json
 
-# Start Hivemind MCP server
-process = subprocess.Popen(['node', 'dist/index.js'], 
-                          stdin=subprocess.PIPE, 
-                          stdout=subprocess.PIPE)
+# Start Hivemind
+process = subprocess.Popen(
+    ['npx', '@hiveforge/hivemind-mcp', 'start'],
+    stdin=subprocess.PIPE,
+    stdout=subprocess.PIPE
+)
 
 # Send MCP request
 request = {
-  "jsonrpc": "2.0",
-  "method": "tools/call",
-  "params": {"name": "query_character", "arguments": {"id": "eddard-stark"}},
-  "id": 1
+    "jsonrpc": "2.0",
+    "method": "tools/call",
+    "params": {
+        "name": "query_character",
+        "arguments": {"id": "eddard-stark"}
+    },
+    "id": 1
 }
-process.stdin.write(json.dumps(request).encode())
+process.stdin.write(json.dumps(request).encode() + b'\n')
 ```
 
----
+## Why MCP?
 
-## Multi-Tool Strategy: How to Support Everything
+1. **Future-proof**: Growing ecosystem of tools adopting MCP
+2. **Standard**: No vendor lock-in
+3. **Extensible**: Easy to add new clients
+4. **Local-first**: All processing happens on your machine
 
-**Phase 1 (Now)**: Stdio MCP - works with Claude Desktop
+## Resources
 
-**Phase 2 (Weeks 5-8)**: Add HTTP/SSE transport
-```
-Hivemind MCP Server
-├── Stdio transport → Claude Desktop, MCP Inspector
-└── HTTP/SSE transport → Custom clients, web apps
-```
-
-**Phase 3 (Future)**: Build adapters for specific tools
-```
-Hivemind Core
-├── MCP Server (stdio/HTTP) → Claude, Cline, etc.
-├── REST API Wrapper → ChatGPT GPT Actions
-├── Gemini API Adapter → Google Gemini
-└── Copilot Extension → GitHub Copilot (if needed)
-```
-
----
-
-## The Good News: Protocol Convergence
-
-**MCP is gaining traction** (as of Jan 2026):
-- Open standard (not vendor lock-in)
-- Growing ecosystem of tools
-- Companies are adding MCP support
-
-**Expect more tools to adopt MCP** over time, just like how everyone eventually adopted USB.
-
----
-
-## What This Means for Hivemind
-
-**Design Decision**: We're building MCP-first because:
-1. **Future-proof**: More tools will adopt MCP
-2. **Extensible**: Easy to add HTTP wrapper later
-3. **Standard**: Better than building custom integrations for each tool
-
-**You can use Hivemind with**:
-- ✅ **Claude Desktop** (right now, Phase 1)
-- ✅ **Any MCP client** (right now, Phase 1)
-- ✅ **HTTP clients** (Phase 2, weeks 5-8)
-- 🔧 **Other tools via adapters** (Phase 3+, custom work)
-
----
-
-## Practical Example: Multi-Tool Workflow
-
-**Your Setup (Future)**:
-```
-Hivemind MCP Server (running locally)
-├─ Claude Desktop → Character queries, dialogue generation
-├─ ComfyUI (via adapter) → Image generation with character context
-├─ Custom Python Script → Batch processing, validation
-└─ Web UI (Phase 4) → Visual vault browser
-```
-
-**All tools see the SAME canonical data** from your Obsidian vault.
-
----
-
-## Bottom Line
-
-**Q: Does Copilot/Gemini/etc. use MCP the same as Claude?**
-
-**A**: 
-- **If they implement MCP**: Yes, exactly the same
-- **If they don't**: You'll need an adapter/wrapper
-- **Hivemind doesn't care**: It just speaks MCP protocol
-- **Currently**: Claude Desktop is the main MCP-native tool
-
-**Think of Hivemind as speaking "MCP language"** - any tool that learns MCP can talk to it. Some tools already speak it (Claude), others might need a translator (adapters).
-
----
-
-## Recommendation
-
-**Start with Claude Desktop** (Phase 1) because:
-- Native MCP support
-- Works out of the box
-- No adapter needed
-- Official implementation
-
-**Later** (Phase 2+): Add HTTP transport and adapters for other tools as needed.
-
-This keeps the project focused while staying extensible for future tools.
+- [MCP Specification](https://modelcontextprotocol.io/)
+- [MCP GitHub](https://github.com/modelcontextprotocol)
+- [Hivemind Documentation](https://github.com/hiveforge-sh/hivemind)

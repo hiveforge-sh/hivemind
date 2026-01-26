@@ -27,6 +27,8 @@ export class SearchEngine {
       type?: string[];
       status?: string[];
     };
+    /** Filter relationships by type (only applies when includeRelationships is true) */
+    relationshipType?: string;
   }): Promise<QueryResult> {
     const startTime = Date.now();
     const limit = options?.limit || 10;
@@ -59,7 +61,11 @@ export class SearchEngine {
     let relationships: any[] = [];
     if (options?.includeRelationships) {
       for (const node of nodes) {
-        const rels = this.db.getRelationships(node!.id);
+        let rels = this.db.getRelationships(node!.id);
+        // Filter by relationship type if specified
+        if (options.relationshipType) {
+          rels = rels.filter((rel) => rel.relationType === options.relationshipType);
+        }
         relationships.push(...rels);
       }
     }
@@ -77,8 +83,14 @@ export class SearchEngine {
 
   /**
    * Get a node with its relationships
+   *
+   * @param id - Node ID to retrieve
+   * @param options - Optional filtering options
+   * @param options.relationshipType - Filter relationships by type
    */
-  async getNodeWithRelationships(id: string): Promise<{
+  async getNodeWithRelationships(id: string, options?: {
+    relationshipType?: string;
+  }): Promise<{
     node: any;
     relationships: any[];
     relatedNodes: any[];
@@ -86,9 +98,14 @@ export class SearchEngine {
     const node = this.db.getNode(id);
     if (!node) return null;
 
-    const relationships = this.db.getRelationships(id);
-    
-    // Get related nodes
+    let relationships = this.db.getRelationships(id);
+
+    // Filter by relationship type if specified
+    if (options?.relationshipType) {
+      relationships = relationships.filter((rel) => rel.relationType === options.relationshipType);
+    }
+
+    // Get related nodes (only from filtered relationships)
     const relatedIds = new Set<string>();
     for (const rel of relationships) {
       if (rel.sourceId !== id) relatedIds.add(rel.sourceId);

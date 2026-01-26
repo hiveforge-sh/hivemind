@@ -1,6 +1,6 @@
 # Contributing to Hivemind MCP Server
 
-We welcome contributions to the Hivemind MCP Server! By contributing, you're helping to build a powerful tool for AI-assisted worldbuilding.
+We welcome contributions to the Hivemind MCP Server! By contributing, you're helping to build a powerful tool for AI-assisted knowledge management.
 
 Please take a moment to review this document to make the contribution process as smooth as possible.
 
@@ -15,7 +15,7 @@ Please take a moment to review this document to make the contribution process as
 
 ## How to Report Bugs
 
-If you find a bug, please open an issue on our [GitHub Issues page](https://github.com/your-username/hivemind-mcp/issues). When reporting a bug, please include:
+If you find a bug, please open an issue on our [GitHub Issues page](https://github.com/hiveforge-sh/hivemind/issues). When reporting a bug, please include:
 
 1.  **A clear and descriptive title.**
 2.  **Steps to reproduce the issue:** Explain how to consistently reproduce the bug.
@@ -25,12 +25,12 @@ If you find a bug, please open an issue on our [GitHub Issues page](https://gith
     *   Node.js version
     *   Operating System
     *   Any relevant configuration (`config.json`)
-    *   Hivemind MCP Server version (e.g., `0.1.0`)
+    *   Hivemind MCP Server version (check with `npx @hiveforge/hivemind-mcp --version`)
 6.  **Screenshots or logs (if applicable).**
 
 ## How to Suggest Features
 
-We'd love to hear your ideas for new features or improvements! Please open an issue on our [GitHub Issues page](https://github.com/your-username/hivemind-mcp/issues) with the following information:
+We'd love to hear your ideas for new features or improvements! Please open an issue on our [GitHub Issues page](https://github.com/hiveforge-sh/hivemind/issues) with the following information:
 
 1.  **A clear and descriptive title.**
 2.  **Problem:** Describe the problem you're trying to solve.
@@ -44,8 +44,8 @@ To set up your development environment:
 
 1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/your-username/hivemind-mcp.git
-    cd hivemind-mcp
+    git clone https://github.com/hiveforge-sh/hivemind.git
+    cd hivemind
     ```
 2.  **Install dependencies:**
     ```bash
@@ -55,7 +55,11 @@ To set up your development environment:
     ```bash
     npm run build
     ```
-4.  **Start in development mode (with auto-rebuild):**
+4.  **Run tests:**
+    ```bash
+    npm test
+    ```
+5.  **Start in development mode (with auto-rebuild):**
     ```bash
     npm run dev
     ```
@@ -71,9 +75,17 @@ npm run lint
 
 Please fix any linting errors before submitting a pull request.
 
+### Key Guidelines
+
+- Use TypeScript strict mode
+- Prefer `const` over `let`
+- Use descriptive variable and function names
+- Add JSDoc comments for public APIs
+- Keep functions focused and small
+
 ## Pull Request Process
 
-1.  **Fork the repository** and create your branch from `main`.
+1.  **Fork the repository** and create your branch from `master`.
 2.  **Make your changes.**
 3.  **Write clear, concise commit messages** following the [Conventional Commits](https://www.conventionalcommits.org/) specification:
     - `feat:` - New feature
@@ -86,7 +98,7 @@ Please fix any linting errors before submitting a pull request.
     - `build:` - Build system changes
     - `ci:` - CI configuration changes
     - `chore:` - Other changes
-    
+
     Example: `feat: add support for custom templates` or `fix: resolve memory leak in vault watcher`
 4.  **Ensure your code passes all tests and lint checks.**
     ```bash
@@ -94,7 +106,7 @@ Please fix any linting errors before submitting a pull request.
     npm run lint
     ```
 5.  **Update documentation** if your changes introduce new features or alter existing ones.
-6.  **Open a pull request** to the `main` branch of the main repository.
+6.  **Open a pull request** to the `master` branch of the main repository.
     *   Provide a clear description of your changes and why they are necessary.
     *   Reference any relevant issues.
 
@@ -102,9 +114,9 @@ Please fix any linting errors before submitting a pull request.
 
 This project uses automated semantic versioning based on commit messages:
 
-- Commits with `fix:` trigger a **patch** version bump (0.1.0 → 0.1.1)
-- Commits with `feat:` trigger a **minor** version bump (0.1.0 → 0.2.0)
-- Commits with `BREAKING CHANGE:` in the footer trigger a **major** version bump (0.1.0 → 1.0.0)
+- Commits with `fix:` trigger a **patch** version bump (2.3.0 → 2.3.1)
+- Commits with `feat:` trigger a **minor** version bump (2.3.0 → 2.4.0)
+- Commits with `BREAKING CHANGE:` in the footer trigger a **major** version bump (2.3.0 → 3.0.0)
 
 When changes are merged to the `master` branch, GitHub Actions automatically:
 1. Analyzes commits since the last release
@@ -112,11 +124,12 @@ When changes are merged to the `master` branch, GitHub Actions automatically:
 3. Generates a changelog
 4. Creates a GitHub release
 5. Publishes the package to npm
+6. Includes Obsidian plugin files in the release
 
 **Note:** The commit message hook will validate your commits locally before they are created.
 
 ## Code of Conduct
 
-Please note that this project does not yet have a formal Code of Conduct. We expect all contributors to behave respectfully and professionally. We may add a formal Code of Conduct in the future.
+This project adheres to a Code of Conduct. Please read [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) before contributing. We expect all contributors to behave respectfully and professionally.
 
 Thank you for your contributions!

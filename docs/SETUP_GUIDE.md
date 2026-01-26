@@ -1,23 +1,51 @@
-# Quick Setup Guide for Your Obsidian Vault
+# Hivemind Setup Guide
 
-## What Happened
+This guide will help you set up Hivemind MCP Server with your Obsidian vault.
 
-Your Project-Victor vault only has the default `Welcome.md` file, which doesn't have the frontmatter structure Hivemind needs. **This is totally normal!**
+## Quick Start
 
-Hivemind needs special frontmatter fields to understand your worldbuilding notes:
-- `id` - unique identifier
-- `type` - character, location, event, faction, system, asset, or lore
-- `status` - canon, draft, deprecated, etc.
+```bash
+# Install and run with npx (recommended)
+npx @hiveforge/hivemind-mcp init
 
+# Or install globally
+npm install -g @hiveforge/hivemind-mcp
+hivemind-mcp init
+```
+
+The `init` command will guide you through configuration.
+
+## Requirements
+
+- **Node.js**: Version 20 or higher
+- **Obsidian vault**: With markdown files containing YAML frontmatter
+- **MCP client**: Claude Desktop, GitHub Copilot, or another MCP-compatible tool
+
+## Frontmatter Structure
+
+Hivemind requires your markdown files to have YAML frontmatter with at least these fields:
+
+```yaml
 ---
+id: unique-identifier
+type: entity-type
+status: draft|pending|canon|non-canon|archived
+title: Display Name
+---
+```
 
-## Easy Setup (2 Steps)
+### Choosing a Template
 
-### Step 1: Add Frontmatter to Your Notes
+Hivemind includes three built-in templates:
 
-Open any note in Obsidian and add frontmatter at the top:
+| Template | Use Case | Entity Types |
+|----------|----------|--------------|
+| `worldbuilding` | Fiction, games, RPG | character, location, event, faction, lore, asset, reference |
+| `research` | Academic, knowledge | paper, citation, concept, note |
+| `people-management` | Teams, HR | person, goal, team, one_on_one |
 
-**Example Character Note** (`Characters/John Smith.md`):
+### Example: Worldbuilding Character
+
 ```markdown
 ---
 id: character-john-smith
@@ -27,8 +55,6 @@ title: John Smith
 age: 35
 gender: male
 race: human
-created: "2026-01-24"
-updated: "2026-01-24"
 ---
 
 # John Smith
@@ -38,267 +64,247 @@ John is a grizzled detective working in Neo-Tokyo...
 He knows [[Jane Doe]] and lives in [[Downtown District]].
 ```
 
-**Example Location Note** (`Locations/Downtown District.md`):
+### Example: Research Paper
+
 ```markdown
 ---
-id: location-downtown-district
-type: location
+id: paper-attention-is-all-you-need
+type: paper
 status: canon
-title: Downtown District
-region: Neo-Tokyo
-category: district
-climate: urban
-created: "2026-01-24"
-updated: "2026-01-24"
+title: "Attention Is All You Need"
+authors:
+  - Vaswani et al.
+year: 2017
+doi: "10.48550/arXiv.1706.03762"
 ---
 
-# Downtown District
+# Attention Is All You Need
 
-A bustling commercial area in the heart of Neo-Tokyo...
+The foundational transformer paper...
+
+Related concepts: [[Transformer Architecture]], [[Self-Attention]]
 ```
 
-### Step 2: Restart Hivemind
+### Example: People Management Person
+
+```markdown
+---
+id: person-sarah-chen
+type: person
+status: canon
+title: Sarah Chen
+role: Senior Engineer
+department: Platform
+---
+
+# Sarah Chen
+
+Reports to [[Alex Rivera]]. Member of [[Platform Team]].
+```
+
+## Configuration
+
+### Option 1: Interactive Setup (Recommended)
 
 ```bash
-node dist/index.js
+npx @hiveforge/hivemind-mcp init
 ```
 
-That's it! Hivemind will now:
-- ✅ Scan your vault
-- ✅ Parse frontmatter and wikilinks
-- ✅ Build knowledge graph from `[[wikilinks]]`
-- ✅ Index everything in SQLite + FTS5
-- ✅ Make it available to Claude via MCP
+### Option 2: Manual Configuration
 
----
+Create a `config.json` in your vault root:
 
-## Using It in Claude Desktop
+```json
+{
+  "vault": {
+    "path": "/path/to/your/obsidian/vault",
+    "watchForChanges": true,
+    "debounceMs": 100
+  },
+  "server": {
+    "transport": "stdio"
+  },
+  "template": {
+    "activeTemplate": "worldbuilding"
+  },
+  "indexing": {
+    "strategy": "incremental",
+    "batchSize": 100,
+    "enableVectorSearch": false,
+    "enableFullTextSearch": true
+  }
+}
+```
 
-### 1. Configure Claude Desktop
+### Option 3: Command Line
 
-Edit `%APPDATA%\Claude\claude_desktop_config.json`:
+```bash
+# Start with vault path directly
+npx @hiveforge/hivemind-mcp --vault /path/to/vault
+
+# Use current directory as vault
+npx @hiveforge/hivemind-mcp --vault .
+```
+
+## MCP Client Configuration
+
+### Claude Desktop
+
+**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 
 ```json
 {
   "mcpServers": {
     "hivemind": {
-      "command": "node",
-      "args": ["C:\\Users\\Preston\\git\\hivemind\\dist\\index.js"]
+      "command": "npx",
+      "args": ["-y", "@hiveforge/hivemind-mcp", "start"]
     }
   }
 }
 ```
 
-### 2. Restart Claude Desktop
+With vault override:
 
-Close and reopen Claude Desktop completely.
-
-### 3. Test It
-
-In Claude, type:
-
-```
-Tell me about John Smith from my worldbuilding vault
-```
-
-Claude will:
-1. Call `query_character("john-smith")`
-2. Get full character data + relationships
-3. Reply with a natural response using your canonical lore!
-
----
-
-## Templates for Common Note Types
-
-### Character Template
-```markdown
----
-id: character-[name-lowercase-dashes]
-type: character
-status: canon
-title: [Character Name]
-age: [number]
-gender: [male/female/other]
-race: [human/elf/etc]
-created: "YYYY-MM-DD"
-updated: "YYYY-MM-DD"
----
-
-# [Character Name]
-
-## Description
-[Physical appearance and personality]
-
-## Background
-[History and backstory]
-
-## Relationships
-- [[Other Character]] - relationship type
-- Lives in [[Location Name]]
+```json
+{
+  "mcpServers": {
+    "hivemind": {
+      "command": "npx",
+      "args": ["-y", "@hiveforge/hivemind-mcp", "--vault", "/path/to/vault"]
+    }
+  }
+}
 ```
 
-### Location Template
-```markdown
----
-id: location-[name-lowercase-dashes]
-type: location
-status: canon
-title: [Location Name]
-region: [Region/Kingdom]
-category: [city/castle/forest/etc]
-climate: [hot/cold/temperate]
-created: "YYYY-MM-DD"
-updated: "YYYY-MM-DD"
----
+### GitHub Copilot
 
-# [Location Name]
+**Config**: `~/.copilot/mcp-config.json`
 
-## Geography
-[Physical description]
-
-## Notable Features
-[Landmarks, districts, etc]
-
-## Inhabitants
-- [[Character 1]]
-- [[Character 2]]
+```json
+{
+  "mcpServers": {
+    "hivemind": {
+      "type": "local",
+      "command": "npx",
+      "args": ["-y", "@hiveforge/hivemind-mcp", "start"],
+      "tools": ["*"]
+    }
+  }
+}
 ```
 
-### Event Template
-```markdown
----
-id: event-[name-lowercase-dashes]
-type: event
-status: canon
-title: [Event Name]
-date: [in-universe date]
-location: [[Location Name]]
-created: "YYYY-MM-DD"
-updated: "YYYY-MM-DD"
----
+## Verifying Setup
 
-# [Event Name]
+After configuration, test the connection:
 
-## What Happened
-[Description of the event]
+1. **Start the server** (if not auto-started):
+   ```bash
+   npx @hiveforge/hivemind-mcp start
+   ```
 
-## Participants
-- [[Character 1]]
-- [[Character 2]]
+2. **Ask your AI assistant** to query your vault:
+   - "What characters are in my vault?"
+   - "Tell me about [character name]"
+   - "Search my vault for [topic]"
 
-## Consequences
-[What changed as a result]
-```
+3. **Check server logs** for any errors
 
----
+## Knowledge Graph Features
 
-## What Will Work
+Hivemind automatically builds a knowledge graph from your wikilinks:
 
-Once you add frontmatter to your notes:
+- `[[John]]` in Jane's note creates a "knows" relationship
+- Relationships are bidirectional by default
+- Templates define valid relationship types
 
-### Search Everything
-```
-User: "Search my vault for notes about magic"
-Claude: [calls search_vault with query="magic"]
-        Returns all notes containing "magic" with BM25 ranking
-```
+### Relationship Types by Template
 
-### Query Characters
-```
-User: "Tell me about the main character"
-Claude: [calls query_character]
-        Returns full profile + relationships from graph
-```
+**Worldbuilding**:
+- `knows` - character ↔ character
+- `located_in` / `has_inhabitant` - character ↔ location
+- `member_of` / `has_member` - character ↔ faction
+- `allied_with` - faction ↔ faction
 
-### Query Locations
-```
-User: "Where does the story take place?"
-Claude: [calls query_location]
-        Returns location data + connected characters
-```
+**Research**:
+- `cites` / `cited_by` - paper ↔ citation
+- `defines` - paper → concept
+- `about` - note → any
 
-### Knowledge Graph Features
-- Wikilinks become relationships: `[[John]]` in Jane's note creates "knows" edge
-- Bidirectional: John knows Jane, Jane knows John
-- Location tracking: `lives in [[City]]` creates "located_in" edge
-- Auto-inference: character→character = "knows", character→location = "located_in"
+**People Management**:
+- `reports_to` / `manages` - person hierarchy
+- `member_of` / `has_member` - person ↔ team
+- `owns_goal` - person → goal
 
----
-
-## Testing Without Modifying Your Vault
-
-If you want to test first without changing your actual vault:
-
-1. **Use the sample vault** (already configured):
-```bash
-# Edit config.json back to:
-"path": "./sample-vault"
-
-# Start server
-node dist/index.js
-```
-
-2. **Create a test vault** elsewhere:
-```bash
-mkdir test-vault
-cd test-vault
-
-# Create a character
-mkdir Characters
-cat > Characters/Test.md << 'EOF'
----
-id: character-test
-type: character
-status: canon
-title: Test Character
----
-# Test Character
-A test character who knows [[Other Character]].
-EOF
-
-# Point config.json to test-vault
-```
-
----
-
-## Common Issues
-
-### "Frontmatter validation error"
-**Problem**: Missing `id` or `type` field  
-**Solution**: Add both to frontmatter (see templates above)
-
-### "Expected string, received date"
-**Problem**: Date fields auto-converted by gray-matter  
-**Solution**: Wrap dates in quotes: `created: "2026-01-24"` not `created: 2026-01-24`
+## Troubleshooting
 
 ### "No notes found"
-**Problem**: Vault path incorrect or no `.md` files  
-**Solution**: Check vault path in `config.json`, verify files exist
 
-### Server starts but Claude can't see it
-**Problem**: Claude Desktop config incorrect  
-**Solution**: 
-1. Verify config path: `%APPDATA%\Claude\claude_desktop_config.json`
-2. Use absolute paths with escaped backslashes
-3. Restart Claude Desktop COMPLETELY (not just reload)
+**Cause**: Vault path incorrect or no `.md` files with valid frontmatter
 
+**Solution**:
+1. Verify vault path in config
+2. Check that files have `id`, `type`, and `status` in frontmatter
+3. Run `npx @hiveforge/hivemind-mcp validate`
+
+### "Frontmatter validation error"
+
+**Cause**: Missing required fields or invalid values
+
+**Solution**: Ensure frontmatter includes:
+```yaml
 ---
+id: unique-id
+type: valid-entity-type
+status: draft
+---
+```
+
+### "Date format error"
+
+**Cause**: YAML parsing dates incorrectly
+
+**Solution**: Wrap dates in quotes:
+```yaml
+created: "2026-01-25"  # Correct
+created: 2026-01-25    # May cause issues
+```
+
+### "Server won't connect"
+
+**Cause**: Configuration path or permissions issue
+
+**Solution**:
+1. Use absolute paths in config
+2. Escape backslashes on Windows: `"C:\\Users\\..."`
+3. Restart Claude Desktop completely after config changes
+
+## Sample Vaults
+
+Copy a sample vault to get started quickly:
+
+```bash
+# Worldbuilding
+cp -r node_modules/@hiveforge/hivemind-mcp/samples/worldbuilding ~/my-world
+
+# Research
+cp -r node_modules/@hiveforge/hivemind-mcp/samples/research ~/my-research
+
+# People Management
+cp -r node_modules/@hiveforge/hivemind-mcp/samples/people-management ~/my-team
+```
+
+Or browse the samples on GitHub: https://github.com/hiveforge-sh/hivemind/tree/master/samples
 
 ## Next Steps
 
-1. **Add frontmatter to 1-2 notes** (use templates above)
-2. **Restart Hivemind server**
-3. **Configure Claude Desktop** (edit config JSON)
-4. **Test with Claude**: "Tell me about [character name]"
+1. **Add frontmatter** to your existing notes
+2. **Use wikilinks** to create relationships
+3. **Query via AI** - ask about characters, locations, papers, etc.
+4. **Enable ComfyUI** for AI image generation (see [ComfyUI Integration](COMFYUI_INTEGRATION.md))
 
-Once working, you can gradually add frontmatter to more notes in your vault. The server watches for changes automatically!
+## Support
 
----
-
-## Current Vault Status
-
-**Your vault**: `F:\Heimdall-Dropbox\Documents\ObsidianVaults\Project-Victor\Project-Victor`  
-**Files found**: 1 (`Welcome.md`)  
-**Files with valid frontmatter**: 0  
-
-**To get started**: Create a note with proper frontmatter (see templates above) and restart the server!
+- **Documentation**: https://github.com/hiveforge-sh/hivemind
+- **Issues**: https://github.com/hiveforge-sh/hivemind/issues
+- **npm Package**: https://www.npmjs.com/package/@hiveforge/hivemind-mcp

@@ -1,5 +1,6 @@
 import type { VaultNote, KnowledgeGraph, GraphEdge } from '../types/index.js';
 import { HivemindDatabase } from './database.js';
+import { templateRegistry } from '../templates/registry.js';
 
 export class GraphBuilder {
   private db: HivemindDatabase;
@@ -77,49 +78,77 @@ export class GraphBuilder {
   }
 
   /**
-   * Infer relationship type from note types
+   * Infer relationship type from note types using template configuration.
+   *
+   * Queries the template registry for valid relationships between the
+   * source and target entity types. Falls back to 'related' if no
+   * specific relationship is defined.
    */
   private inferRelationType(source: VaultNote, target: VaultNote): string {
-    const sourceType = source.frontmatter.type;
-    const targetType = target.frontmatter.type;
+    const sourceType = source.frontmatter.type as string | undefined;
+    const targetType = target.frontmatter.type as string | undefined;
 
-    // Character → Character
-    if (sourceType === 'character' && targetType === 'character') {
-      return 'knows';
+    // If either type is undefined, use default
+    if (!sourceType || !targetType) {
+      return 'related';
     }
 
-    // Character → Location
-    if (sourceType === 'character' && targetType === 'location') {
-      return 'located_in';
+    // Try to get active template's valid relationships
+    try {
+      const validRels = templateRegistry.getValidRelationships(sourceType, targetType);
+
+      // Return first valid relationship that isn't the generic 'related'
+      // (prefer specific relationships over generic fallback)
+      const specificRel = validRels.find((rel) => rel.id !== 'related');
+      if (specificRel) {
+        return specificRel.id;
+      }
+
+      // If only 'related' is available, use it
+      if (validRels.length > 0) {
+        return validRels[0].id;
+      }
+    } catch {
+      // No active template, fall through to default
     }
 
-    // Location → Character
-    if (sourceType === 'location' && targetType === 'character') {
-      return 'has_inhabitant';
-    }
-
-    // Location → Location
-    if (sourceType === 'location' && targetType === 'location') {
-      return 'connected_to';
-    }
-
-    // Default
+    // Default fallback
     return 'related';
   }
 
   /**
-   * Check if a relationship type should be bidirectional
+   * Check if a relationship type should be bidirectional using template config.
    */
   private isBidirectional(relType: string): boolean {
-    const bidirectionalTypes = ['knows', 'connected_to', 'related'];
-    return bidirectionalTypes.includes(relType);
+    try {
+      const relConfig = templateRegistry.getRelationshipType(relType);
+      if (relConfig) {
+        return relConfig.bidirectional;
+      }
+    } catch {
+      // No active template, fall through to defaults
+    }
+
+    // Default bidirectional types for backwards compatibility
+    const defaultBidirectional = ['knows', 'connected_to', 'related'];
+    return defaultBidirectional.includes(relType);
   }
 
   /**
-   * Get reverse relationship type
+   * Get reverse relationship type using template config.
    */
   private getReverseRelationType(relType: string): string {
-    const reverseMap: Record<string, string> = {
+    try {
+      const relConfig = templateRegistry.getRelationshipType(relType);
+      if (relConfig && relConfig.reverseId) {
+        return relConfig.reverseId;
+      }
+    } catch {
+      // No active template, fall through to defaults
+    }
+
+    // Default reverse mappings for backwards compatibility
+    const defaultReverseMap: Record<string, string> = {
       'knows': 'knows',
       'connected_to': 'connected_to',
       'related': 'related',
@@ -127,7 +156,7 @@ export class GraphBuilder {
       'has_inhabitant': 'located_in',
     };
 
-    return reverseMap[relType] || 'related';
+    return defaultReverseMap[relType] || 'related';
   }
 
   /**

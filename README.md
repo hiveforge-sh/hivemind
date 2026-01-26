@@ -12,20 +12,28 @@
 [![GitHub issues](https://img.shields.io/github/issues/hiveforge-sh/hivemind)](https://github.com/hiveforge-sh/hivemind/issues)
 [![GitHub stars](https://img.shields.io/github/stars/hiveforge-sh/hivemind)](https://github.com/hiveforge-sh/hivemind/stargazers)
 
-An MCP (Model Context Protocol) server for Obsidian worldbuilding vaults that provides AI tools with consistent, canonical context from your fictional worlds.
+A domain-agnostic MCP (Model Context Protocol) server for Obsidian vaults that provides AI tools with consistent, structured context from your knowledge base.
 
 ## What is Hivemind?
 
-Hivemind bridges your Obsidian vault (where you maintain your worldbuilding canon) and AI tools (Claude, ComfyUI, etc.) via the Model Context Protocol. It ensures AI-generated content stays consistent with your established characters, locations, lore, and approved assets.
+Hivemind bridges your Obsidian vault and AI tools (Claude, ComfyUI, etc.) via the Model Context Protocol. With pluggable templates, it supports multiple domains out of the box:
+
+- **Worldbuilding** — Characters, Locations, Events, Factions, Lore, Assets
+- **Research** — Papers, Citations, Concepts, Notes
+- **People Management** — People, Goals, Teams, 1:1 Meetings
+
+Or define your own custom entity types via `config.json` — no code required.
 
 ## Features
 
-- 🔍 **HybridRAG Search**: Combines vector, graph, and keyword search for accurate context retrieval
-- 📚 **Obsidian Native**: Works with standard markdown, YAML frontmatter, and wikilinks
-- 🎨 **Asset Provenance**: Track AI-generated images and their generation settings
-- 🔐 **Local-First**: Your data stays on your machine, with optional cloud deployment
-- ✅ **Canon Management**: Draft → Pending → Canon approval workflow
-- 🚀 **High Performance**: <300ms query latency, supports 1000+ note vaults
+- **Pluggable Templates**: Built-in templates for worldbuilding, research, and people management — or define your own
+- **HybridRAG Search**: Combines vector, graph, and keyword search for accurate context retrieval
+- **Obsidian Native**: Works with standard markdown, YAML frontmatter, and wikilinks
+- **Custom Relationships**: Define relationship types per template with bidirectionality and validation
+- **Asset Provenance**: Track AI-generated images and their generation settings
+- **Local-First**: Your data stays on your machine, with optional cloud deployment
+- **Canon Management**: Draft → Pending → Canon approval workflow
+- **High Performance**: <300ms query latency, supports 1000+ note vaults
 
 ## Quick Start
 
@@ -110,6 +118,9 @@ If you prefer to configure manually, create a `config.json`:
   "server": {
     "transport": "stdio"
   },
+  "template": {
+    "activeTemplate": "worldbuilding"
+  },
   "indexing": {
     "strategy": "incremental",
     "batchSize": 100,
@@ -118,6 +129,53 @@ If you prefer to configure manually, create a `config.json`:
   }
 }
 ```
+
+### Choosing a Template
+
+Set `activeTemplate` to one of the built-in templates:
+
+| Template | Use Case | Entity Types |
+|----------|----------|--------------|
+| `worldbuilding` | Fiction writers, game masters | Characters, Locations, Events, Factions, Lore, Assets, References |
+| `research` | Academics, knowledge workers | Papers, Citations, Concepts, Notes |
+| `people-management` | Managers, team leads | People, Goals, Teams, 1:1 Meetings |
+
+### Custom Templates
+
+Define custom entity types directly in your `config.json`:
+
+```json
+{
+  "template": {
+    "activeTemplate": "my-template",
+    "templates": [{
+      "id": "my-template",
+      "name": "My Custom Template",
+      "version": "1.0.0",
+      "entityTypes": [{
+        "name": "project",
+        "displayName": "Project",
+        "pluralName": "Projects",
+        "fields": [
+          { "name": "title", "type": "string", "required": true },
+          { "name": "deadline", "type": "date" },
+          { "name": "priority", "type": "enum", "enumValues": ["low", "medium", "high"] }
+        ]
+      }],
+      "relationshipTypes": [{
+        "id": "depends_on",
+        "displayName": "Depends On",
+        "sourceTypes": ["project"],
+        "targetTypes": ["project"],
+        "bidirectional": true,
+        "reverseId": "blocks"
+      }]
+    }]
+  }
+}
+```
+
+See [samples/](samples/) for complete example vaults for each template.
 
 ## Architecture
 
@@ -140,7 +198,19 @@ Obsidian Vault → File Watcher → Markdown Parser → Knowledge Graph
 
 ## Development Status
 
-**Current**: Milestone 2.0 Template System 🚧 | Phases 6-8 Complete ✅
+**Current**: v2.0 Template System Complete ✅
+
+### v2.0 — Template System (Complete)
+
+Hivemind is now domain-agnostic with pluggable templates:
+
+- [x] Template registry with config-driven entity definitions
+- [x] Dynamic Zod schema generation from config
+- [x] Auto-generated MCP tools per entity type (`query_<type>`, `list_<type>`)
+- [x] Worldbuilding template extraction (backwards compatible)
+- [x] Custom relationship types per template with validation
+- [x] Built-in templates: worldbuilding, research, people-management
+- [x] Sample vaults for each template
 
 ### v1.0 — MVP + Core Features (Shipped)
 
@@ -152,19 +222,11 @@ Obsidian Vault → File Watcher → Markdown Parser → Knowledge Graph
 - [x] Obsidian plugin with image generation
 - [x] CI/CD with semantic-release and CodeQL scanning
 
-### v2.0 — Template System (In Progress)
+### Coming Soon
 
-Make Hivemind domain-agnostic with pluggable templates:
-
-- [x] Template registry with config-driven entity definitions
-- [x] Dynamic Zod schema generation from config
-- [x] Auto-generated MCP tools per entity type (`query_<type>`, `list_<type>`)
-- [x] Worldbuilding template extraction (backwards compatible)
-- [ ] Custom relationship types per template
-- [ ] Built-in templates: research, people-management
-
-**Also pending:**
 - [ ] Obsidian community plugin submission
+- [ ] Timeline queries with date range filtering
+- [ ] First-run setup wizard
 
 ## MCP Tools
 
@@ -177,7 +239,13 @@ Tools are automatically generated for each entity type defined in the active tem
 | `query_<type>` | Get entity by ID/name with relationships and content |
 | `list_<type>` | List all entities of type with optional filters |
 
-**Worldbuilding template** generates: `query_character`, `list_character`, `query_location`, `list_location`, `query_event`, `list_event`, `query_faction`, `list_faction`, `query_lore`, `list_lore`, `query_asset`, `list_asset`, `query_reference`, `list_reference`
+**Built-in template tools:**
+
+| Template | Generated Tools |
+|----------|-----------------|
+| `worldbuilding` | `query_character`, `query_location`, `query_event`, `query_faction`, `query_lore`, `query_asset`, `query_reference` + list variants |
+| `research` | `query_paper`, `query_citation`, `query_concept`, `query_note` + list variants |
+| `people-management` | `query_person`, `query_goal`, `query_team`, `query_one_on_one` + list variants |
 
 ### Search
 | Tool | Description |
@@ -214,10 +282,12 @@ Tools are automatically generated for each entity type defined in the active tem
 
 ## Documentation
 
-- [Setup Guide](docs/SETUP_GUIDE.md)
-- [ComfyUI Integration](docs/COMFYUI_INTEGRATION.md)
-- [Obsidian Plugin Workflow](docs/OBSIDIAN_PLUGIN_WORKFLOW.md)
-- [Vault Templates](sample-vault/Templates/README.md)
+- [Setup Guide](docs/SETUP_GUIDE.md) — Getting started with Hivemind
+- [Vault Migration Guide](docs/VAULT_MIGRATION_GUIDE.md) — Migrating existing vaults
+- [MCP Compatibility](docs/MCP_COMPATIBILITY.md) — Supported AI clients
+- [ComfyUI Integration](docs/COMFYUI_INTEGRATION.md) — AI image generation
+- [Obsidian Plugin Workflow](docs/OBSIDIAN_PLUGIN_WORKFLOW.md) — Plugin development
+- [Sample Vaults](samples/README.md) — Example vaults for each built-in template
 
 ## License
 

@@ -173,20 +173,21 @@ export function parseListToolName(toolName: string): string | null {
  * Format an entity with its relationships for response.
  *
  * Generic formatter that works with any entity type.
+ * Groups relationships by relationship type (e.g., "Knows", "Member Of").
  *
  * @param entityType - Entity type configuration
- * @param result - Query result with node and relatedNodes
+ * @param result - Query result with node, relationships, and relatedNodes
  * @param includeContent - Whether to include content body
  * @param contentLimit - Maximum content length
  * @returns Formatted markdown response
  */
 export function formatEntityWithRelationships(
   entityType: EntityTypeConfig,
-  result: { node: any; relatedNodes: any[] },
+  result: { node: any; relationships?: any[]; relatedNodes: any[] },
   includeContent = true,
   contentLimit = 500
 ): string {
-  const { node, relatedNodes } = result;
+  const { node, relationships, relatedNodes } = result;
   const props = node.properties;
   const displayName = entityType.displayName;
 
@@ -228,11 +229,50 @@ export function formatEntityWithRelationships(
     }
   }
 
-  // Relationships (from graph)
-  if (relatedNodes.length > 0) {
+  // Relationships (from graph) - group by relationship type
+  if (relationships && relationships.length > 0 && relatedNodes.length > 0) {
     response += `## Relationships\n`;
 
-    // Group by type
+    // Build a map from node ID to node for quick lookup
+    const nodeMap = new Map<string, any>();
+    nodeMap.set(node.id, node);
+    for (const related of relatedNodes) {
+      nodeMap.set(related.id, related);
+    }
+
+    // Group relationships by relationship type
+    const byRelType: Record<string, string[]> = {};
+    for (const rel of relationships) {
+      const relType = rel.relationType || 'related';
+      // Format relationship type for display (snake_case to Title Case)
+      const typeLabel = relType
+        .split('_')
+        .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+
+      if (!byRelType[typeLabel]) {
+        byRelType[typeLabel] = [];
+      }
+
+      // Determine which node is the "other" node in the relationship
+      const otherId = rel.sourceId === node.id ? rel.targetId : rel.sourceId;
+      const otherNode = nodeMap.get(otherId);
+      if (otherNode) {
+        byRelType[typeLabel].push(otherNode.title);
+      }
+    }
+
+    // Output grouped relationships
+    for (const [typeLabel, titles] of Object.entries(byRelType)) {
+      // Deduplicate titles
+      const uniqueTitles = [...new Set(titles)];
+      response += `**${typeLabel}**: ${uniqueTitles.join(', ')}\n`;
+    }
+    response += `\n`;
+  } else if (relatedNodes.length > 0) {
+    // Fallback: group by entity type if no relationship data available
+    response += `## Relationships\n`;
+
     const byType: Record<string, any[]> = {};
     for (const related of relatedNodes) {
       const type = related.type || 'unknown';

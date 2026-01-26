@@ -9,6 +9,7 @@ import type {
   TemplateDefinition,
   TemplateRegistryEntry,
   EntityTypeConfig,
+  RelationshipTypeConfig,
 } from './types.js';
 
 /**
@@ -54,10 +55,24 @@ export class TemplateRegistry {
       entityTypeMap.set(entityType.name, entityType);
     }
 
+    // Create relationship type lookup map for O(1) access
+    const relationshipTypeMap = new Map<string, RelationshipTypeConfig>();
+    if (template.relationshipTypes) {
+      for (const relType of template.relationshipTypes) {
+        if (relationshipTypeMap.has(relType.id)) {
+          throw new Error(
+            `Duplicate relationship type "${relType.id}" in template "${template.id}"`
+          );
+        }
+        relationshipTypeMap.set(relType.id, relType);
+      }
+    }
+
     const entry: TemplateRegistryEntry = {
       ...template,
       source,
       entityTypeMap,
+      relationshipTypeMap,
     };
 
     this.templates.set(template.id, entry);
@@ -149,6 +164,65 @@ export class TemplateRegistry {
       throw new Error('Cannot get entity types: no active template');
     }
     return active.entityTypes;
+  }
+
+  /**
+   * Gets a relationship type config from the active template.
+   *
+   * O(1) lookup using the relationship type map.
+   *
+   * @param id - Relationship type ID to retrieve
+   * @returns Relationship type config if found, undefined otherwise
+   * @throws {Error} If no template is active
+   */
+  getRelationshipType(id: string): RelationshipTypeConfig | undefined {
+    const active = this.getActive();
+    if (!active) {
+      throw new Error('Cannot get relationship type: no active template');
+    }
+    return active.relationshipTypeMap.get(id);
+  }
+
+  /**
+   * Gets all relationship type configs from the active template.
+   *
+   * @returns Array of relationship type configs
+   * @throws {Error} If no template is active
+   */
+  getRelationshipTypes(): RelationshipTypeConfig[] {
+    const active = this.getActive();
+    if (!active) {
+      throw new Error('Cannot get relationship types: no active template');
+    }
+    return active.relationshipTypes || [];
+  }
+
+  /**
+   * Gets valid relationship types for a source-target entity type pair.
+   *
+   * Returns all relationship types where:
+   * - sourceTypes includes the source entity type (or is 'any')
+   * - targetTypes includes the target entity type (or is 'any')
+   *
+   * @param sourceType - Source entity type name
+   * @param targetType - Target entity type name
+   * @returns Array of valid relationship type configs
+   * @throws {Error} If no template is active
+   */
+  getValidRelationships(sourceType: string, targetType: string): RelationshipTypeConfig[] {
+    const active = this.getActive();
+    if (!active) {
+      throw new Error('Cannot get valid relationships: no active template');
+    }
+
+    const relationshipTypes = active.relationshipTypes || [];
+    return relationshipTypes.filter((rel) => {
+      const sourceValid =
+        rel.sourceTypes === 'any' || rel.sourceTypes.includes(sourceType);
+      const targetValid =
+        rel.targetTypes === 'any' || rel.targetTypes.includes(targetType);
+      return sourceValid && targetValid;
+    });
   }
 
   /**

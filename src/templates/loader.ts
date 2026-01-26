@@ -17,6 +17,8 @@ import { validateTemplateConfig } from './validator.js';
 import { templateRegistry } from './registry.js';
 import { schemaFactory } from './schema-factory.js';
 import { worldbuildingTemplate } from './builtin/worldbuilding.js';
+import { researchTemplate } from './builtin/research.js';
+import { peopleManagementTemplate } from './builtin/people-management.js';
 
 /**
  * Find the config.json file.
@@ -96,14 +98,18 @@ export function loadTemplateConfig(configPath?: string): TemplateConfig {
 /**
  * Register all built-in templates.
  *
- * Currently includes:
+ * Includes:
  * - worldbuilding: Characters, locations, events, factions, lore, assets
+ * - research: Papers, citations, concepts, notes
+ * - people-management: People, goals, teams, 1:1 meetings
  *
  * This function should be called before loading user templates to ensure
  * built-in templates can be referenced by ID.
  */
 export function registerBuiltinTemplates(): void {
   templateRegistry.register(worldbuildingTemplate, 'builtin');
+  templateRegistry.register(researchTemplate, 'builtin');
+  templateRegistry.register(peopleManagementTemplate, 'builtin');
 }
 
 /**

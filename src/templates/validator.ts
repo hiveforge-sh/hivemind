@@ -9,6 +9,7 @@ import { z } from 'zod';
 import type {
   FieldConfig,
   EntityTypeConfig,
+  RelationshipTypeConfig,
   TemplateDefinition,
   TemplateConfig,
 } from './types.js';
@@ -28,8 +29,8 @@ export const FieldConfigSchema = z
       .string()
       .min(1, 'Field name cannot be empty')
       .regex(
-        /^[a-z][a-zA-Z0-9]*$/,
-        'Field name must be camelCase alphanumeric (e.g., "age", "statusCode")'
+        /^[a-z][a-zA-Z0-9_]*$/,
+        'Field name must be camelCase or snake_case alphanumeric (e.g., "age", "statusCode", "event_type")'
       ),
     type: z.enum(['string', 'number', 'boolean', 'enum', 'array', 'date', 'record'], {
       message: 'Field type must be one of: string, number, boolean, enum, array, date, record',
@@ -69,8 +70,8 @@ export const EntityTypeConfigSchema = z.object({
     .string()
     .min(1, 'Entity type name cannot be empty')
     .regex(
-      /^[a-z][a-z0-9]*$/,
-      'Entity type name must be lowercase alphanumeric (e.g., "character", "location")'
+      /^[a-z][a-z0-9_]*$/,
+      'Entity type name must be lowercase alphanumeric with underscores (e.g., "character", "one_on_one")'
     ),
   displayName: z.string().min(1, 'Display name cannot be empty'),
   pluralName: z.string().min(1, 'Plural name cannot be empty'),
@@ -78,6 +79,45 @@ export const EntityTypeConfigSchema = z.object({
   fields: z.array(FieldConfigSchema),
   icon: z.string().optional(),
 }) satisfies z.ZodType<EntityTypeConfig>;
+
+/**
+ * Zod schema for relationship type configuration validation.
+ *
+ * Validates:
+ * - Relationship IDs are snake_case
+ * - Source/target types are valid
+ * - Bidirectional relationships specify reverseId
+ */
+export const RelationshipTypeConfigSchema = z
+  .object({
+    id: z
+      .string()
+      .min(1, 'Relationship ID cannot be empty')
+      .regex(
+        /^[a-z][a-z0-9_]*$/,
+        'Relationship ID must be snake_case (e.g., "knows", "allied_with")'
+      ),
+    displayName: z.string().min(1, 'Display name cannot be empty'),
+    description: z.string().optional(),
+    sourceTypes: z.union([
+      z.array(z.string()).min(1, 'sourceTypes must have at least one type'),
+      z.literal('any'),
+    ]),
+    targetTypes: z.union([
+      z.array(z.string()).min(1, 'targetTypes must have at least one type'),
+      z.literal('any'),
+    ]),
+    bidirectional: z.boolean().default(false),
+    reverseId: z.string().optional(),
+    properties: z.array(FieldConfigSchema).optional(),
+  })
+  .refine(
+    (rel) => !rel.bidirectional || rel.reverseId,
+    {
+      message: 'Bidirectional relationships must specify reverseId',
+      path: ['reverseId'],
+    }
+  ) satisfies z.ZodType<RelationshipTypeConfig>;
 
 /**
  * Zod schema for template definition validation.
@@ -103,6 +143,7 @@ export const TemplateDefinitionSchema = z.object({
   entityTypes: z
     .array(EntityTypeConfigSchema)
     .min(1, 'Template must define at least one entity type'),
+  relationshipTypes: z.array(RelationshipTypeConfigSchema).optional(),
 }) satisfies z.ZodType<TemplateDefinition>;
 
 /**
