@@ -10,29 +10,29 @@
 
 **Milestone**: 3.0 (Developer Experience)
 **Phase**: 15 of 16 (Fix CLI)
-**Plan**: 1 of 3 in current phase
+**Plan**: 2 of 3 in current phase
 **Status**: In progress
-**Last activity**: 2026-01-27 - Completed 15-01-PLAN.md
+**Last activity**: 2026-01-27 - Completed 15-02-PLAN.md
 
 ## Progress
 
 ```
 Milestone 1.0: MVP + Core      [##########] 100% SHIPPED 2026-01-25
 Milestone 2.0: Template System [##########] 100% SHIPPED 2026-01-26
-Milestone 3.0: Developer Experience [#######...] 70%
+Milestone 3.0: Developer Experience [########..] 80%
   Phase 12: Setup Wizard       [##########] COMPLETE 2026-01-26
   Phase 13: Folder Mapping     [##########] COMPLETE 2026-01-27
   Phase 14: Validate CLI       [##########] COMPLETE 2026-01-27
-  Phase 15: Fix CLI            [###.......] 1/3 plans
+  Phase 15: Fix CLI            [######....] 2/3 plans
   Phase 16: Obsidian Commands  [..........] Not started
 ```
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 12 (v3.0)
-- Average duration: 5.0min
-- Total execution time: 61min
+- Total plans completed: 13 (v3.0)
+- Average duration: 5.1min
+- Total execution time: 66min
 
 **By Phase:**
 
@@ -41,7 +41,7 @@ Milestone 3.0: Developer Experience [#######...] 70%
 | 12 | 4 | 20min | 5min |
 | 13 | 4 | 15min | 3.8min |
 | 14 | 3 | 22min | 7.3min |
-| 15 | 1 | 4min | 4min |
+| 15 | 2 | 9min | 4.5min |
 | 16 | 0 | - | - |
 
 *Updated after each plan completion*
@@ -94,6 +94,9 @@ Recent decisions affecting current work:
 - [15-01]: Reuse ValidationScanner for file discovery (no duplication)
 - [15-01]: FileFixer generates operations without modifying files
 - [15-01]: Preserve existing frontmatter values when adding missing fields
+- [15-02]: Atomic writes via temp file + rename pattern
+- [15-02]: Batch processing continues on individual failures
+- [15-02]: Dry-run shows field names only (not values) per CONTEXT.md
 
 ### Research Highlights
 
@@ -115,9 +118,9 @@ None currently blocking.
 ## Session Continuity
 
 Last session: 2026-01-27
-Stopped at: Completed 15-01-PLAN.md
+Stopped at: Completed 15-02-PLAN.md
 Resume file: None
-Next action: Continue to 15-02-PLAN.md (formatter and writer modules)
+Next action: Continue to 15-03-PLAN.md (CLI command handler and wiring)
 
 ---
-*Updated: 2026-01-27 - Phase 15 in progress (1/3 plans)*
+*Updated: 2026-01-27 - Phase 15 in progress (2/3 plans)*
