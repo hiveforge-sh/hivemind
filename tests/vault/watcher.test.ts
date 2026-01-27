@@ -19,6 +19,8 @@ describe('VaultWatcher', () => {
   afterEach(async () => {
     if (watcher) {
       await watcher.stop();
+      // Allow chokidar's async cleanup to finish before removing temp files
+      await new Promise(resolve => setTimeout(resolve, 200));
     }
     rmSync(tempDir, { recursive: true, force: true });
   });
