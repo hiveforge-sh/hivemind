@@ -1,7 +1,6 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder, ItemView, WorkspaceLeaf } from 'obsidian';
+import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder, ItemView, WorkspaceLeaf, requestUrl } from 'obsidian';
 import { spawn, ChildProcess } from 'child_process';
 import { FolderMapper } from '../src/templates/folder-mapper.js';
-import type { ResolveResult, FolderMappingRule } from '../src/templates/types.js';
 import { templateRegistry } from '../src/templates/registry.js';
 import { worldbuildingTemplate } from '../src/templates/builtin/worldbuilding.js';
 import matter from 'gray-matter';
@@ -30,7 +29,7 @@ const DEFAULT_SETTINGS: HivemindSettings = {
 
 interface MCPToolCall {
   name: string;
-  arguments: Record<string, any>;
+  arguments: Record<string, unknown>;
 }
 
 interface MCPResponse {
@@ -41,8 +40,14 @@ interface MCPResponse {
 // Folder-to-type mappings are now handled by shared FolderMapper
 // (imported from ../src/templates/folder-mapper.js)
 
+interface MCPMessage {
+  id?: number;
+  result?: unknown;
+  error?: { message?: string };
+}
+
 // Frontmatter template definitions
-const FRONTMATTER_TEMPLATES: Record<string, any> = {
+const FRONTMATTER_TEMPLATES: Record<string, Record<string, unknown>> = {
   character: {
     id: '',
     type: 'character',
@@ -170,8 +175,8 @@ export default class HivemindPlugin extends Plugin {
   private mcpStdin?: NodeJS.WritableStream | null;
   private mcpStdout?: NodeJS.ReadableStream | null;
   private pendingRequests: Map<number, {
-    resolve: (value: any) => void;
-    reject: (error: any) => void;
+    resolve: (value: unknown) => void;
+    reject: (error: unknown) => void;
   }> = new Map();
   private requestId: number = 1;
   private statusBarItem: HTMLElement;
@@ -202,7 +207,7 @@ export default class HivemindPlugin extends Plugin {
 
     // Add ribbon icon
     this.addRibbonIcon('brain-circuit', 'Hivemind', (evt: MouseEvent) => {
-      new Notice('Hivemind MCP Plugin');
+      new Notice('Hivemind MCP plugin');
     });
 
     // Commands
@@ -210,7 +215,7 @@ export default class HivemindPlugin extends Plugin {
       id: 'generate-image-from-note',
       name: 'Generate image from current note',
       editorCallback: (editor: Editor, view: MarkdownView) => {
-        this.generateImageFromNote(view.file);
+        void this.generateImageFromNote(view.file);
       }
     });
 
@@ -218,7 +223,7 @@ export default class HivemindPlugin extends Plugin {
       id: 'browse-workflows',
       name: 'Browse ComfyUI workflows',
       callback: () => {
-        this.browseWorkflows();
+        void this.browseWorkflows();
       }
     });
 
@@ -234,7 +239,7 @@ export default class HivemindPlugin extends Plugin {
       id: 'connect-mcp',
       name: 'Connect to MCP server',
       callback: () => {
-        this.startMCPServer();
+        void this.startMCPServer();
       }
     });
 
@@ -251,7 +256,7 @@ export default class HivemindPlugin extends Plugin {
       name: 'Add frontmatter',
       editorCallback: (editor: Editor, view: MarkdownView) => {
         if (view.file) {
-          this.addFrontmatterToFile(view.file);
+          void this.addFrontmatterToFile(view.file);
         }
       }
     });
@@ -261,7 +266,7 @@ export default class HivemindPlugin extends Plugin {
       name: 'Validate frontmatter',
       editorCallback: (editor: Editor, view: MarkdownView) => {
         if (view.file) {
-          this.validateCurrentFile(view.file);
+          void this.validateCurrentFile(view.file);
         }
       }
     });
@@ -271,7 +276,7 @@ export default class HivemindPlugin extends Plugin {
       name: 'Fix frontmatter',
       editorCallback: (editor: Editor, view: MarkdownView) => {
         if (view.file) {
-          this.fixCurrentFile(view.file);
+          void this.fixCurrentFile(view.file);
         }
       }
     });
@@ -280,7 +285,7 @@ export default class HivemindPlugin extends Plugin {
       id: 'fix-all-frontmatter',
       name: 'Fix all frontmatter',
       callback: () => {
-        this.fixAllFiles();
+        void this.fixAllFiles();
       }
     });
 
@@ -288,7 +293,7 @@ export default class HivemindPlugin extends Plugin {
       id: 'open-validation-sidebar',
       name: 'Open validation sidebar',
       callback: () => {
-        this.activateValidationSidebar();
+        void this.activateValidationSidebar();
       }
     });
 
@@ -297,52 +302,52 @@ export default class HivemindPlugin extends Plugin {
       this.app.workspace.on('file-menu', (menu, file) => {
         if (file instanceof TFile && file.extension === 'md') {
           menu.addItem((item) => {
-            item.setTitle('Hivemind: Add frontmatter')
+            item.setTitle('Hivemind: add frontmatter')
               .setIcon('plus-circle')
               .onClick(() => {
-                this.addFrontmatterToFile(file);
+                void this.addFrontmatterToFile(file);
               });
           });
 
           menu.addItem((item) => {
-            item.setTitle('Hivemind: Validate')
+            item.setTitle('Hivemind: validate')
               .setIcon('check-circle')
               .onClick(() => {
-                this.validateCurrentFile(file);
+                void this.validateCurrentFile(file);
               });
           });
 
           menu.addItem((item) => {
-            item.setTitle('Hivemind: Fix frontmatter')
+            item.setTitle('Hivemind: fix frontmatter')
               .setIcon('wrench')
               .onClick(() => {
-                this.fixCurrentFile(file);
+                void this.fixCurrentFile(file);
               });
           });
         }
 
         if (file instanceof TFolder) {
           menu.addItem((item) => {
-            item.setTitle('Hivemind: Add frontmatter to folder')
+            item.setTitle('Hivemind: add frontmatter to folder')
               .setIcon('folder-plus')
               .onClick(() => {
-                this.addFrontmatterToFolder(file);
+                void this.addFrontmatterToFolder(file);
               });
           });
 
           menu.addItem((item) => {
-            item.setTitle('Hivemind: Validate folder')
+            item.setTitle('Hivemind: validate folder')
               .setIcon('check-circle')
               .onClick(() => {
-                this.validateFolder(file);
+                void this.validateFolder(file);
               });
           });
 
           menu.addItem((item) => {
-            item.setTitle('Hivemind: Fix all in folder')
+            item.setTitle('Hivemind: fix all in folder')
               .setIcon('wrench')
               .onClick(() => {
-                this.fixFolder(file);
+                void this.fixFolder(file);
               });
           });
         }
@@ -354,7 +359,7 @@ export default class HivemindPlugin extends Plugin {
       this.registerEvent(
         this.app.workspace.on('file-open', (file) => {
           if (file instanceof TFile && file.extension === 'md') {
-            this.validateCurrentFile(file);
+            void this.validateCurrentFile(file);
           }
         })
       );
@@ -365,7 +370,7 @@ export default class HivemindPlugin extends Plugin {
 
     // Auto-start if enabled
     if (this.settings.autoStartMCP) {
-      this.startMCPServer();
+      void this.startMCPServer();
     }
   }
 
@@ -390,11 +395,11 @@ export default class HivemindPlugin extends Plugin {
     }
 
     try {
-      console.log('[Plugin] Starting MCP server with command:', this.settings.mcpServerPath);
+      console.debug('[Plugin] Starting MCP server with command:', this.settings.mcpServerPath);
       const [command, ...args] = this.settings.mcpServerPath.split(' ');
-      
+
       this.mcpProcess = spawn(command, args, {
-        cwd: (this.app.vault.adapter as any).basePath,
+        cwd: (this.app.vault.adapter as unknown as {basePath: string}).basePath,
         stdio: ['pipe', 'pipe', 'pipe'],
       });
 
@@ -405,11 +410,11 @@ export default class HivemindPlugin extends Plugin {
       if (!this.mcpStdout) {
         throw new Error('Failed to get MCP stdout');
       }
-      
+
       // Log stderr for debugging
       if (mcpStderr) {
         mcpStderr.on('data', (chunk) => {
-          console.log('[MCP Server]', chunk.toString());
+          console.debug('[MCP Server]', chunk.toString());
         });
       }
 
@@ -424,7 +429,7 @@ export default class HivemindPlugin extends Plugin {
             try {
               const message = JSON.parse(line);
               this.handleMCPMessage(message);
-            } catch (e) {
+            } catch {
               console.error('Failed to parse MCP message:', line);
             }
           }
@@ -438,7 +443,7 @@ export default class HivemindPlugin extends Plugin {
       });
 
       this.mcpProcess.on('exit', (code) => {
-        console.log('MCP process exited with code:', code);
+        console.debug('MCP process exited with code:', code);
         this.mcpProcess = undefined;
         this.updateStatusBar('disconnected');
       });
@@ -465,18 +470,18 @@ export default class HivemindPlugin extends Plugin {
   private updateStatusBar(status: 'connected' | 'disconnected' | 'error') {
     switch (status) {
       case 'connected':
-        this.statusBarItem.setText('🟢 Hivemind: Connected');
+        this.statusBarItem.setText('Hivemind: connected');
         break;
       case 'disconnected':
-        this.statusBarItem.setText('⚫ Hivemind: Disconnected');
+        this.statusBarItem.setText('Hivemind: disconnected');
         break;
       case 'error':
-        this.statusBarItem.setText('🔴 Hivemind: Error');
+        this.statusBarItem.setText('Hivemind: error');
         break;
     }
   }
 
-  private handleMCPMessage(message: any) {
+  private handleMCPMessage(message: MCPMessage) {
     if (message.id && this.pendingRequests.has(message.id)) {
       const request = this.pendingRequests.get(message.id)!;
       this.pendingRequests.delete(message.id);
@@ -497,7 +502,7 @@ export default class HivemindPlugin extends Plugin {
 
     return new Promise((resolve, reject) => {
       const id = this.requestId++;
-      
+
       this.pendingRequests.set(id, { resolve, reject });
 
       const request = {
@@ -521,7 +526,7 @@ export default class HivemindPlugin extends Plugin {
 
   // Plugin Features
 
-  private async generateImageFromNote(file: TFile | null) {
+  private generateImageFromNote(file: TFile | null) {
     if (!file) {
       new Notice('No active file');
       return;
@@ -530,15 +535,16 @@ export default class HivemindPlugin extends Plugin {
     try {
       // Use Obsidian's cache to get frontmatter
       const cache = this.app.metadataCache.getFileCache(file);
-      
+
       if (!cache || !cache.frontmatter) {
         new Notice('No frontmatter found in note');
         return;
       }
 
       const frontmatter = cache.frontmatter;
-      
+
       if (!frontmatter.id || !frontmatter.type) {
+        // eslint-disable-next-line obsidianmd/ui/sentence-case -- technical term "frontmatter"
         new Notice('Note must have id and type in frontmatter');
         return;
       }
@@ -696,7 +702,7 @@ export default class HivemindPlugin extends Plugin {
       const filesToProcess = [];
 
       for (const f of folderFiles) {
-        const result = await this.folderMapper!.resolveType(f.path);
+        const result = await this.folderMapper.resolveType(f.path);
         if (result && result.confidence === 'exact') {
           filesToProcess.push(f);
         }
@@ -741,7 +747,7 @@ export default class HivemindPlugin extends Plugin {
         }
       }
 
-      new Notice(`✅ Added frontmatter to ${successCount} files (${skipCount} already complete)`);
+      new Notice(`Added frontmatter to ${successCount} files (${skipCount} already complete)`);
 
     } catch (error) {
       console.error('Failed to add frontmatter to folder:', error);
@@ -749,8 +755,8 @@ export default class HivemindPlugin extends Plugin {
     }
   }
 
-  private computeNewFieldsForBulk(existing: Record<string, any>, template: Record<string, any>): Record<string, any> {
-    const newFields: Record<string, any> = {};
+  private computeNewFieldsForBulk(existing: Record<string, unknown>, template: Record<string, unknown>): Record<string, unknown> {
+    const newFields: Record<string, unknown> = {};
 
     for (const [key, value] of Object.entries(template)) {
       // Skip if exists and not empty
@@ -773,17 +779,17 @@ export default class HivemindPlugin extends Plugin {
     return `${entityType}-${slug}`;
   }
 
-  private findMissingFields(existing: Record<string, any>, template: Record<string, any>, prefix = ''): Record<string, any> {
-    const missing: Record<string, any> = {};
+  private findMissingFields(existing: Record<string, unknown>, template: Record<string, unknown>, prefix = ''): Record<string, unknown> {
+    const missing: Record<string, unknown> = {};
 
     for (const [key, value] of Object.entries(template)) {
       const fullKey = prefix ? `${prefix}.${key}` : key;
-      
+
       // Skip if exists and not empty
       if (existing[key] !== undefined && existing[key] !== null && existing[key] !== '') {
         // If it's an object, check nested fields
         if (typeof value === 'object' && !Array.isArray(value) && value !== null) {
-          const nestedMissing = this.findMissingFields(existing[key] || {}, value, fullKey);
+          const nestedMissing = this.findMissingFields((existing[key] as Record<string, unknown>) || {}, value as Record<string, unknown>, fullKey);
           Object.assign(missing, nestedMissing);
         }
         continue;
@@ -796,20 +802,20 @@ export default class HivemindPlugin extends Plugin {
     return missing;
   }
 
-  async insertMissingFrontmatter(file: TFile, existingFrontmatter: Record<string, any>, newFields: Record<string, any>) {
+  async insertMissingFrontmatter(file: TFile, existingFrontmatter: Record<string, unknown>, newFields: Record<string, unknown>) {
     try {
       const content = await this.app.vault.read(file);
-      
+
       // Merge frontmatter
       const merged = this.deepMerge(existingFrontmatter, newFields);
-      
+
       // Convert to YAML
       const yaml = this.objectToYaml(merged);
-      
+
       // Replace frontmatter in content
       let newContent: string;
       const frontmatterRegex = /^---\n([\s\S]*?)\n---\n/;
-      
+
       if (frontmatterRegex.test(content)) {
         // Replace existing frontmatter
         newContent = content.replace(frontmatterRegex, `---\n${yaml}\n---\n`);
@@ -817,36 +823,36 @@ export default class HivemindPlugin extends Plugin {
         // Add new frontmatter at the top
         newContent = `---\n${yaml}\n---\n\n${content}`;
       }
-      
+
       // Write back to file
       await this.app.vault.modify(file, newContent);
-      
-      new Notice('✅ Frontmatter updated successfully!');
-      
+
+      new Notice('Frontmatter updated successfully!');
+
     } catch (error) {
       console.error('Failed to insert frontmatter:', error);
       throw error;
     }
   }
 
-  private deepMerge(target: any, source: any): any {
+  private deepMerge(target: Record<string, unknown>, source: Record<string, unknown>): Record<string, unknown> {
     const result = { ...target };
-    
+
     for (const [key, value] of Object.entries(source)) {
       if (value && typeof value === 'object' && !Array.isArray(value)) {
-        result[key] = this.deepMerge(target[key] || {}, value);
+        result[key] = this.deepMerge((target[key] as Record<string, unknown>) || {}, value as Record<string, unknown>);
       } else {
         result[key] = value;
       }
     }
-    
+
     return result;
   }
 
-  private objectToYaml(obj: Record<string, any>, indent = 0): string {
+  private objectToYaml(obj: Record<string, unknown>, indent = 0): string {
     const lines: string[] = [];
     const indentStr = '  '.repeat(indent);
-    
+
     for (const [key, value] of Object.entries(obj)) {
       if (value === null || value === undefined) {
         lines.push(`${indentStr}${key}:`);
@@ -871,7 +877,7 @@ export default class HivemindPlugin extends Plugin {
         }
       } else if (typeof value === 'object') {
         lines.push(`${indentStr}${key}:`);
-        lines.push(this.objectToYaml(value, indent + 1));
+        lines.push(this.objectToYaml(value as Record<string, unknown>, indent + 1));
       } else if (typeof value === 'string') {
         // Escape strings that might need quotes
         if (value.includes(':') || value.includes('#') || value.startsWith('[')) {
@@ -883,12 +889,12 @@ export default class HivemindPlugin extends Plugin {
         lines.push(`${indentStr}${key}: ${value}`);
       }
     }
-    
+
     return lines.join('\n');
   }
 
-  private parseFrontmatter(yaml: string): Record<string, any> {
-    const result: Record<string, any> = {};
+  private parseFrontmatter(yaml: string): Record<string, unknown> {
+    const result: Record<string, unknown> = {};
     const lines = yaml.split('\n');
 
     for (const line of lines) {
@@ -904,14 +910,14 @@ export default class HivemindPlugin extends Plugin {
   async executeWorkflow(workflowId: string, contextId: string, contextType: string) {
     try {
       // Show starting notice
-      new Notice('🎨 Starting image generation...');
+      new Notice('Starting image generation...');
 
       // Open ComfyUI in browser so user can watch
       const comfyUrl = 'http://127.0.0.1:8000';
       window.open(comfyUrl, '_blank');
 
       // Show progress notice
-      new Notice('⏳ Generating... (check ComfyUI window)', 5000);
+      new Notice('Generating... (check ComfyUI window)', 5000);
 
       const response = await this.callMCPTool({
         name: 'generate_image',
@@ -923,7 +929,7 @@ export default class HivemindPlugin extends Plugin {
       });
 
       if (response.isError) {
-        new Notice('❌ Image generation failed: ' + (response.content?.[0]?.text || 'Unknown error'), 8000);
+        new Notice('Image generation failed: ' + (response.content?.[0]?.text || 'Unknown error'), 8000);
         return;
       }
 
@@ -931,7 +937,7 @@ export default class HivemindPlugin extends Plugin {
       const resultText = response.content?.[0]?.text || '';
 
       // Show success with details
-      new Notice('✅ Image generated successfully!', 5000);
+      new Notice('Image generated successfully!', 5000);
 
       // Show result modal with image path
       if (resultText) {
@@ -940,7 +946,7 @@ export default class HivemindPlugin extends Plugin {
 
     } catch (error) {
       console.error('Workflow execution failed:', error);
-      new Notice('❌ Workflow execution failed: ' + (error as Error).message, 8000);
+      new Notice('Workflow execution failed: ' + (error as Error).message, 8000);
     }
   }
 
@@ -1009,7 +1015,7 @@ export default class HivemindPlugin extends Plugin {
 
       // Show result
       if (issues.length === 0) {
-        new Notice('Valid frontmatter ✓', 3000);
+        new Notice('Valid frontmatter', 3000);
       } else {
         new ValidationResultModal(this.app, file, issues).open();
       }
@@ -1028,7 +1034,7 @@ export default class HivemindPlugin extends Plugin {
 
       // If no frontmatter at all, redirect to add-frontmatter flow
       if (!existingFrontmatter || Object.keys(existingFrontmatter).length === 0) {
-        new Notice('No frontmatter found. Use "Add frontmatter" command instead.');
+        new Notice('No frontmatter found. Use "add frontmatter" command instead.');
         return;
       }
 
@@ -1061,12 +1067,12 @@ export default class HivemindPlugin extends Plugin {
       const missingFields = this.findMissingFields(existingFrontmatter, template);
 
       if (Object.keys(missingFields).length === 0) {
-        new Notice('No issues to fix ✓', 3000);
+        new Notice('No issues to fix', 3000);
         return;
       }
 
       // Open FixFieldsModal with missing fields
-      new FixFieldsModal(this.app, this, file, existingFrontmatter, missingFields, entityType).open();
+      new FixFieldsModal(this.app, this, file, existingFrontmatter, missingFields, entityType as string).open();
 
     } catch (error) {
       console.error('Failed to fix frontmatter:', error);
@@ -1124,7 +1130,7 @@ export default class HivemindPlugin extends Plugin {
           const fileName = file.basename;
           const autoFilledTemplate = {
             ...template,
-            id: existingFrontmatter.id || this.generateId(fileName, entityType),
+            id: existingFrontmatter.id || this.generateId(fileName, entityType as string),
             name: existingFrontmatter.name || fileName,
             title: existingFrontmatter.title || fileName
           };
@@ -1147,7 +1153,7 @@ export default class HivemindPlugin extends Plugin {
         }
       }
 
-      new Notice(`✅ Fixed ${fixedCount} files (${skippedCount} skipped, ${errorCount} errors)`);
+      new Notice(`Fixed ${fixedCount} files (${skippedCount} skipped, ${errorCount} errors)`);
 
     } catch (error) {
       console.error('Failed to fix all files:', error);
@@ -1273,7 +1279,7 @@ export default class HivemindPlugin extends Plugin {
           const fileName = file.basename;
           const autoFilledTemplate = {
             ...template,
-            id: existingFrontmatter.id || this.generateId(fileName, entityType),
+            id: existingFrontmatter.id || this.generateId(fileName, entityType as string),
             name: existingFrontmatter.name || fileName,
             title: existingFrontmatter.title || fileName
           };
@@ -1294,7 +1300,7 @@ export default class HivemindPlugin extends Plugin {
         }
       }
 
-      new Notice(`✅ Fixed ${fixedCount} files in folder (${skippedCount} skipped, ${errorCount} errors)`);
+      new Notice(`Fixed ${fixedCount} files in folder (${skippedCount} skipped, ${errorCount} errors)`);
 
     } catch (error) {
       console.error('Failed to fix folder:', error);
@@ -1305,14 +1311,15 @@ export default class HivemindPlugin extends Plugin {
   activateValidationSidebar() {
     this.app.workspace.detachLeavesOfType('hivemind-validation-sidebar');
 
-    this.app.workspace.getRightLeaf(false)?.setViewState({
+    void this.app.workspace.getRightLeaf(false)?.setViewState({
       type: 'hivemind-validation-sidebar',
       active: true,
     });
 
-    this.app.workspace.revealLeaf(
-      this.app.workspace.getLeavesOfType('hivemind-validation-sidebar')[0]
-    );
+    const leaves = this.app.workspace.getLeavesOfType('hivemind-validation-sidebar');
+    if (leaves[0]) {
+      void this.app.workspace.revealLeaf(leaves[0]);
+    }
   }
 }
 
@@ -1331,7 +1338,7 @@ class ValidationSidebarView extends ItemView {
   }
 
   getDisplayText(): string {
-    return 'Hivemind Validation';
+    return 'Hivemind validation';
   }
 
   getIcon(): string {
@@ -1344,38 +1351,31 @@ class ValidationSidebarView extends ItemView {
     container.addClass('hivemind-validation-sidebar');
 
     // Header
-    const headerEl = container.createDiv({ cls: 'hivemind-validation-header' });
-    headerEl.style.padding = '16px';
-    headerEl.style.borderBottom = '1px solid var(--background-modifier-border)';
+    const headerEl = container.createDiv({ cls: 'hivemind-validation-header hvmd-validation-header' });
 
-    headerEl.createEl('h2', { text: 'Validation Results' });
+    headerEl.createEl('h2', { text: 'Validation results' });
 
     // Buttons
-    const buttonContainer = headerEl.createDiv({ cls: 'button-container' });
-    buttonContainer.style.display = 'flex';
-    buttonContainer.style.gap = '8px';
-    buttonContainer.style.marginTop = '12px';
+    const buttonContainer = headerEl.createDiv({ cls: 'button-container hvmd-button-row' });
 
     const refreshBtn = buttonContainer.createEl('button', {
       text: 'Refresh',
       cls: 'mod-cta'
     });
     refreshBtn.addEventListener('click', () => {
-      this.runValidation();
+      void this.runValidation();
     });
 
     const fixAllBtn = buttonContainer.createEl('button', {
-      text: 'Fix All',
+      text: 'Fix all',
     });
     fixAllBtn.addEventListener('click', async () => {
       await this.plugin.fixAllFiles();
-      this.runValidation();
+      void this.runValidation();
     });
 
     // Results container
-    const resultsContainer = container.createDiv({ cls: 'hivemind-validation-results' });
-    resultsContainer.style.padding = '16px';
-    resultsContainer.style.overflowY = 'auto';
+    const resultsContainer = container.createDiv({ cls: 'hivemind-validation-results hvmd-results-container' });
 
     // Run initial validation
     await this.runValidation();
@@ -1390,9 +1390,7 @@ class ValidationSidebarView extends ItemView {
     resultsContainer.empty();
 
     // Show scanning message
-    const scanningEl = resultsContainer.createDiv();
-    scanningEl.style.textAlign = 'center';
-    scanningEl.style.padding = '20px';
+    const scanningEl = resultsContainer.createDiv({ cls: 'hvmd-scanning' });
     scanningEl.setText('Scanning vault...');
 
     // Get all markdown files
@@ -1443,7 +1441,7 @@ class ValidationSidebarView extends ItemView {
                     detail: `Type '${frontmatter.type}' doesn't match folder (expected '${resolved.types[0]}')`
                   });
                 }
-              } catch (error) {
+              } catch {
                 // Folder mapping is optional
               }
             }
@@ -1464,59 +1462,42 @@ class ValidationSidebarView extends ItemView {
     resultsContainer.empty();
 
     // Show summary
-    const summaryEl = resultsContainer.createDiv({ cls: 'validation-summary' });
-    summaryEl.style.padding = '12px';
-    summaryEl.style.marginBottom = '16px';
-    summaryEl.style.backgroundColor = 'var(--background-secondary)';
-    summaryEl.style.borderRadius = '6px';
+    const summaryEl = resultsContainer.createDiv({ cls: 'validation-summary hvmd-summary' });
 
-    summaryEl.createEl('div', {
-      text: `✅ Valid: ${validFiles.length}`,
-      cls: 'validation-summary-item'
-    }).style.color = 'var(--text-success)';
+    const validEl = summaryEl.createEl('div', {
+      text: `Valid: ${validFiles.length}`,
+      cls: 'validation-summary-item hvmd-text-success'
+    });
 
-    summaryEl.createEl('div', {
-      text: `⚠️ Issues: ${invalidFiles.length}`,
-      cls: 'validation-summary-item'
-    }).style.color = 'var(--text-warning)';
+    const issuesCountEl = summaryEl.createEl('div', {
+      text: `Issues: ${invalidFiles.length}`,
+      cls: 'validation-summary-item hvmd-text-warning'
+    });
 
     // Show invalid files
     if (invalidFiles.length > 0) {
-      resultsContainer.createEl('h3', { text: 'Files with Issues' });
+      resultsContainer.createEl('h3', { text: 'Files with issues' });
 
       for (const { file, issues } of invalidFiles) {
-        const fileEl = resultsContainer.createDiv({ cls: 'validation-file-item' });
-        fileEl.style.padding = '12px';
-        fileEl.style.marginBottom = '8px';
-        fileEl.style.backgroundColor = 'var(--background-secondary)';
-        fileEl.style.borderRadius = '6px';
-        fileEl.style.borderLeft = '3px solid var(--text-warning)';
-        fileEl.style.cursor = 'pointer';
+        const fileEl = resultsContainer.createDiv({ cls: 'validation-file-item hvmd-file-item' });
 
         fileEl.addEventListener('click', () => {
-          this.app.workspace.getLeaf().openFile(file);
+          void this.app.workspace.getLeaf().openFile(file);
         });
 
-        const fileNameEl = fileEl.createDiv({ cls: 'validation-file-name' });
-        fileNameEl.style.fontWeight = 'bold';
-        fileNameEl.style.marginBottom = '6px';
+        const fileNameEl = fileEl.createDiv({ cls: 'validation-file-name hvmd-file-name' });
         fileNameEl.setText(file.path);
 
-        const issuesEl = fileEl.createDiv({ cls: 'validation-file-issues' });
-        issuesEl.style.fontSize = '0.9em';
-        issuesEl.style.color = 'var(--text-muted)';
+        const issuesEl = fileEl.createDiv({ cls: 'validation-file-issues hvmd-file-issues' });
 
         for (const issue of issues) {
           const issueEl = issuesEl.createDiv();
-          issueEl.setText(`• ${issue.detail}`);
+          issueEl.setText(`- ${issue.detail}`);
         }
       }
     } else {
-      const noIssuesEl = resultsContainer.createDiv();
-      noIssuesEl.style.textAlign = 'center';
-      noIssuesEl.style.padding = '40px 20px';
-      noIssuesEl.style.color = 'var(--text-muted)';
-      noIssuesEl.setText('🎉 All files have valid frontmatter!');
+      const noIssuesEl = resultsContainer.createDiv({ cls: 'hvmd-no-issues' });
+      noIssuesEl.setText('All files have valid frontmatter!');
     }
   }
 
@@ -1543,7 +1524,7 @@ class FolderValidationResultModal extends Modal {
   onOpen() {
     const { contentEl } = this;
 
-    contentEl.createEl('h2', { text: 'Folder Validation Results' });
+    contentEl.createEl('h2', { text: 'Folder validation results' });
 
     contentEl.createEl('p', {
       text: this.folderPath,
@@ -1551,53 +1532,37 @@ class FolderValidationResultModal extends Modal {
     });
 
     // Summary
-    const summaryEl = contentEl.createDiv({ cls: 'validation-summary' });
-    summaryEl.style.padding = '12px';
-    summaryEl.style.marginTop = '16px';
-    summaryEl.style.marginBottom = '16px';
-    summaryEl.style.backgroundColor = 'var(--background-secondary)';
-    summaryEl.style.borderRadius = '6px';
+    const summaryEl = contentEl.createDiv({ cls: 'validation-summary hvmd-summary-with-margin-top' });
 
-    summaryEl.createEl('div', {
-      text: `✅ Valid: ${this.validCount}`,
-    }).style.color = 'var(--text-success)';
+    const validEl = summaryEl.createEl('div', {
+      text: `Valid: ${this.validCount}`,
+      cls: 'hvmd-text-success'
+    });
 
-    summaryEl.createEl('div', {
-      text: `⚠️ Issues: ${this.invalidCount}`,
-    }).style.color = 'var(--text-warning)';
+    const issuesCountEl = summaryEl.createEl('div', {
+      text: `Issues: ${this.invalidCount}`,
+      cls: 'hvmd-text-warning'
+    });
 
     // Issues list
     if (this.issues.length > 0) {
-      const issuesContainer = contentEl.createDiv({ cls: 'validation-issues' });
-      issuesContainer.style.maxHeight = '400px';
-      issuesContainer.style.overflowY = 'auto';
-      issuesContainer.style.marginBottom = '20px';
+      const issuesContainer = contentEl.createDiv({ cls: 'validation-issues hvmd-issues-container' });
 
       for (const { file, issues } of this.issues) {
-        const fileItem = issuesContainer.createDiv({ cls: 'validation-file-item' });
-        fileItem.style.padding = '10px';
-        fileItem.style.marginBottom = '8px';
-        fileItem.style.backgroundColor = 'var(--background-secondary)';
-        fileItem.style.borderRadius = '5px';
-        fileItem.style.borderLeft = '3px solid var(--text-warning)';
+        const fileItem = issuesContainer.createDiv({ cls: 'validation-file-item hvmd-file-item-no-cursor' });
 
         fileItem.createEl('strong', { text: file });
 
-        const issuesList = fileItem.createDiv();
-        issuesList.style.marginTop = '6px';
-        issuesList.style.fontSize = '0.9em';
+        const issuesList = fileItem.createDiv({ cls: 'hvmd-issues-list' });
 
         for (const issue of issues) {
-          issuesList.createDiv({ text: `• ${issue.detail}` });
+          issuesList.createDiv({ text: `- ${issue.detail}` });
         }
       }
     }
 
     // Close button
-    const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container' });
-    buttonContainer.style.display = 'flex';
-    buttonContainer.style.justifyContent = 'flex-end';
-    buttonContainer.style.marginTop = '15px';
+    const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container hvmd-button-container-end' });
 
     const closeBtn = buttonContainer.createEl('button', {
       text: 'Close',
@@ -1629,7 +1594,7 @@ class ValidationResultModal extends Modal {
     const { contentEl } = this;
 
     // Heading
-    contentEl.createEl('h2', { text: 'Validation Issues' });
+    contentEl.createEl('h2', { text: 'Validation issues' });
 
     // Subheading with file name
     contentEl.createEl('p', {
@@ -1638,40 +1603,23 @@ class ValidationResultModal extends Modal {
     });
 
     // Issues list container
-    const issuesContainer = contentEl.createDiv({ cls: 'validation-issues' });
-    issuesContainer.style.maxHeight = '400px';
-    issuesContainer.style.overflowY = 'auto';
-    issuesContainer.style.marginTop = '15px';
-    issuesContainer.style.marginBottom = '20px';
+    const issuesContainer = contentEl.createDiv({ cls: 'validation-issues hvmd-issues-container-with-margin-top' });
 
     // Display each issue with icon and text
     for (const issue of this.issues) {
-      const issueItem = issuesContainer.createDiv({ cls: 'validation-issue-item' });
-      issueItem.style.display = 'flex';
-      issueItem.style.alignItems = 'flex-start';
-      issueItem.style.padding = '10px';
-      issueItem.style.marginBottom = '8px';
-      issueItem.style.backgroundColor = 'var(--background-secondary)';
-      issueItem.style.borderRadius = '5px';
-      issueItem.style.borderLeft = '3px solid var(--text-warning)';
+      const issueItem = issuesContainer.createDiv({ cls: 'validation-issue-item hvmd-issue-item' });
 
       // Warning icon
-      const icon = issueItem.createDiv({ cls: 'validation-issue-icon' });
-      icon.style.marginRight = '10px';
-      icon.style.fontSize = '1.2em';
+      const icon = issueItem.createDiv({ cls: 'validation-issue-icon hvmd-issue-icon' });
       icon.setText('⚠️');
 
       // Issue text
-      const text = issueItem.createDiv({ cls: 'validation-issue-text' });
-      text.style.flex = '1';
+      const text = issueItem.createDiv({ cls: 'validation-issue-text hvmd-issue-text' });
       text.setText(issue.detail);
     }
 
     // Close button
-    const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container' });
-    buttonContainer.style.display = 'flex';
-    buttonContainer.style.justifyContent = 'flex-end';
-    buttonContainer.style.marginTop = '15px';
+    const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container hvmd-button-container-end' });
 
     const closeBtn = buttonContainer.createEl('button', {
       text: 'Close',
@@ -1692,17 +1640,17 @@ class ValidationResultModal extends Modal {
 class FixFieldsModal extends Modal {
   plugin: HivemindPlugin;
   file: TFile;
-  existingFrontmatter: Record<string, any>;
-  missingFields: Record<string, any>;
+  existingFrontmatter: Record<string, unknown>;
+  missingFields: Record<string, unknown>;
   entityType: string;
-  private editedValues: Record<string, any> = {};
+  private editedValues: Record<string, unknown> = {};
 
   constructor(
     app: App,
     plugin: HivemindPlugin,
     file: TFile,
-    existingFrontmatter: Record<string, any>,
-    missingFields: Record<string, any>,
+    existingFrontmatter: Record<string, unknown>,
+    missingFields: Record<string, unknown>,
     entityType: string
   ) {
     super(app);
@@ -1720,11 +1668,10 @@ class FixFieldsModal extends Modal {
     const { contentEl } = this;
 
     // Heading
-    contentEl.createEl('h2', { text: 'Fix Frontmatter' });
+    contentEl.createEl('h2', { text: 'Fix frontmatter' });
 
     // Subheading with file name and entity type
-    const subheading = contentEl.createDiv();
-    subheading.style.marginBottom = '15px';
+    const subheading = contentEl.createDiv({ cls: 'hvmd-subheading' });
 
     subheading.createEl('p', {
       text: this.file.name,
@@ -1732,21 +1679,12 @@ class FixFieldsModal extends Modal {
     });
 
     const typeBadge = subheading.createEl('span', {
-      cls: 'frontmatter-type-badge'
+      cls: 'frontmatter-type-badge hvmd-type-badge'
     });
-    typeBadge.style.display = 'inline-block';
-    typeBadge.style.padding = '2px 8px';
-    typeBadge.style.backgroundColor = 'var(--interactive-accent)';
-    typeBadge.style.color = 'var(--text-on-accent)';
-    typeBadge.style.borderRadius = '10px';
-    typeBadge.style.fontSize = '0.85em';
     typeBadge.setText(this.entityType);
 
     // Fields container
-    const fieldsContainer = contentEl.createDiv({ cls: 'fix-fields-container' });
-    fieldsContainer.style.maxHeight = '400px';
-    fieldsContainer.style.overflowY = 'auto';
-    fieldsContainer.style.marginBottom = '20px';
+    const fieldsContainer = contentEl.createDiv({ cls: 'fix-fields-container hvmd-fields-container' });
 
     // Create editable Settings for each missing field
     for (const [fieldPath, defaultValue] of Object.entries(this.missingFields)) {
@@ -1764,11 +1702,7 @@ class FixFieldsModal extends Modal {
     }
 
     // Buttons
-    const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container' });
-    buttonContainer.style.display = 'flex';
-    buttonContainer.style.gap = '10px';
-    buttonContainer.style.justifyContent = 'flex-end';
-    buttonContainer.style.marginTop = '15px';
+    const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container hvmd-button-container' });
 
     const cancelBtn = buttonContainer.createEl('button', { text: 'Cancel' });
     cancelBtn.addEventListener('click', () => {
@@ -1776,7 +1710,7 @@ class FixFieldsModal extends Modal {
     });
 
     const applyBtn = buttonContainer.createEl('button', {
-      text: 'Apply All',
+      text: 'Apply all',
       cls: 'mod-cta'
     });
     applyBtn.addEventListener('click', async () => {
@@ -1784,7 +1718,7 @@ class FixFieldsModal extends Modal {
     });
   }
 
-  private getDefaultDisplay(fieldPath: string, defaultValue: any): string {
+  private getDefaultDisplay(fieldPath: string, defaultValue: unknown): string {
     // For id field, auto-generate from filename
     if (fieldPath === 'id' && (!defaultValue || defaultValue === '')) {
       const slug = this.file.basename
@@ -1812,7 +1746,7 @@ class FixFieldsModal extends Modal {
     return String(defaultValue);
   }
 
-  private formatValueForDisplay(value: any): string {
+  private formatValueForDisplay(value: unknown): string {
     if (value === null || value === undefined) {
       return '(empty)';
     } else if (Array.isArray(value)) {
@@ -1829,7 +1763,7 @@ class FixFieldsModal extends Modal {
   private async applyChanges() {
     try {
       // Convert edited values back to proper types
-      const fieldsToInsert: Record<string, any> = {};
+      const fieldsToInsert: Record<string, unknown> = {};
 
       for (const [fieldPath, value] of Object.entries(this.editedValues)) {
         // Check if original value was an array
@@ -1866,19 +1800,19 @@ class FixFieldsModal extends Modal {
     }
   }
 
-  private flatToNested(flat: Record<string, any>): Record<string, any> {
-    const result: Record<string, any> = {};
+  private flatToNested(flat: Record<string, unknown>): Record<string, unknown> {
+    const result: Record<string, unknown> = {};
 
     for (const [path, value] of Object.entries(flat)) {
       const parts = path.split('.');
-      let current = result;
+      let current: Record<string, unknown> = result;
 
       for (let i = 0; i < parts.length - 1; i++) {
         const part = parts[i];
         if (!current[part]) {
           current[part] = {};
         }
-        current = current[part];
+        current = current[part] as Record<string, unknown>;
       }
 
       current[parts[parts.length - 1]] = value;
@@ -1908,20 +1842,20 @@ class WorkflowSelectionModal extends Modal {
 
   async onOpen() {
     const { contentEl } = this;
-    contentEl.createEl('h2', { text: 'Select Workflow' });
+    contentEl.createEl('h2', { text: 'Select workflow' });
 
     try {
-      console.log('[Plugin] Calling list_workflows...');
+      console.debug('[Plugin] Calling list_workflows...');
       const response = await this.plugin.callMCPTool({
         name: 'list_workflows',
         arguments: {},
       });
 
-      console.log('[Plugin] list_workflows response:', response);
+      console.debug('[Plugin] list_workflows response:', response);
 
       if (!response.content || response.content.length === 0) {
         console.error('[Plugin] No content in response');
-        contentEl.createEl('p', { 
+        contentEl.createEl('p', {
           text: 'No workflows available. Loading...',
           cls: 'mod-warning'
         });
@@ -1933,35 +1867,32 @@ class WorkflowSelectionModal extends Modal {
 
       if (workflows.length === 0) {
         // Show helpful message
-        contentEl.createEl('p', { 
-          text: '📭 No workflows found',
+        contentEl.createEl('p', {
+          text: 'No workflows found',
           cls: 'mod-warning'
         });
-        
-        contentEl.createEl('p', { 
+
+        contentEl.createEl('p', {
           text: 'Create a new workflow to get started:',
         });
 
-        const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container' });
-        buttonContainer.style.display = 'flex';
-        buttonContainer.style.gap = '10px';
-        buttonContainer.style.marginTop = '20px';
+        const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container hvmd-button-container-top' });
 
         const createBtn = buttonContainer.createEl('button', {
-          text: '➕ Create New Workflow',
+          text: 'Create new workflow',
           cls: 'mod-cta'
         });
-        
+
         createBtn.addEventListener('click', () => {
           this.close();
           new CreateWorkflowModal(this.app, this.plugin).open();
         });
 
         const reconnectBtn = buttonContainer.createEl('button', {
-          text: '🔄 Reconnect MCP',
+          text: 'Reconnect MCP',
           cls: 'mod-warning'
         });
-        
+
         reconnectBtn.addEventListener('click', async () => {
           this.close();
           this.plugin.stopMCPServer();
@@ -1977,20 +1908,20 @@ class WorkflowSelectionModal extends Modal {
           text: workflow.name,
           cls: 'mod-cta',
         });
-        
+
         button.addEventListener('click', () => {
           this.close();
-          this.plugin.executeWorkflow(workflow.id, this.contextId, this.contextType);
+          void this.plugin.executeWorkflow(workflow.id, this.contextId, this.contextType);
         });
       });
 
     } catch (error) {
       console.error('[Plugin] Error loading workflows:', error);
-      contentEl.createEl('p', { 
+      contentEl.createEl('p', {
         text: 'Failed to load workflows: ' + (error as Error).message,
         cls: 'mod-error'
       });
-      
+
       contentEl.createEl('p', {
         text: 'Make sure MCP server is connected and ComfyUI is enabled in config.json'
       });
@@ -2074,7 +2005,7 @@ class CreateWorkflowModal extends Modal {
 
   onOpen() {
     const { contentEl } = this;
-    contentEl.createEl('h2', { text: 'Create New Workflow' });
+    contentEl.createEl('h2', { text: 'Create new workflow' });
 
     contentEl.createEl('p', {
       text: 'This will create a basic workflow template. You can customize it later by editing the JSON file or importing from ComfyUI.'
@@ -2092,10 +2023,10 @@ class CreateWorkflowModal extends Modal {
 
     // Workflow Name
     new Setting(contentEl)
-      .setName('Workflow Name')
+      .setName('Workflow name')
       .setDesc('Human-readable name')
       .addText(text => text
-        .setPlaceholder('My Character Portrait')
+        .setPlaceholder('My character portrait')
         .onChange(value => {
           this.result.name = value;
         }));
@@ -2112,24 +2043,22 @@ class CreateWorkflowModal extends Modal {
 
     // Template Selection
     contentEl.createEl('h3', { text: 'Template' });
-    
+
     const templateContainer = contentEl.createDiv();
-    
+
     const basicTemplate = templateContainer.createEl('button', {
-      text: '📝 Basic Template',
-      cls: 'mod-cta'
+      text: 'Basic template',
+      cls: 'mod-cta hvmd-margin-right'
     });
 
-    basicTemplate.style.marginRight = '10px';
-    
     basicTemplate.addEventListener('click', async () => {
       await this.createWorkflow('basic');
     });
 
     const advancedTemplate = templateContainer.createEl('button', {
-      text: '🎨 Advanced Template (with context)',
+      text: 'Advanced template (with context)',
     });
-    
+
     advancedTemplate.addEventListener('click', async () => {
       await this.createWorkflow('advanced');
     });
@@ -2137,17 +2066,13 @@ class CreateWorkflowModal extends Modal {
 
   async createWorkflow(template: 'basic' | 'advanced') {
     if (!this.result.id || !this.result.name) {
-      new Notice('Please fill in ID and Name');
+      new Notice('Please fill in ID and name');
       return;
     }
 
     try {
-      const vaultPath = (this.app.vault.adapter as any).basePath;
-      const workflowDir = `${vaultPath}/workflows`;
-      const workflowPath = `${workflowDir}/${this.result.id}.json`;
-
       // Create workflow object based on template
-      const workflow = template === 'basic' 
+      const workflow = template === 'basic'
         ? this.getBasicTemplate()
         : this.getAdvancedTemplate();
 
@@ -2160,19 +2085,19 @@ class CreateWorkflowModal extends Modal {
         outputPath: 'assets/images'
       };
 
-      // Write file using Node fs
-      const fs = require('fs');
-      if (!fs.existsSync(workflowDir)) {
-        fs.mkdirSync(workflowDir, { recursive: true });
+      const workflowFolder = 'workflows';
+      if (!this.app.vault.getAbstractFileByPath(workflowFolder)) {
+        await this.app.vault.createFolder(workflowFolder);
       }
 
-      fs.writeFileSync(workflowPath, JSON.stringify(workflowData, null, 2));
+      const workflowFilePath = `${workflowFolder}/${this.result.id}.json`;
+      await this.app.vault.create(workflowFilePath, JSON.stringify(workflowData, null, 2));
 
-      new Notice(`✅ Workflow created: ${this.result.name}`);
-      
+      new Notice(`Workflow created: ${this.result.name}`);
+
       // Show info modal
-      new WorkflowCreatedModal(this.app, workflowPath, this.plugin).open();
-      
+      new WorkflowCreatedModal(this.app, workflowFilePath, this.plugin).open();
+
       this.close();
 
     } catch (error) {
@@ -2181,7 +2106,7 @@ class CreateWorkflowModal extends Modal {
     }
   }
 
-  getBasicTemplate(): Record<string, any> {
+  getBasicTemplate(): Record<string, unknown> {
     return {
       "1": {
         "class_type": "CheckpointLoaderSimple",
@@ -2213,7 +2138,7 @@ class CreateWorkflowModal extends Modal {
     };
   }
 
-  getAdvancedTemplate(): Record<string, any> {
+  getAdvancedTemplate(): Record<string, unknown> {
     return {
       "1": {
         "class_type": "CheckpointLoaderSimple",
@@ -2264,7 +2189,7 @@ class WorkflowCreatedModal extends Modal {
 
   onOpen() {
     const { contentEl } = this;
-    contentEl.createEl('h2', { text: '✅ Workflow Created!' });
+    contentEl.createEl('h2', { text: 'Workflow created!' });
 
     contentEl.createEl('p', {
       text: `Your workflow has been created at:`
@@ -2273,32 +2198,32 @@ class WorkflowCreatedModal extends Modal {
     contentEl.createEl('code', {
       text: this.filePath
     });
-    
+
     contentEl.createEl('p', {
-      text: '⚠️ Note: JSON files won\'t appear in Obsidian\'s file explorer (this is normal!). Use File Explorer to verify the file exists.'
+      text: 'Note: JSON files won\'t appear in Obsidian\'s file explorer (this is normal!). Use file explorer to verify the file exists.'
     });
 
     contentEl.createEl('p', {
       text: 'To use it with ComfyUI, you need to export a real workflow from ComfyUI and replace the workflow JSON in this file.'
     });
 
-    contentEl.createEl('h3', { text: 'Next Steps:' });
-    
+    contentEl.createEl('h3', { text: 'Next steps:' });
+
     const steps = contentEl.createEl('ol');
     steps.createEl('li', { text: 'Open ComfyUI in your browser' });
     steps.createEl('li', { text: 'Create/load your workflow' });
-    steps.createEl('li', { text: 'Click "Save (API Format)" button' });
+    // eslint-disable-next-line obsidianmd/ui/sentence-case -- "Save" is a UI button label
+    steps.createEl('li', { text: 'Click "Save (API format)" button' });
     steps.createEl('li', { text: 'Copy the JSON output' });
     steps.createEl('li', { text: 'Paste it into the "workflow" field in your JSON file' });
 
-    const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container' });
-    buttonContainer.style.marginTop = '20px';
+    const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container hvmd-button-container-margin-top' });
 
     const reconnectBtn = buttonContainer.createEl('button', {
-      text: '🔄 Reconnect MCP to Load Workflow',
+      text: 'Reconnect MCP to load workflow',
       cls: 'mod-cta'
     });
-    
+
     reconnectBtn.addEventListener('click', async () => {
       this.close();
       this.plugin.stopMCPServer();
@@ -2314,173 +2239,20 @@ class WorkflowCreatedModal extends Modal {
   }
 }
 
-// Missing Frontmatter Modal
-class MissingFrontmatterModal extends Modal {
-  plugin: HivemindPlugin;
-  file: TFile;
-  existingFrontmatter: Record<string, any>;
-  missingFields: Record<string, any>;
-  noteType: string;
-  fieldValues: Record<string, any> = {};
-
-  constructor(
-    app: App, 
-    plugin: HivemindPlugin, 
-    file: TFile, 
-    existingFrontmatter: Record<string, any>, 
-    missingFields: Record<string, any>,
-    noteType: string
-  ) {
-    super(app);
-    this.plugin = plugin;
-    this.file = file;
-    this.existingFrontmatter = existingFrontmatter;
-    this.missingFields = missingFields;
-    this.noteType = noteType;
-    
-    // Initialize field values with defaults
-    this.fieldValues = { ...missingFields };
-  }
-
-  onOpen() {
-    const { contentEl } = this;
-    
-    contentEl.createEl('h2', { text: '🔍 Missing Frontmatter Fields' });
-    
-    contentEl.createEl('p', { 
-      text: `Found ${Object.keys(this.missingFields).length} missing field(s) in this ${this.noteType} note.`
-    });
-
-    const infoBox = contentEl.createDiv({ cls: 'missing-frontmatter-info' });
-    infoBox.createEl('p', {
-      text: '💡 Tip: You can edit the values below before inserting them. Leave empty for default values.',
-      cls: 'mod-info'
-    });
-
-    // Create a scrollable container for fields
-    const fieldsContainer = contentEl.createDiv({ cls: 'missing-frontmatter-fields' });
-    fieldsContainer.style.maxHeight = '400px';
-    fieldsContainer.style.overflowY = 'auto';
-    fieldsContainer.style.marginBottom = '20px';
-    fieldsContainer.style.padding = '10px';
-    fieldsContainer.style.border = '1px solid var(--background-modifier-border)';
-    fieldsContainer.style.borderRadius = '5px';
-
-    // Display missing fields with input options
-    for (const [fieldPath, defaultValue] of Object.entries(this.missingFields)) {
-      const fieldContainer = fieldsContainer.createDiv({ cls: 'missing-field-item' });
-      fieldContainer.style.marginBottom = '15px';
-      fieldContainer.style.paddingBottom = '10px';
-      fieldContainer.style.borderBottom = '1px solid var(--background-modifier-border-focus)';
-
-      // Field name
-      fieldContainer.createEl('strong', { text: fieldPath });
-      
-      // Default value preview
-      const defaultText = Array.isArray(defaultValue) 
-        ? '[]' 
-        : typeof defaultValue === 'object' && defaultValue !== null
-        ? '{...}'
-        : String(defaultValue || '(empty)');
-      
-      fieldContainer.createEl('div', { 
-        text: `Default: ${defaultText}`,
-        cls: 'setting-item-description'
-      });
-
-      // Input field (for simple types)
-      if (typeof defaultValue === 'string' || typeof defaultValue === 'number' || defaultValue === null) {
-        new Setting(fieldContainer)
-          .setName('Custom value (optional)')
-          .addText(text => text
-            .setPlaceholder(defaultText)
-            .setValue(String(defaultValue || ''))
-            .onChange(value => {
-              this.fieldValues[fieldPath] = value || defaultValue;
-            }));
-      }
-    }
-
-    // Buttons
-    const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container' });
-    buttonContainer.style.display = 'flex';
-    buttonContainer.style.gap = '10px';
-    buttonContainer.style.justifyContent = 'flex-end';
-    buttonContainer.style.marginTop = '20px';
-
-    const cancelBtn = buttonContainer.createEl('button', { text: 'Cancel' });
-    cancelBtn.addEventListener('click', () => {
-      this.close();
-    });
-
-    const insertBtn = buttonContainer.createEl('button', {
-      text: '✅ Insert Missing Fields',
-      cls: 'mod-cta'
-    });
-    insertBtn.addEventListener('click', async () => {
-      try {
-        insertBtn.setAttr('disabled', 'true');
-        insertBtn.setText('Inserting...');
-        
-        // Convert flat field paths back to nested object
-        const fieldsToInsert = this.flatToNested(this.fieldValues);
-        
-        await this.plugin.insertMissingFrontmatter(
-          this.file,
-          this.existingFrontmatter,
-          fieldsToInsert
-        );
-        
-        this.close();
-      } catch (error) {
-        new Notice('Failed to insert frontmatter: ' + (error as Error).message);
-        insertBtn.removeAttribute('disabled');
-        insertBtn.setText('✅ Insert Missing Fields');
-      }
-    });
-  }
-
-  private flatToNested(flat: Record<string, any>): Record<string, any> {
-    const result: Record<string, any> = {};
-    
-    for (const [path, value] of Object.entries(flat)) {
-      const parts = path.split('.');
-      let current = result;
-      
-      for (let i = 0; i < parts.length - 1; i++) {
-        const part = parts[i];
-        if (!current[part]) {
-          current[part] = {};
-        }
-        current = current[part];
-      }
-      
-      current[parts[parts.length - 1]] = value;
-    }
-    
-    return result;
-  }
-
-  onClose() {
-    const { contentEl } = this;
-    contentEl.empty();
-  }
-}
-
 // Add Frontmatter Modal - shows preview of what will be added
 class AddFrontmatterModal extends Modal {
   plugin: HivemindPlugin;
   file: TFile;
   entityType: string;
-  existingFrontmatter: Record<string, any>;
-  newFields: Record<string, any> = {};
+  existingFrontmatter: Record<string, unknown>;
+  newFields: Record<string, unknown> = {};
 
   constructor(
     app: App,
     plugin: HivemindPlugin,
     file: TFile,
     entityType: string,
-    existingFrontmatter: Record<string, any>
+    existingFrontmatter: Record<string, unknown>
   ) {
     super(app);
     this.plugin = plugin;
@@ -2492,7 +2264,7 @@ class AddFrontmatterModal extends Modal {
   onOpen() {
     const { contentEl } = this;
 
-    contentEl.createEl('h2', { text: 'Add Frontmatter' });
+    contentEl.createEl('h2', { text: 'Add frontmatter' });
 
     // Show file name
     contentEl.createEl('p', {
@@ -2502,16 +2274,8 @@ class AddFrontmatterModal extends Modal {
 
     // Show detected/selected type with badge
     const typeBadge = contentEl.createEl('div', {
-      cls: 'frontmatter-type-badge'
+      cls: 'frontmatter-type-badge hvmd-type-badge-large'
     });
-    typeBadge.style.display = 'inline-block';
-    typeBadge.style.padding = '4px 12px';
-    typeBadge.style.marginBottom = '15px';
-    typeBadge.style.backgroundColor = 'var(--interactive-accent)';
-    typeBadge.style.color = 'var(--text-on-accent)';
-    typeBadge.style.borderRadius = '12px';
-    typeBadge.style.fontSize = '0.9em';
-    typeBadge.style.fontWeight = 'bold';
     typeBadge.setText(`Type: ${this.entityType}`);
 
     // Get template for this type
@@ -2539,15 +2303,14 @@ class AddFrontmatterModal extends Modal {
 
     if (Object.keys(this.newFields).length === 0) {
       contentEl.createEl('p', {
-        text: '✅ All frontmatter fields are already present in this file.',
+        text: 'All frontmatter fields are already present in this file.',
         cls: 'mod-success'
       });
 
       const closeBtn = contentEl.createEl('button', {
         text: 'Close',
-        cls: 'mod-cta'
+        cls: 'mod-cta hvmd-close-btn-margin'
       });
-      closeBtn.style.marginTop = '15px';
       closeBtn.addEventListener('click', () => {
         this.close();
       });
@@ -2555,36 +2318,20 @@ class AddFrontmatterModal extends Modal {
     }
 
     // Display preview section
-    contentEl.createEl('h3', { text: 'Fields to Add:' });
+    contentEl.createEl('h3', { text: 'Fields to add:' });
 
-    const previewContainer = contentEl.createDiv({ cls: 'frontmatter-preview' });
-    previewContainer.style.maxHeight = '400px';
-    previewContainer.style.overflowY = 'auto';
-    previewContainer.style.padding = '10px';
-    previewContainer.style.marginBottom = '20px';
-    previewContainer.style.border = '1px solid var(--background-modifier-border)';
-    previewContainer.style.borderRadius = '5px';
-    previewContainer.style.backgroundColor = 'var(--background-secondary)';
+    const previewContainer = contentEl.createDiv({ cls: 'frontmatter-preview hvmd-preview-container' });
 
     // List each field name and its default value
-    const fieldList = previewContainer.createEl('ul');
-    fieldList.style.listStyle = 'none';
-    fieldList.style.padding = '0';
-    fieldList.style.margin = '0';
+    const fieldList = previewContainer.createEl('ul', { cls: 'hvmd-field-list' });
 
     for (const [fieldPath, value] of Object.entries(this.newFields)) {
-      const listItem = fieldList.createEl('li');
-      listItem.style.marginBottom = '8px';
-      listItem.style.paddingBottom = '8px';
-      listItem.style.borderBottom = '1px solid var(--background-modifier-border-focus)';
+      const listItem = fieldList.createEl('li', { cls: 'hvmd-field-list-item' });
 
       const fieldName = listItem.createEl('strong');
       fieldName.setText(fieldPath);
 
-      const fieldValue = listItem.createEl('div');
-      fieldValue.style.marginTop = '4px';
-      fieldValue.style.fontSize = '0.9em';
-      fieldValue.style.color = 'var(--text-muted)';
+      const fieldValue = listItem.createEl('div', { cls: 'hvmd-field-value' });
 
       // Format value for display
       const displayValue = this.formatValueForDisplay(value);
@@ -2592,11 +2339,7 @@ class AddFrontmatterModal extends Modal {
     }
 
     // Buttons
-    const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container' });
-    buttonContainer.style.display = 'flex';
-    buttonContainer.style.gap = '10px';
-    buttonContainer.style.justifyContent = 'flex-end';
-    buttonContainer.style.marginTop = '20px';
+    const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container hvmd-button-container' });
 
     const cancelBtn = buttonContainer.createEl('button', { text: 'Cancel' });
     cancelBtn.addEventListener('click', () => {
@@ -2630,8 +2373,8 @@ class AddFrontmatterModal extends Modal {
     });
   }
 
-  private computeNewFields(existing: Record<string, any>, template: Record<string, any>, prefix = ''): Record<string, any> {
-    const newFields: Record<string, any> = {};
+  private computeNewFields(existing: Record<string, unknown>, template: Record<string, unknown>, prefix = ''): Record<string, unknown> {
+    const newFields: Record<string, unknown> = {};
 
     for (const [key, value] of Object.entries(template)) {
       const fullKey = prefix ? `${prefix}.${key}` : key;
@@ -2640,7 +2383,7 @@ class AddFrontmatterModal extends Modal {
       if (existing[key] !== undefined && existing[key] !== null && existing[key] !== '') {
         // If it's an object, check nested fields
         if (typeof value === 'object' && !Array.isArray(value) && value !== null) {
-          const nestedNew = this.computeNewFields(existing[key] || {}, value, fullKey);
+          const nestedNew = this.computeNewFields((existing[key] as Record<string, unknown>) || {}, value as Record<string, unknown>, fullKey);
           Object.assign(newFields, nestedNew);
         }
         continue;
@@ -2653,7 +2396,7 @@ class AddFrontmatterModal extends Modal {
     return newFields;
   }
 
-  private formatValueForDisplay(value: any): string {
+  private formatValueForDisplay(value: unknown): string {
     if (value === null || value === undefined) {
       return '(empty)';
     } else if (Array.isArray(value)) {
@@ -2667,19 +2410,19 @@ class AddFrontmatterModal extends Modal {
     }
   }
 
-  private flatToNested(flat: Record<string, any>): Record<string, any> {
-    const result: Record<string, any> = {};
+  private flatToNested(flat: Record<string, unknown>): Record<string, unknown> {
+    const result: Record<string, unknown> = {};
 
     for (const [path, value] of Object.entries(flat)) {
       const parts = path.split('.');
-      let current = result;
+      let current: Record<string, unknown> = result;
 
       for (let i = 0; i < parts.length - 1; i++) {
         const part = parts[i];
         if (!current[part]) {
           current[part] = {};
         }
-        current = current[part];
+        current = current[part] as Record<string, unknown>;
       }
 
       current[parts[parts.length - 1]] = value;
@@ -2689,113 +2432,6 @@ class AddFrontmatterModal extends Modal {
   }
 
   private generateId(name: string, entityType: string): string {
-    const slug = name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '');
-    return `${entityType}-${slug}`;
-  }
-
-  onClose() {
-    const { contentEl } = this;
-    contentEl.empty();
-  }
-}
-
-// Type Inference Modal - shows inferred type, asks for confirmation
-class TypeInferenceModal extends Modal {
-  plugin: HivemindPlugin;
-  file: TFile;
-  inferredType: string;
-
-  constructor(app: App, plugin: HivemindPlugin, file: TFile, inferredType: string) {
-    super(app);
-    this.plugin = plugin;
-    this.file = file;
-    this.inferredType = inferredType;
-  }
-
-  onOpen() {
-    const { contentEl } = this;
-
-    contentEl.createEl('h2', { text: 'Inferred Entity Type' });
-
-    contentEl.createEl('p', {
-      text: `Based on the file location, this appears to be a:`
-    });
-
-    const typeDisplay = contentEl.createEl('div', {
-      cls: 'inferred-type-display'
-    });
-    typeDisplay.style.fontSize = '1.5em';
-    typeDisplay.style.fontWeight = 'bold';
-    typeDisplay.style.textAlign = 'center';
-    typeDisplay.style.padding = '20px';
-    typeDisplay.style.margin = '10px 0';
-    typeDisplay.style.backgroundColor = 'var(--background-secondary)';
-    typeDisplay.style.borderRadius = '8px';
-    typeDisplay.setText(this.inferredType.toUpperCase());
-
-    contentEl.createEl('p', {
-      text: `File: ${this.file.path}`,
-      cls: 'setting-item-description'
-    });
-
-    // Buttons
-    const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container' });
-    buttonContainer.style.display = 'flex';
-    buttonContainer.style.gap = '10px';
-    buttonContainer.style.justifyContent = 'flex-end';
-    buttonContainer.style.marginTop = '20px';
-
-    const cancelBtn = buttonContainer.createEl('button', { text: 'Cancel' });
-    cancelBtn.addEventListener('click', () => {
-      this.close();
-    });
-
-    const chooseOtherBtn = buttonContainer.createEl('button', { text: 'Choose Different Type' });
-    chooseOtherBtn.addEventListener('click', () => {
-      this.close();
-      new TypeSelectionModal(this.app, this.plugin, this.file).open();
-    });
-
-    const confirmBtn = buttonContainer.createEl('button', {
-      text: `Use "${this.inferredType}"`,
-      cls: 'mod-cta'
-    });
-    confirmBtn.addEventListener('click', async () => {
-      await this.applyType(this.inferredType);
-      this.close();
-    });
-  }
-
-  async applyType(entityType: string) {
-    try {
-      const template = FRONTMATTER_TEMPLATES[entityType];
-      if (!template) {
-        new Notice(`Unknown type: ${entityType}`);
-        return;
-      }
-
-      const fileName = this.file.basename;
-      const id = this.generateId(fileName, entityType);
-
-      // Create frontmatter with auto-filled values
-      const frontmatter = {
-        ...template,
-        id: id,
-        name: fileName,
-        title: fileName
-      };
-
-      await this.plugin.insertMissingFrontmatter(this.file, {}, frontmatter);
-      new Notice(`Added ${entityType} frontmatter to ${this.file.name}`);
-    } catch (error) {
-      new Notice('Failed to add frontmatter: ' + (error as Error).message);
-    }
-  }
-
-  generateId(name: string, entityType: string): string {
     const slug = name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
@@ -2827,7 +2463,7 @@ class TypeSelectionModal extends Modal {
   onOpen() {
     const { contentEl } = this;
 
-    contentEl.createEl('h2', { text: 'Select Entity Type' });
+    contentEl.createEl('h2', { text: 'Select entity type' });
 
     contentEl.createEl('p', {
       text: 'Choose the type of entity for this note:',
@@ -2853,33 +2489,23 @@ class TypeSelectionModal extends Modal {
     if (this.suggestedTypes && this.suggestedTypes.length > 0) {
       contentEl.createEl('h3', { text: 'Suggested types based on folder:' });
 
-      const suggestedGrid = contentEl.createDiv({ cls: 'type-selection-grid' });
-      suggestedGrid.style.display = 'grid';
-      suggestedGrid.style.gridTemplateColumns = 'repeat(2, 1fr)';
-      suggestedGrid.style.gap = '10px';
-      suggestedGrid.style.marginTop = '10px';
-      suggestedGrid.style.marginBottom = '20px';
-      suggestedGrid.style.maxHeight = '300px';
-      suggestedGrid.style.overflowY = 'auto';
+      const suggestedGrid = contentEl.createDiv({ cls: 'type-selection-grid hvmd-type-grid' });
 
       for (const type of this.suggestedTypes) {
         const description = typeDescriptions[type] || 'Custom type';
         const typeBtn = suggestedGrid.createEl('button', {
-          cls: 'type-selection-btn mod-cta'
+          cls: 'type-selection-btn mod-cta hvmd-type-btn'
         });
-        typeBtn.style.padding = '15px';
-        typeBtn.style.textAlign = 'center';
-        typeBtn.style.cursor = 'pointer';
 
-        typeBtn.createEl('div', {
+        const typeNameEl = typeBtn.createEl('div', {
           text: type.charAt(0).toUpperCase() + type.slice(1),
-          cls: 'type-name'
-        }).style.fontWeight = 'bold';
+          cls: 'hvmd-type-name'
+        });
 
-        typeBtn.createEl('div', {
+        const typeDescEl = typeBtn.createEl('div', {
           text: description,
-          cls: 'type-desc'
-        }).style.fontSize = '0.8em';
+          cls: 'hvmd-type-desc'
+        });
 
         typeBtn.addEventListener('click', async () => {
           await this.applyType(type);
@@ -2891,13 +2517,7 @@ class TypeSelectionModal extends Modal {
     }
 
     // Create type buttons grid for all types
-    const typeGrid = contentEl.createDiv({ cls: 'type-selection-grid' });
-    typeGrid.style.display = 'grid';
-    typeGrid.style.gridTemplateColumns = 'repeat(2, 1fr)';
-    typeGrid.style.gap = '10px';
-    typeGrid.style.marginTop = '20px';
-    typeGrid.style.maxHeight = '300px';
-    typeGrid.style.overflowY = 'auto';
+    const typeGrid = contentEl.createDiv({ cls: 'type-selection-grid hvmd-type-grid-bottom' });
 
     for (const [type, description] of Object.entries(typeDescriptions)) {
       // Skip types already shown in suggested section
@@ -2906,21 +2526,18 @@ class TypeSelectionModal extends Modal {
       }
 
       const typeBtn = typeGrid.createEl('button', {
-        cls: 'type-selection-btn'
+        cls: 'type-selection-btn hvmd-type-btn'
       });
-      typeBtn.style.padding = '15px';
-      typeBtn.style.textAlign = 'center';
-      typeBtn.style.cursor = 'pointer';
 
-      typeBtn.createEl('div', {
+      const typeNameEl = typeBtn.createEl('div', {
         text: type.charAt(0).toUpperCase() + type.slice(1),
-        cls: 'type-name'
-      }).style.fontWeight = 'bold';
+        cls: 'hvmd-type-name'
+      });
 
-      typeBtn.createEl('div', {
+      const typeDescEl = typeBtn.createEl('div', {
         text: description,
-        cls: 'type-desc'
-      }).style.fontSize = '0.8em';
+        cls: 'hvmd-type-desc'
+      });
 
       typeBtn.addEventListener('click', async () => {
         await this.applyType(type);
@@ -2929,9 +2546,7 @@ class TypeSelectionModal extends Modal {
     }
 
     // Cancel button
-    const cancelContainer = contentEl.createDiv();
-    cancelContainer.style.textAlign = 'center';
-    cancelContainer.style.marginTop = '20px';
+    const cancelContainer = contentEl.createDiv({ cls: 'hvmd-cancel-container' });
 
     const cancelBtn = cancelContainer.createEl('button', { text: 'Cancel' });
     cancelBtn.addEventListener('click', () => {
@@ -2999,16 +2614,12 @@ class HivemindSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    containerEl.createEl('h2', { text: 'Hivemind MCP Settings' });
+    new Setting(containerEl).setName('MCP connection').setHeading();
 
     // Info banner about local connections
-    const infoBanner = containerEl.createDiv({ cls: 'hivemind-info-banner' });
-    infoBanner.style.padding = '10px';
-    infoBanner.style.marginBottom = '20px';
-    infoBanner.style.backgroundColor = 'var(--background-secondary)';
-    infoBanner.style.borderRadius = '5px';
-    infoBanner.createEl('p', { 
-      text: '🔒 Privacy: All connections are local (localhost). No data leaves your computer.',
+    const infoBanner = containerEl.createDiv({ cls: 'hivemind-info-banner hvmd-info-banner' });
+    infoBanner.createEl('p', {
+      text: 'Privacy: all connections are local (localhost). No data leaves your computer.',
       cls: 'setting-item-description'
     });
 
@@ -3016,6 +2627,7 @@ class HivemindSettingTab extends PluginSettingTab {
       .setName('MCP server command')
       .setDesc('Command to start the MCP server')
       .addText(text => text
+        // eslint-disable-next-line obsidianmd/ui/sentence-case -- npm package name
         .setPlaceholder('npx @hiveforge/hivemind-mcp start')
         .setValue(this.plugin.settings.mcpServerPath)
         .onChange(async (value) => {
@@ -3033,18 +2645,16 @@ class HivemindSettingTab extends PluginSettingTab {
           await this.plugin.saveSettings();
         }));
 
-    containerEl.createEl('h3', { text: 'Frontmatter Commands' });
+    new Setting(containerEl).setName('Frontmatter commands').setHeading();
 
-    const frontmatterInfoEl = containerEl.createEl('p', { cls: 'setting-item-description' });
-    frontmatterInfoEl.style.marginTop = '10px';
-    frontmatterInfoEl.style.marginBottom = '10px';
+    const frontmatterInfoEl = containerEl.createEl('p', { cls: 'setting-item-description hvmd-info-text' });
     frontmatterInfoEl.setText('Configure how frontmatter commands behave in your vault.');
 
     new Setting(containerEl)
       .setName('Default entity type')
       .setDesc('Default type when adding frontmatter (leave empty for folder-based inference)')
       .addDropdown(dropdown => {
-        dropdown.addOption('', '(Auto-detect from folder)');
+        dropdown.addOption('', '(auto-detect from folder)');
         dropdown.addOption('character', 'Character');
         dropdown.addOption('location', 'Location');
         dropdown.addOption('event', 'Event');
@@ -3097,11 +2707,9 @@ class HivemindSettingTab extends PluginSettingTab {
           new Notice('Please reload Obsidian for this setting to take effect');
         }));
 
-    containerEl.createEl('h3', { text: 'ComfyUI Integration' });
+    new Setting(containerEl).setName('ComfyUI integration').setHeading();
 
-    const comfyInfoEl = containerEl.createEl('p', { cls: 'setting-item-description' });
-    comfyInfoEl.style.marginTop = '10px';
-    comfyInfoEl.style.marginBottom = '10px';
+    const comfyInfoEl = containerEl.createEl('p', { cls: 'setting-item-description hvmd-info-text' });
     comfyInfoEl.setText('ComfyUI runs on your local machine. Enable only if you have ComfyUI installed and running.');
 
     new Setting(containerEl)
@@ -3125,29 +2733,29 @@ class HivemindSettingTab extends PluginSettingTab {
           await this.plugin.saveSettings();
         }))
       .addButton(button => button
-        .setButtonText('Test Connection')
+        .setButtonText('Test connection')
         .setCta()
         .onClick(async () => {
           button.setDisabled(true);
           button.setButtonText('Testing...');
-          
+
           try {
             const endpoint = this.plugin.settings.comfyuiEndpoint || 'http://127.0.0.1:8188';
-            const response = await fetch(`${endpoint}/system_stats`, {
+            const response = await requestUrl({
+              url: `${endpoint}/system_stats`,
               method: 'GET',
-              signal: AbortSignal.timeout(5000)
             });
-            
-            if (response.ok) {
-              new Notice('✅ ComfyUI connection successful!', 5000);
+
+            if (response.status === 200) {
+              new Notice('ComfyUI connection successful!', 5000);
             } else {
-              new Notice(`❌ ComfyUI responded with status ${response.status}`, 5000);
+              new Notice(`ComfyUI responded with status ${response.status}`, 5000);
             }
           } catch (error) {
-            new Notice(`❌ Failed to connect to ComfyUI: ${(error as Error).message}`, 8000);
+            new Notice(`Failed to connect to ComfyUI: ${(error as Error).message}`, 8000);
           } finally {
             button.setDisabled(false);
-            button.setButtonText('Test Connection');
+            button.setButtonText('Test connection');
           }
         }));
   }

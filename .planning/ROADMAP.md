@@ -186,8 +186,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 18-01-PLAN.md — Replace `any` types in template system (schema-factory.ts, loader.ts)
-- [ ] 18-02-PLAN.md — Replace `any` types in data layer (database.ts, builder.ts, engine.ts)
+- [x] 18-01-PLAN.md — Replace `any` types in template system (schema-factory.ts, loader.ts)
+- [x] 18-02-PLAN.md — Replace `any` types in data layer (database.ts, builder.ts, engine.ts)
 
 #### Phase 19: Server & MCP
 **Goal**: Type safety in MCP server and dynamic tool generation
@@ -196,10 +196,11 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. `server.ts` tool handlers use typed argument interfaces from MCP SDK
   2. `mcp/tool-generator.ts` uses proper generics for dynamic tool creation
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 19-01: TBD
+- [ ] 19-01-PLAN.md — Replace all `any` types in server.ts with typed MCP handlers
+- [ ] 19-02-PLAN.md — Replace all `any` types in tool-generator.ts with proper generics
 
 #### Phase 20: ComfyUI, CLI & Enforcement
 **Goal**: Complete type safety across integrations and enforce via linting
@@ -267,8 +268,8 @@ Phases execute in numeric order: 17 → 18 → 19 → 20 → 21 → 22
 | 15. Fix CLI | v3.0 | 4/4 | Complete | 2026-01-27 |
 | 16. Obsidian Commands | v3.0 | 4/4 | Complete | 2026-01-27 |
 | 17. Foundation Types | v3.1 | 1/1 | Complete | 2026-01-27 |
-| 18. Template System & Data Layer | v3.1 | 0/0 | Not started | - |
-| 19. Server & MCP | v3.1 | 0/0 | Not started | - |
+| 18. Template System & Data Layer | v3.1 | 2/2 | Complete | 2026-01-27 |
+| 19. Server & MCP | v3.1 | 0/2 | Not started | - |
 | 20. ComfyUI, CLI & Enforcement | v3.1 | 0/0 | Not started | - |
 | 21. Test Coverage | v3.1 | 0/0 | Not started | - |
 | 22. CI Quality Gates | v3.1 | 0/0 | Not started | - |

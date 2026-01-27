@@ -1,0 +1,294 @@
+/* Hivemind Plugin Styles */
+
+/* === Validation Sidebar === */
+.hvmd-validation-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.hvmd-button-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.hvmd-results-container {
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.hvmd-scanning {
+  text-align: center;
+  padding: 20px;
+}
+
+/* === Summary === */
+.hvmd-summary {
+  padding: 12px;
+  margin-bottom: 16px;
+  background-color: var(--background-secondary);
+  border-radius: 6px;
+}
+
+.hvmd-summary-with-margin-top {
+  padding: 12px;
+  margin-top: 16px;
+  margin-bottom: 16px;
+  background-color: var(--background-secondary);
+  border-radius: 6px;
+}
+
+.hvmd-text-success {
+  color: var(--text-success);
+}
+
+.hvmd-text-warning {
+  color: var(--text-warning);
+}
+
+.hvmd-text-muted {
+  color: var(--text-muted);
+}
+
+/* === File Items === */
+.hvmd-file-item {
+  padding: 12px;
+  margin-bottom: 8px;
+  background-color: var(--background-secondary);
+  border-radius: 6px;
+  border-left: 3px solid var(--text-warning);
+  cursor: pointer;
+}
+
+.hvmd-file-item-no-cursor {
+  padding: 10px;
+  margin-bottom: 8px;
+  background-color: var(--background-secondary);
+  border-radius: 5px;
+  border-left: 3px solid var(--text-warning);
+}
+
+.hvmd-file-name {
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+
+.hvmd-file-issues {
+  font-size: 0.9em;
+  color: var(--text-muted);
+}
+
+.hvmd-no-issues {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+}
+
+/* === Issues === */
+.hvmd-issues-list {
+  margin-top: 6px;
+  font-size: 0.9em;
+}
+
+.hvmd-issues-container {
+  max-height: 400px;
+  overflow-y: auto;
+  margin-bottom: 20px;
+}
+
+.hvmd-issues-container-with-margin-top {
+  max-height: 400px;
+  overflow-y: auto;
+  margin-top: 15px;
+  margin-bottom: 20px;
+}
+
+.hvmd-issue-item {
+  display: flex;
+  align-items: flex-start;
+  padding: 10px;
+  margin-bottom: 8px;
+  background-color: var(--background-secondary);
+  border-radius: 5px;
+  border-left: 3px solid var(--text-warning);
+}
+
+.hvmd-issue-icon {
+  margin-right: 10px;
+  font-size: 1.2em;
+}
+
+.hvmd-issue-text {
+  flex: 1;
+}
+
+/* === Buttons === */
+.hvmd-button-container {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 15px;
+}
+
+.hvmd-button-container-end {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 15px;
+}
+
+.hvmd-button-container-top {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.hvmd-button-container-margin-top {
+  margin-top: 20px;
+}
+
+/* === Badges === */
+.hvmd-type-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-radius: 10px;
+  font-size: 0.85em;
+}
+
+.hvmd-type-badge-large {
+  display: inline-block;
+  padding: 4px 12px;
+  margin-bottom: 15px;
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-radius: 12px;
+  font-size: 0.9em;
+  font-weight: bold;
+}
+
+/* === Modal Content === */
+.hvmd-subheading {
+  margin-bottom: 15px;
+}
+
+.hvmd-fields-container {
+  max-height: 400px;
+  overflow-y: auto;
+  margin-bottom: 20px;
+}
+
+.hvmd-fields-container-bordered {
+  max-height: 400px;
+  overflow-y: auto;
+  margin-bottom: 20px;
+  padding: 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 5px;
+}
+
+.hvmd-field-item {
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--background-modifier-border-focus);
+}
+
+/* === Preview === */
+.hvmd-preview-container {
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 10px;
+  margin-bottom: 20px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 5px;
+  background-color: var(--background-secondary);
+}
+
+.hvmd-field-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.hvmd-field-list-item {
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--background-modifier-border-focus);
+}
+
+.hvmd-field-value {
+  margin-top: 4px;
+  font-size: 0.9em;
+  color: var(--text-muted);
+}
+
+/* === Type Display === */
+.hvmd-type-display {
+  font-size: 1.5em;
+  font-weight: bold;
+  text-align: center;
+  padding: 20px;
+  margin: 10px 0;
+  background-color: var(--background-secondary);
+  border-radius: 8px;
+}
+
+/* === Type Grid === */
+.hvmd-type-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-top: 10px;
+  margin-bottom: 20px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.hvmd-type-grid-bottom {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-top: 20px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.hvmd-type-btn {
+  padding: 15px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.hvmd-type-name {
+  font-weight: bold;
+}
+
+.hvmd-type-desc {
+  font-size: 0.8em;
+}
+
+.hvmd-cancel-container {
+  text-align: center;
+  margin-top: 20px;
+}
+
+/* === Settings === */
+.hvmd-info-banner {
+  padding: 10px;
+  margin-bottom: 20px;
+  background-color: var(--background-secondary);
+  border-radius: 5px;
+}
+
+.hvmd-info-text {
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+.hvmd-margin-right {
+  margin-right: 10px;
+}
+
+.hvmd-close-btn-margin {
+  margin-top: 15px;
+}

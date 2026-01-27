@@ -25,7 +25,7 @@ function buildPrimitiveSchema(type: FieldType): z.ZodTypeAny {
     case 'date':
       return z.string(); // ISO 8601 date string
     case 'record':
-      return z.record(z.string(), z.any());
+      return z.record(z.string(), z.unknown());
     default:
       // For enum/array types used as primitives, fall back to string
       return z.string();
@@ -76,12 +76,12 @@ function buildFieldSchema(field: FieldConfig): z.ZodTypeAny {
 
     case 'record':
       // Key-value pairs
-      schema = z.record(z.string(), z.any());
+      schema = z.record(z.string(), z.unknown());
       break;
 
     default:
       // Fallback for unknown types
-      schema = z.any();
+      schema = z.unknown();
   }
 
   // Apply optional/required modifiers
@@ -108,7 +108,7 @@ function buildFieldSchema(field: FieldConfig): z.ZodTypeAny {
  * @param config - Entity type configuration
  * @returns Zod schema that validates entities of this type
  */
-export function createEntitySchema(config: EntityTypeConfig): z.ZodObject<any> {
+export function createEntitySchema(config: EntityTypeConfig): z.ZodObject<z.ZodRawShape> {
   // Build the shape for custom fields
   const customFields: Record<string, z.ZodTypeAny> = {};
 
@@ -118,7 +118,7 @@ export function createEntitySchema(config: EntityTypeConfig): z.ZodObject<any> {
 
   // Extend BaseFrontmatterSchema with custom fields and enforce type literal
   const schema = BaseFrontmatterSchema.extend({
-    type: z.literal(config.name as any), // Enforce this specific entity type
+    type: z.literal(config.name), // Enforce this specific entity type
     ...customFields,
   });
 
@@ -132,7 +132,7 @@ export function createEntitySchema(config: EntityTypeConfig): z.ZodObject<any> {
  * Useful when validating multiple entities of the same type.
  */
 export class SchemaFactory {
-  private schemaCache: Map<string, z.ZodObject<any>> = new Map();
+  private schemaCache: Map<string, z.ZodObject<z.ZodRawShape>> = new Map();
 
   /**
    * Get or create a schema for an entity type.
@@ -143,7 +143,7 @@ export class SchemaFactory {
    * @param config - Entity type configuration
    * @returns Cached or newly generated Zod schema
    */
-  getSchema(config: EntityTypeConfig): z.ZodObject<any> {
+  getSchema(config: EntityTypeConfig): z.ZodObject<z.ZodRawShape> {
     const cached = this.schemaCache.get(config.name);
     if (cached) {
       return cached;
@@ -163,8 +163,8 @@ export class SchemaFactory {
    * @param configs - Array of entity type configurations
    * @returns Map from entity type name to Zod schema
    */
-  generateSchemas(configs: EntityTypeConfig[]): Map<string, z.ZodObject<any>> {
-    const schemas = new Map<string, z.ZodObject<any>>();
+  generateSchemas(configs: EntityTypeConfig[]): Map<string, z.ZodObject<z.ZodRawShape>> {
+    const schemas = new Map<string, z.ZodObject<z.ZodRawShape>>();
 
     for (const config of configs) {
       schemas.set(config.name, this.getSchema(config));
@@ -206,4 +206,4 @@ export const schemaFactory = new SchemaFactory();
  * type Character = InferEntityType<typeof characterSchema>;
  * ```
  */
-export type InferEntityType<T extends z.ZodObject<any>> = z.infer<T>;
+export type InferEntityType<T extends z.ZodObject<z.ZodRawShape>> = z.infer<T>;

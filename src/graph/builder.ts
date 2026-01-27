@@ -14,7 +14,7 @@ export class GraphBuilder {
    */
   buildGraph(notes: VaultNote[]): void {
     console.error(`Building knowledge graph from ${notes.length} notes...`);
-    
+
     const startTime = Date.now();
 
     // First pass: Insert all nodes
@@ -29,7 +29,7 @@ export class GraphBuilder {
 
     const elapsed = Date.now() - startTime;
     const stats = this.db.getStats();
-    
+
     console.error(`Knowledge graph built in ${elapsed}ms:`);
     console.error(`  Nodes: ${stats.nodes}`);
     console.error(`  Relationships: ${stats.relationships}`);
@@ -44,14 +44,14 @@ export class GraphBuilder {
     for (const link of note.links) {
       // Find the target note
       const targetNote = this.findNoteByNameOrId(link, allNotes);
-      
+
       if (targetNote) {
         // Infer relationship type based on note types
         const relType = this.inferRelationType(note, targetNote);
-        
+
         // Insert relationship
         this.db.insertRelationship(note.id, targetNote.id, relType);
-        
+
         // For certain relationships, create bidirectional link
         if (this.isBidirectional(relType)) {
           const reverseType = this.getReverseRelationType(relType);
@@ -61,16 +61,22 @@ export class GraphBuilder {
     }
 
     // Extract explicit relationships from frontmatter
-    const frontmatter = note.frontmatter as any;
+    const frontmatter = note.frontmatter as Record<string, unknown>;
     if (frontmatter.relationships) {
-      for (const rel of frontmatter.relationships as any[]) {
-        if (rel.target) {
+      const relationships = frontmatter.relationships as Array<Record<string, unknown>>;
+      for (const rel of relationships) {
+        if (typeof rel.target === 'string') {
           const targetId = this.extractIdFromWikilink(rel.target);
+          const relType = typeof rel.type === 'string' ? rel.type : 'related';
+          const properties: Record<string, unknown> = {};
+          if (rel.status !== undefined) {
+            properties.status = rel.status;
+          }
           this.db.insertRelationship(
             note.id,
             targetId,
-            rel.type || 'related',
-            { status: rel.status }
+            relType,
+            properties
           );
         }
       }
@@ -171,8 +177,8 @@ export class GraphBuilder {
 
     // Try by title/name
     note = notes.find(n => {
-      const fm = n.frontmatter as any;
-      const title = (fm.title || fm.name || '').toLowerCase();
+      const fm = n.frontmatter as Record<string, unknown>;
+      const title = (fm.title || fm.name || '').toString().toLowerCase();
       return title === normalized;
     });
     if (note) return note;
@@ -192,10 +198,10 @@ export class GraphBuilder {
   private extractIdFromWikilink(link: string): string {
     // Remove [[ and ]]
     const cleaned = link.replace(/^\[\[/, '').replace(/\]\]$/, '');
-    
+
     // Split on | to handle aliases
     const parts = cleaned.split('|');
-    
+
     // Return first part (the actual link target)
     return parts[0].trim().toLowerCase().replace(/\s+/g, '-');
   }
@@ -215,7 +221,7 @@ export class GraphBuilder {
 
       for (const rel of rels) {
         edges.push(rel);
-        
+
         // Add both directions to adjacency list
         neighbors.add(rel.targetId);
         if (rel.sourceId !== node.id) {
