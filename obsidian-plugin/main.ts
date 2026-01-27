@@ -2,6 +2,8 @@ import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Set
 import { spawn, ChildProcess } from 'child_process';
 import { FolderMapper } from '../src/templates/folder-mapper.js';
 import type { ResolveResult, FolderMappingRule } from '../src/templates/types.js';
+import { templateRegistry } from '../src/templates/registry.js';
+import { worldbuildingTemplate } from '../src/templates/builtin/worldbuilding.js';
 
 interface HivemindSettings {
   mcpServerPath: string;
@@ -169,8 +171,15 @@ export default class HivemindPlugin extends Plugin {
   async onload() {
     await this.loadSettings();
 
-    // Initialize folder mapper with defaults (will be updated when MCP connects)
-    this.folderMapper = await FolderMapper.createFromTemplate();
+    // Initialize template registry if not already done
+    if (!templateRegistry.has('worldbuilding')) {
+      templateRegistry.register(worldbuildingTemplate, 'builtin');
+      templateRegistry.activate('worldbuilding');
+    }
+
+    // Initialize folder mapper from active template config
+    const folderMappings = templateRegistry.getFolderMappings();
+    this.folderMapper = await FolderMapper.createFromTemplate(folderMappings);
 
     // Add status bar item
     this.statusBarItem = this.addStatusBarItem();
