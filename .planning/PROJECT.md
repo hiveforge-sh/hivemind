@@ -8,11 +8,28 @@ A domain-agnostic MCP server for knowledge management with pluggable templates. 
 
 Consistent AI output. Give any AI tool context from your canon, get results that belong in your world — every time, across every tool.
 
-## Current State: v2.0 Shipped
+## Current State: v3.0 Shipped
+
+**Shipped:** 2026-01-27
+
+**What's in v3.0:**
+- `npx hivemind init` — interactive setup wizard with config generation
+- `npx hivemind validate` — scan vault, report missing/invalid frontmatter
+- `npx hivemind fix` — interactive wizard to add frontmatter to files
+- Folder-to-type mapping (People/ → character, Places/ → location)
+- Obsidian commands: Add/Fix/Validate frontmatter (Ctrl+P)
+- Validation sidebar panel for vault-wide frontmatter overview
+- Settings tab for frontmatter command configuration
+- Folder context menus for bulk operations
+- Better error messages when config missing or vault misconfigured
+- Claude Desktop config snippet generation
+- 502 tests passing, 12,438 lines TypeScript
+
+## Previous: v2.0 Template System
 
 **Shipped:** 2026-01-26
 
-**What's in v2.0:**
+**What shipped:**
 - Built-in templates (worldbuilding, research, people-management)
 - Custom entity types via config file (no coding required)
 - Auto-generated MCP tools (query_X, list_X per entity type) — 16 tools for worldbuilding
@@ -20,10 +37,6 @@ Consistent AI output. Give any AI tool context from your canon, get results that
 - Full migration — worldbuilding refactored from hardcoded to template definition
 - 100% backwards compatible with existing worldbuilding vaults
 - 463 tests passing, 9,913 lines TypeScript
-
-**Next Milestone Goals:**
-- Obsidian community plugin submission
-- Advanced features (timeline queries, visualization, multi-world support)
 
 ## Requirements
 
@@ -51,6 +64,10 @@ Consistent AI output. Give any AI tool context from your canon, get results that
 
 <!-- Current scope for next milestone -->
 
+### Deferred
+
+<!-- Moved from Active, planned for future milestone -->
+
 - [ ] Obsidian community plugin submission
 - [ ] Timeline queries with date range filtering
 - [ ] Relationship graph visualization
@@ -76,7 +93,7 @@ Consistent AI output. Give any AI tool context from your canon, get results that
 - Researchers managing papers, citations, concepts
 - Knowledge workers with Zettelkasten-style PKM
 
-**Current architecture:** Hardcoded Zod schemas for worldbuilding entities. Template system will make this configurable.
+**Current architecture:** Template system complete with config-driven entity definitions. CLI has init, validate, fix commands with interactive wizards. Obsidian plugin has full frontmatter authoring and validation commands with sidebar panel and settings UI.
 
 ## Constraints
 
@@ -100,4 +117,4 @@ Consistent AI output. Give any AI tool context from your canon, get results that
 | Deprecation via _meta field | MCP SDK lacks native deprecation, one year migration window | ✓ Good |
 
 ---
-*Last updated: 2026-01-26 after v2.0 milestone*
+*Last updated: 2026-01-27 after v3.0 milestone completion*

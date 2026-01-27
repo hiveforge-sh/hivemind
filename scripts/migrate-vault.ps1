@@ -198,9 +198,9 @@ Write-Info "Backup: $(if ($CreateBackup) { 'Yes' } else { 'No' })"
 Write-Host ""
 
 if ($CreateBackup -and -not $DryRun) {
-    $backupPath = "$VaultPath\.hivemind-backup-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
-    Write-Info "Creating backup: $backupPath"
-    Copy-Item $VaultPath -Destination $backupPath -Recurse -Exclude ".git",".obsidian",".trash","node_modules"
+    $backupDir = Join-Path (Split-Path $VaultPath -Parent) ".hivemind-backup-$(Split-Path $VaultPath -Leaf)-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+    Write-Info "Creating backup: $backupDir"
+    Copy-Item $VaultPath -Destination $backupDir -Recurse -Exclude ".git",".obsidian",".trash","node_modules",".hivemind-backup-*"
     Write-Success "Backup created successfully"
     Write-Host ""
 }

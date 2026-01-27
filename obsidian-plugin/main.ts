@@ -586,8 +586,7 @@ export default class HivemindPlugin extends Plugin {
     try {
       // Read file content and existing frontmatter
       const content = await this.app.vault.read(file);
-      const cache = this.app.metadataCache.getFileCache(file);
-      const existingFrontmatter = cache?.frontmatter || {};
+      const { data: existingFrontmatter } = matter(content);
 
       // If no type, use shared FolderMapper to infer from folder path
       if (!existingFrontmatter.type && this.folderMapper) {
@@ -710,8 +709,8 @@ export default class HivemindPlugin extends Plugin {
 
       for (const file of filesToProcess) {
         try {
-          const cache = this.app.metadataCache.getFileCache(file);
-          const existingFrontmatter = cache?.frontmatter || {};
+          const content = await this.app.vault.read(file);
+          const { data: existingFrontmatter } = matter(content);
 
           // Skip if already has all fields
           const template = FRONTMATTER_TEMPLATES[entityType];
@@ -851,6 +850,10 @@ export default class HivemindPlugin extends Plugin {
     for (const [key, value] of Object.entries(obj)) {
       if (value === null || value === undefined) {
         lines.push(`${indentStr}${key}:`);
+      } else if (value instanceof Date) {
+        // gray-matter parses YAML dates into Date objects — preserve as ISO date string
+        const iso = value.toISOString().split('T')[0];
+        lines.push(`${indentStr}${key}: ${iso}`);
       } else if (Array.isArray(value)) {
         if (value.length === 0) {
           lines.push(`${indentStr}${key}: []`);
@@ -965,7 +968,7 @@ export default class HivemindPlugin extends Plugin {
       // Check required fields: id, type, status
       const requiredFields = ['id', 'type', 'status'];
       for (const field of requiredFields) {
-        if (!(field in frontmatter)) {
+        if (frontmatter[field] === undefined || frontmatter[field] === null || frontmatter[field] === '') {
           issues.push({
             type: 'missing_field',
             detail: `Missing required field: ${field}`
@@ -1181,7 +1184,7 @@ export default class HivemindPlugin extends Plugin {
           } else {
             const requiredFields = ['id', 'type', 'status'];
             for (const field of requiredFields) {
-              if (!(field in frontmatter)) {
+              if (frontmatter[field] === undefined || frontmatter[field] === null || frontmatter[field] === '') {
                 fileIssues.push({
                   type: 'missing_field',
                   detail: `Missing required field: ${field}`
@@ -1411,7 +1414,7 @@ class ValidationSidebarView extends ItemView {
         } else {
           const requiredFields = ['id', 'type', 'status'];
           for (const field of requiredFields) {
-            if (!(field in frontmatter)) {
+            if (frontmatter[field] === undefined || frontmatter[field] === null || frontmatter[field] === '') {
               issues.push({
                 type: 'missing_field',
                 detail: `Missing required field: ${field}`
@@ -2852,10 +2855,12 @@ class TypeSelectionModal extends Modal {
 
       const suggestedGrid = contentEl.createDiv({ cls: 'type-selection-grid' });
       suggestedGrid.style.display = 'grid';
-      suggestedGrid.style.gridTemplateColumns = 'repeat(3, 1fr)';
+      suggestedGrid.style.gridTemplateColumns = 'repeat(2, 1fr)';
       suggestedGrid.style.gap = '10px';
       suggestedGrid.style.marginTop = '10px';
       suggestedGrid.style.marginBottom = '20px';
+      suggestedGrid.style.maxHeight = '300px';
+      suggestedGrid.style.overflowY = 'auto';
 
       for (const type of this.suggestedTypes) {
         const description = typeDescriptions[type] || 'Custom type';
@@ -2888,9 +2893,11 @@ class TypeSelectionModal extends Modal {
     // Create type buttons grid for all types
     const typeGrid = contentEl.createDiv({ cls: 'type-selection-grid' });
     typeGrid.style.display = 'grid';
-    typeGrid.style.gridTemplateColumns = 'repeat(3, 1fr)';
+    typeGrid.style.gridTemplateColumns = 'repeat(2, 1fr)';
     typeGrid.style.gap = '10px';
     typeGrid.style.marginTop = '20px';
+    typeGrid.style.maxHeight = '300px';
+    typeGrid.style.overflowY = 'auto';
 
     for (const [type, description] of Object.entries(typeDescriptions)) {
       // Skip types already shown in suggested section
