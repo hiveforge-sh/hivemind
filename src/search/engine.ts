@@ -1,8 +1,9 @@
 import type { HivemindDatabase } from '../graph/database.js';
+import type { GraphNode, GraphEdge } from '../types/index.js';
 
 export interface QueryResult {
-  nodes: any[];
-  relationships?: any[];
+  nodes: GraphNode[];
+  relationships?: GraphEdge[];
   metadata: {
     source: 'fts' | 'graph' | 'hybrid';
     executionTime: number;
@@ -33,7 +34,7 @@ export class SearchEngine {
     const startTime = Date.now();
     const limit = options?.limit || 10;
 
-    let nodes: any[];
+    let nodes: GraphNode[];
     let totalResults: number;
     const trimmedQuery = query.trim();
 
@@ -70,15 +71,15 @@ export class SearchEngine {
       // Get full node details
       nodes = ftsResults
         .map(result => this.db.getNode(result.id))
-        .filter(node => node !== undefined);
+        .filter(node => node !== undefined) as GraphNode[];
 
       // Apply filters
       if (options?.filters) {
         nodes = nodes.filter(node => {
-          if (options.filters?.type && !options.filters.type.includes(node!.type)) {
+          if (options.filters?.type && !options.filters.type.includes(node.type)) {
             return false;
           }
-          if (options.filters?.status && !options.filters.status.includes(node!.status)) {
+          if (options.filters?.status && !options.filters.status.includes(node.status)) {
             return false;
           }
           return true;
@@ -90,10 +91,10 @@ export class SearchEngine {
     }
 
     // Optionally include relationships
-    const relationships: any[] = [];
+    const relationships: GraphEdge[] = [];
     if (options?.includeRelationships) {
       for (const node of nodes) {
-        let rels = this.db.getRelationships(node!.id);
+        let rels = this.db.getRelationships(node.id);
         // Filter by relationship type if specified
         if (options.relationshipType) {
           rels = rels.filter((rel) => rel.relationType === options.relationshipType);
@@ -123,9 +124,9 @@ export class SearchEngine {
   async getNodeWithRelationships(id: string, options?: {
     relationshipType?: string;
   }): Promise<{
-    node: any;
-    relationships: any[];
-    relatedNodes: any[];
+    node: GraphNode;
+    relationships: GraphEdge[];
+    relatedNodes: GraphNode[];
   } | null> {
     const node = this.db.getNode(id);
     if (!node) return null;
@@ -146,7 +147,7 @@ export class SearchEngine {
 
     const relatedNodes = Array.from(relatedIds)
       .map(rid => this.db.getNode(rid))
-      .filter(n => n !== undefined);
+      .filter(n => n !== undefined) as GraphNode[];
 
     return {
       node,
@@ -158,7 +159,7 @@ export class SearchEngine {
   /**
    * Find nodes by type
    */
-  async getNodesByType(type: string): Promise<any[]> {
+  async getNodesByType(type: string): Promise<GraphNode[]> {
     return this.db.getNodesByType(type);
   }
 
