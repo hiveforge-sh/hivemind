@@ -4,25 +4,25 @@
 
 **Core Value**: Consistent AI output. Give any AI tool context from your canon, get results that belong in your world - every time, across every tool.
 
-**Current Focus**: v3.0 Developer Experience - Phase 13 (Folder Mapping)
+**Current Focus**: v3.0 Developer Experience - Phase 14 (Validate CLI)
 
 ## Current Position
 
 **Milestone**: 3.0 (Developer Experience)
-**Phase**: 13 of 16 (Folder Mapping & Shared Infrastructure)
-**Plan**: 4 of 4 in current phase
-**Status**: Phase 13 complete
-**Last activity**: 2026-01-27 - Completed 13-04-PLAN.md
+**Phase**: 14 of 16 (Validate CLI)
+**Plan**: 1 of 4 in current phase
+**Status**: In progress
+**Last activity**: 2026-01-27 - Completed 14-01-PLAN.md
 
 ## Progress
 
 ```
 Milestone 1.0: MVP + Core      [##########] 100% SHIPPED 2026-01-25
 Milestone 2.0: Template System [##########] 100% SHIPPED 2026-01-26
-Milestone 3.0: Developer Experience [####......] 43%
+Milestone 3.0: Developer Experience [####......] 47%
   Phase 12: Setup Wizard       [##########] COMPLETE 2026-01-26
   Phase 13: Folder Mapping     [##########] COMPLETE 2026-01-27
-  Phase 14: Validate CLI       [..........] Not started
+  Phase 14: Validate CLI       [##........] 1/4 plans complete
   Phase 15: Fix CLI            [..........] Not started
   Phase 16: Obsidian Commands  [..........] Not started
 ```
@@ -30,9 +30,9 @@ Milestone 3.0: Developer Experience [####......] 43%
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8 (v3.0)
-- Average duration: 4.4min
-- Total execution time: 35min
+- Total plans completed: 9 (v3.0)
+- Average duration: 4.1min
+- Total execution time: 37min
 
 **By Phase:**
 
@@ -40,7 +40,7 @@ Milestone 3.0: Developer Experience [####......] 43%
 |-------|-------|-------|----------|
 | 12 | 4 | 20min | 5min |
 | 13 | 4 | 15min | 3.8min |
-| 14 | 0 | - | - |
+| 14 | 1 | 2min | 2min |
 | 15 | 0 | - | - |
 | 16 | 0 | - | - |
 
@@ -78,6 +78,10 @@ Recent decisions affecting current work:
 - [13-04]: Registry accessors follow consistent pattern (throw if no active, return field value)
 - [13-04]: Template config flows to runtime consumers via registry getFolderMappings()
 - [13-04]: CLI fix command uses first type when resolveType() returns multiple matches (ambiguous handling)
+- [14-01]: Discriminated union for ValidationIssue types - type-safe issue classification
+- [14-01]: Reuse VaultReader patterns for file discovery (no duplication)
+- [14-01]: Optional folder mismatch detection (warning, not error)
+- [14-01]: Skip files without frontmatter when --skip-missing flag set
 
 ### Research Highlights
 
@@ -99,9 +103,9 @@ None currently blocking.
 ## Session Continuity
 
 Last session: 2026-01-27
-Stopped at: Completed 13-04-PLAN.md
+Stopped at: Completed 14-01-PLAN.md
 Resume file: None
-Next action: `/gsd:plan-phase 14` or `/gsd:discuss-phase 14`
+Next action: Continue Phase 14 (3 plans remaining)
 
 ---
-*Updated: 2026-01-27 - Phase 13 complete (4/4 plans)*
+*Updated: 2026-01-27 - Phase 14 in progress (1/4 plans)*
