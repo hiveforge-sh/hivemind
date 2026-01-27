@@ -241,6 +241,31 @@ export default class HivemindPlugin extends Plugin {
       }
     });
 
+    // Register context menu events
+    this.registerEvent(
+      this.app.workspace.on('file-menu', (menu, file) => {
+        if (file instanceof TFile && file.extension === 'md') {
+          menu.addItem((item) => {
+            item.setTitle('Hivemind: Add frontmatter')
+              .setIcon('plus-circle')
+              .onClick(() => {
+                this.addFrontmatterToFile(file);
+              });
+          });
+        }
+
+        if (file instanceof TFolder) {
+          menu.addItem((item) => {
+            item.setTitle('Hivemind: Add frontmatter to folder')
+              .setIcon('folder-plus')
+              .onClick(() => {
+                this.addFrontmatterToFolder(file);
+              });
+          });
+        }
+      })
+    );
+
     // Settings tab
     this.addSettingTab(new HivemindSettingTab(this.app, this));
 
@@ -505,6 +530,130 @@ export default class HivemindPlugin extends Plugin {
       console.error('Failed to add frontmatter:', error);
       new Notice('Failed to add frontmatter: ' + (error as Error).message);
     }
+  }
+
+  private async addFrontmatterToFolder(folder: TFolder) {
+    try {
+      // Get all markdown files in folder (recursive)
+      const allMarkdownFiles = this.app.vault.getMarkdownFiles();
+      const folderFiles = allMarkdownFiles.filter(f => f.path.startsWith(folder.path + '/'));
+
+      if (folderFiles.length === 0) {
+        new Notice('No markdown files found in this folder');
+        return;
+      }
+
+      // Check if folderMapper can resolve all files to the same type
+      if (!this.folderMapper) {
+        new Notice('Folder mapping not available. Use per-file command instead.');
+        return;
+      }
+
+      // Resolve types for all files
+      const typeMap = new Map<string, string[]>();
+      for (const file of folderFiles) {
+        const result = await this.folderMapper.resolveType(file.path);
+        if (result.confidence === 'exact' && result.types.length > 0) {
+          const type = result.types[0];
+          if (!typeMap.has(type)) {
+            typeMap.set(type, []);
+          }
+          typeMap.get(type)!.push(file.path);
+        }
+      }
+
+      // Check if all files resolve to same type
+      if (typeMap.size === 0) {
+        new Notice('Could not determine entity type for files in this folder. Use per-file command.');
+        return;
+      }
+
+      if (typeMap.size > 1) {
+        const types = Array.from(typeMap.keys()).join(', ');
+        new Notice(`Files in this folder have different types (${types}). Use per-file command for ambiguous folders.`);
+        return;
+      }
+
+      // All files have same type - proceed with bulk add
+      const entityType = Array.from(typeMap.keys())[0];
+      const filesToProcess = [];
+
+      for (const f of folderFiles) {
+        const result = await this.folderMapper!.resolveType(f.path);
+        if (result && result.confidence === 'exact') {
+          filesToProcess.push(f);
+        }
+      }
+
+      new Notice(`Adding frontmatter to ${filesToProcess.length} files...`);
+
+      let successCount = 0;
+      let skipCount = 0;
+
+      for (const file of filesToProcess) {
+        try {
+          const cache = this.app.metadataCache.getFileCache(file);
+          const existingFrontmatter = cache?.frontmatter || {};
+
+          // Skip if already has all fields
+          const template = FRONTMATTER_TEMPLATES[entityType];
+          if (!template) continue;
+
+          const fileName = file.basename;
+          const id = this.generateId(fileName, entityType);
+          const autoFilledTemplate = {
+            ...template,
+            id: id,
+            name: fileName,
+            title: fileName
+          };
+
+          const newFields = this.computeNewFieldsForBulk(existingFrontmatter, autoFilledTemplate);
+
+          if (Object.keys(newFields).length === 0) {
+            skipCount++;
+            continue;
+          }
+
+          // Apply frontmatter
+          await this.insertMissingFrontmatter(file, existingFrontmatter, newFields);
+          successCount++;
+
+        } catch (error) {
+          console.error(`Failed to add frontmatter to ${file.path}:`, error);
+        }
+      }
+
+      new Notice(`✅ Added frontmatter to ${successCount} files (${skipCount} already complete)`);
+
+    } catch (error) {
+      console.error('Failed to add frontmatter to folder:', error);
+      new Notice('Failed to add frontmatter to folder: ' + (error as Error).message);
+    }
+  }
+
+  private computeNewFieldsForBulk(existing: Record<string, any>, template: Record<string, any>): Record<string, any> {
+    const newFields: Record<string, any> = {};
+
+    for (const [key, value] of Object.entries(template)) {
+      // Skip if exists and not empty
+      if (existing[key] !== undefined && existing[key] !== null && existing[key] !== '') {
+        continue;
+      }
+
+      // Field is missing or empty - add it
+      newFields[key] = value;
+    }
+
+    return newFields;
+  }
+
+  private generateId(name: string, entityType: string): string {
+    const slug = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+    return `${entityType}-${slug}`;
   }
 
   private findMissingFields(existing: Record<string, any>, template: Record<string, any>, prefix = ''): Record<string, any> {
