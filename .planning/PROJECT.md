@@ -71,7 +71,10 @@ Consistent AI output. Give any AI tool context from your canon, get results that
 
 ### Active
 
-<!-- Current scope for next milestone -->
+<!-- Current scope for v3.1 Type Safety milestone -->
+
+- [ ] Eliminate all `any` types from codebase with strict replacements
+- [ ] Zero `@typescript-eslint/no-explicit-any` warnings
 
 ### Deferred
 
@@ -130,4 +133,4 @@ Consistent AI output. Give any AI tool context from your canon, get results that
 | Picomatch for glob matching | Already in dep tree, 4x faster than minimatch | ✓ Good |
 
 ---
-*Last updated: 2026-01-27 after v3.0 milestone archived*
+*Last updated: 2026-01-27 after v3.1 milestone started*
