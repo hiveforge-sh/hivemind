@@ -1,3 +1,10 @@
+## [3.0.3](https://github.com/hiveforge-sh/hivemind/compare/3.0.2...3.0.3) (2026-01-27)
+
+
+### Bug Fixes
+
+* drop v prefix from release tags and sync root manifest ([889fc70](https://github.com/hiveforge-sh/hivemind/commit/889fc70699b9ea1f1c8e5c5c19340a480dfaddfb))
+
 # [3.0.0](https://github.com/hiveforge-sh/hivemind/compare/v2.7.2...v3.0.0) (2026-01-27)
 
 
