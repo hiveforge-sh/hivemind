@@ -15,14 +15,14 @@ Requirements for type safety and quality milestone. Each maps to roadmap phases.
 
 ### Template System
 
-- [ ] **TMPL-01**: `templates/schema-factory.ts` has zero `any` types — Zod schema operations use proper generics
-- [ ] **TMPL-02**: `templates/loader.ts` has zero `any` types
+- [x] **TMPL-01**: `templates/schema-factory.ts` has zero `any` types — Zod schema operations use proper generics
+- [x] **TMPL-02**: `templates/loader.ts` has zero `any` types
 
 ### Data Layer
 
-- [ ] **DATA-01**: `graph/database.ts` has zero `any` types — SQLite query results use typed interfaces
-- [ ] **DATA-02**: `graph/builder.ts` has zero `any` types
-- [ ] **DATA-03**: `search/engine.ts` has zero `any` types — search results and parameters strictly typed
+- [x] **DATA-01**: `graph/database.ts` has zero `any` types — SQLite query results use typed interfaces
+- [x] **DATA-02**: `graph/builder.ts` has zero `any` types
+- [x] **DATA-03**: `search/engine.ts` has zero `any` types — search results and parameters strictly typed
 
 ### Server & MCP
 
@@ -78,11 +78,11 @@ Requirements for type safety and quality milestone. Each maps to roadmap phases.
 | TYPE-01 | Phase 17 | Complete |
 | TYPE-02 | Phase 17 | Complete |
 | TYPE-03 | Phase 17 | Complete |
-| TMPL-01 | Phase 18 | Pending |
-| TMPL-02 | Phase 18 | Pending |
-| DATA-01 | Phase 18 | Pending |
-| DATA-02 | Phase 18 | Pending |
-| DATA-03 | Phase 18 | Pending |
+| TMPL-01 | Phase 18 | Complete |
+| TMPL-02 | Phase 18 | Complete |
+| DATA-01 | Phase 18 | Complete |
+| DATA-02 | Phase 18 | Complete |
+| DATA-03 | Phase 18 | Complete |
 | MCP-01 | Phase 19 | Pending |
 | MCP-02 | Phase 19 | Pending |
 | CFUI-01 | Phase 20 | Pending |
