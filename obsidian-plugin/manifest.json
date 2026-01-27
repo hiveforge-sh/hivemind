@@ -1,7 +1,7 @@
 {
   "id": "hivemind-mcp",
   "name": "Hivemind",
-  "version": "2.6.1",
+  "version": "2.7.0",
   "minAppVersion": "1.4.0",
   "description": "Generate consistent AI images using ComfyUI with context from your worldbuilding vault",
   "author": "HiveForge",

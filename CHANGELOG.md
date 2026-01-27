@@ -1,3 +1,52 @@
+# [2.7.0](https://github.com/hiveforge-sh/hivemind/compare/v2.6.1...v2.7.0) (2026-01-27)
+
+
+### Bug Fixes
+
+* **12-04:** show auto-detection for any confidence level ([a6a1380](https://github.com/hiveforge-sh/hivemind/commit/a6a1380917ef8dce77b3e9c702120b469471c442))
+* **16-04:** address issues found during human verification ([8434c5b](https://github.com/hiveforge-sh/hivemind/commit/8434c5b9c956bf94542d8d7aa302d44475dc805d))
+
+
+### Features
+
+* **12-01:** create shared CLI utilities ([e015d55](https://github.com/hiveforge-sh/hivemind/commit/e015d55b74d9a8c1c41df5dcc1ec9f16a795bbed))
+* **12-01:** create validators module ([a541a48](https://github.com/hiveforge-sh/hivemind/commit/a541a48d81140414fe035f59dab7bfc2f9df8726))
+* **12-02:** create detection wrapper with confirmation ([2787ed2](https://github.com/hiveforge-sh/hivemind/commit/2787ed2ced757c05b0aac0db51102be5674ce47b))
+* **12-02:** create prompts module with template selection ([f5361ac](https://github.com/hiveforge-sh/hivemind/commit/f5361ac6322ac4a96f8ba207bdd3fcc428d26166))
+* **12-02:** create wizard orchestrator ([504a9fa](https://github.com/hiveforge-sh/hivemind/commit/504a9fa110f91719172c41c49382f52f0e87f1c0))
+* **12-03:** create init index with non-interactive mode ([5bf2595](https://github.com/hiveforge-sh/hivemind/commit/5bf259501e9de67e6bb35ee43ccc968e05936cfa))
+* **12-03:** create output module for config generation ([72dc5b1](https://github.com/hiveforge-sh/hivemind/commit/72dc5b146b3e6e25c558b76955a275b61142787c))
+* **12-03:** update CLI to use new init command ([3c1fcec](https://github.com/hiveforge-sh/hivemind/commit/3c1fcec047a74b632807545d763f63b7264eaabd))
+* **12-04:** add option to open Claude Desktop config folder ([406d91d](https://github.com/hiveforge-sh/hivemind/commit/406d91d0d55e1e522036ed7662d10c8ed4941b8a))
+* **13-02:** update Obsidian plugin to use shared FolderMapper ([f9b1480](https://github.com/hiveforge-sh/hivemind/commit/f9b14805e26c59bcdceebf02d9b404446e7852db))
+* **13-03:** add createFromTemplate helper and wire Obsidian plugin ([7b32d78](https://github.com/hiveforge-sh/hivemind/commit/7b32d78236157adefcb590b5fceb111d51625d14))
+* **13-03:** add folder mappings to all builtin templates ([7115f8f](https://github.com/hiveforge-sh/hivemind/commit/7115f8f81a6bb2fa7be1aa216e3b248551b5f558))
+* **13-03:** add folderMappings field to TemplateDefinition with Zod schema ([efbd1fe](https://github.com/hiveforge-sh/hivemind/commit/efbd1fe7e4f386f0fde2d8d0d451f65699224dff))
+* **13-04:** add getFolderMappings() accessor to TemplateRegistry ([56d5b8a](https://github.com/hiveforge-sh/hivemind/commit/56d5b8a43b4df0424028ac99834586c0044d4c71))
+* **13-04:** update CLI fix command to use async FolderMapper with template config ([1eb7470](https://github.com/hiveforge-sh/hivemind/commit/1eb74701e7a94a447ff7213cd73b9a7c2d50d1e6))
+* **13-04:** wire Obsidian plugin to use template folderMappings ([8f5acd8](https://github.com/hiveforge-sh/hivemind/commit/8f5acd8310b89951b49c78f75cc038411578b524))
+* **14-01:** create frontmatter validator module ([2aaaff4](https://github.com/hiveforge-sh/hivemind/commit/2aaaff45602781a58a377b58f6acc2d66d46ca99))
+* **14-01:** create validation scanner module ([e3e4ec8](https://github.com/hiveforge-sh/hivemind/commit/e3e4ec89becf5f9ece9c9090576206415d42379e))
+* **14-01:** create validation types module ([b2b6b75](https://github.com/hiveforge-sh/hivemind/commit/b2b6b7590f26b395ed8353b8bbf9f085a27d5906))
+* **14-02:** create CLI validate command entry point ([4220e46](https://github.com/hiveforge-sh/hivemind/commit/4220e469a7ee08f5704b757899012e1622ef59f9))
+* **14-02:** create output formatter module ([985fc26](https://github.com/hiveforge-sh/hivemind/commit/985fc268e986ddf1299a651811229bebaa74e551))
+* **14-02:** wire validate command into CLI ([2ed98a2](https://github.com/hiveforge-sh/hivemind/commit/2ed98a2bb49f33b1911cb0d7bf05223bc85207a6))
+* **15-01:** create FileFixer class for frontmatter generation ([395223e](https://github.com/hiveforge-sh/hivemind/commit/395223eafd9ef900b747b4fb5f538210774bec4b))
+* **15-01:** create fix types module ([d95f743](https://github.com/hiveforge-sh/hivemind/commit/d95f7436ec05943450ce18375a9fb4ea9ebb3f5b))
+* **15-01:** create ID generator with collision detection ([9f5e7cd](https://github.com/hiveforge-sh/hivemind/commit/9f5e7cd5acc595e47a3fba6cc635f54e297d7344))
+* **15-02:** create atomic file writer ([95b4b87](https://github.com/hiveforge-sh/hivemind/commit/95b4b8796816e60d28433c95a1fe4c23bdae626f))
+* **15-02:** create output formatter module ([3131c73](https://github.com/hiveforge-sh/hivemind/commit/3131c73169048bc56d196aa3f6369c310cbafc44))
+* **15-03:** create fix command CLI entry point ([d906e27](https://github.com/hiveforge-sh/hivemind/commit/d906e27dfd8dc95da09635b6aadac9b1c71c089b))
+* **15-03:** wire fix command into main CLI ([e83295d](https://github.com/hiveforge-sh/hivemind/commit/e83295de2b4acb8ca7637a3e61f6b6bdefdaf9d5))
+* **15-04:** add ambiguous file tracking to FileFixer ([26e6b3b](https://github.com/hiveforge-sh/hivemind/commit/26e6b3ba84c8b74ce9b92f0260673a78cd5b3ddf))
+* **15-04:** implement interactive type prompting for ambiguous folders ([83fc6be](https://github.com/hiveforge-sh/hivemind/commit/83fc6be5807522ffcbe843acfc4681ce8b368a8c))
+* **16-01:** add context menu for add-frontmatter on files and folders ([fd4d1aa](https://github.com/hiveforge-sh/hivemind/commit/fd4d1aa398ad8da370da154d1ad2084399c362e8))
+* **16-01:** implement add-frontmatter command with preview modal ([36a0b9a](https://github.com/hiveforge-sh/hivemind/commit/36a0b9a4c3d2f4477c2de5bfdf6d9594e6a24a02))
+* **16-02:** add fix frontmatter commands with FixFieldsModal ([492d95b](https://github.com/hiveforge-sh/hivemind/commit/492d95b31d51bf1ac507fabed77a17c726869305))
+* **16-02:** add validate frontmatter command with ValidationResultModal ([274d4db](https://github.com/hiveforge-sh/hivemind/commit/274d4db95ef1e7168b3c12cf86505a4268b79f77))
+* **16-03:** create ValidationSidebarView for vault-wide validation ([368edc1](https://github.com/hiveforge-sh/hivemind/commit/368edc15ec665ec49853c74cf1c41b24504a489a))
+* **16-03:** enhance settings tab with frontmatter options ([0af7bc8](https://github.com/hiveforge-sh/hivemind/commit/0af7bc8afb0a957effe5aea8bd740e9c8119fbac))
+
 ## [2.6.1](https://github.com/hiveforge-sh/hivemind/compare/v2.6.0...v2.6.1) (2026-01-26)
 
 
