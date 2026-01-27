@@ -22,7 +22,7 @@
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
-    "lint": "eslint src --ext .ts",
+    "lint": "eslint src",
     "clean": "rimraf dist",
     "prepare": "husky || true",
     "prepublishOnly": "npm run build",
@@ -99,6 +99,7 @@
     "rimraf": "^6.0.1",
     "semantic-release": "^25.0.2",
     "typescript": "^5.7.2",
+    "typescript-eslint": "^8.54.0",
     "vitest": "^4.0.18"
   }
 }

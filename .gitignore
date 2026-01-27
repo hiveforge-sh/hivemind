@@ -107,9 +107,7 @@ ai-scratch/
 .ai-temp/
 prompts/scratch/
 
-# Sample/Test Vaults (development only)
-sample-vault/.hivemind/
-sample-vault/.obsidian/workspace*
+# Test Vaults (development only)
 test-vault/
 
 # Backup files

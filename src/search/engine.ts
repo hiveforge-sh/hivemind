@@ -90,7 +90,7 @@ export class SearchEngine {
     }
 
     // Optionally include relationships
-    let relationships: any[] = [];
+    const relationships: any[] = [];
     if (options?.includeRelationships) {
       for (const node of nodes) {
         let rels = this.db.getRelationships(node!.id);

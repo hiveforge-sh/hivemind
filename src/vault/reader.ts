@@ -373,7 +373,7 @@ export class VaultReader {
           console.error(`Found modified file: ${filePath} (modified: ${stats.mtime.toISOString()})`);
           return true;
         }
-      } catch (error) {
+      } catch (_error) {
         // Skip files we can't stat
         continue;
       }

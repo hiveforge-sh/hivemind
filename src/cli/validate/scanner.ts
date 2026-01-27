@@ -43,7 +43,7 @@ export class ValidationScanner {
           skipMissing: this.options.skipMissing,
         });
         results.push(result);
-      } catch (error) {
+      } catch (_error) {
         // If file can't be read, include error in results
         const relPath = relative(this.options.vaultPath, filePath);
         results.push({

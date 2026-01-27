@@ -59,30 +59,36 @@ Requirements for type safety milestone. Each maps to roadmap phases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TYPE-01 | — | Pending |
-| TYPE-02 | — | Pending |
-| TYPE-03 | — | Pending |
-| TMPL-01 | — | Pending |
-| TMPL-02 | — | Pending |
-| DATA-01 | — | Pending |
-| DATA-02 | — | Pending |
-| DATA-03 | — | Pending |
-| MCP-01 | — | Pending |
-| MCP-02 | — | Pending |
-| CFUI-01 | — | Pending |
-| CFUI-02 | — | Pending |
-| CLI-01 | — | Pending |
-| CLI-02 | — | Pending |
-| CLI-03 | — | Pending |
-| CLI-04 | — | Pending |
-| ENF-01 | — | Pending |
-| ENF-02 | — | Pending |
+| TYPE-01 | Phase 17 | Pending |
+| TYPE-02 | Phase 17 | Pending |
+| TYPE-03 | Phase 17 | Pending |
+| TMPL-01 | Phase 18 | Pending |
+| TMPL-02 | Phase 18 | Pending |
+| DATA-01 | Phase 18 | Pending |
+| DATA-02 | Phase 18 | Pending |
+| DATA-03 | Phase 18 | Pending |
+| MCP-01 | Phase 19 | Pending |
+| MCP-02 | Phase 19 | Pending |
+| CFUI-01 | Phase 20 | Pending |
+| CFUI-02 | Phase 20 | Pending |
+| CLI-01 | Phase 20 | Pending |
+| CLI-02 | Phase 20 | Pending |
+| CLI-03 | Phase 20 | Pending |
+| CLI-04 | Phase 20 | Pending |
+| ENF-01 | Phase 20 | Pending |
+| ENF-02 | Phase 20 | Pending |
 
 **Coverage:**
 - v3.1 requirements: 18 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 18
+- Mapped to phases: 18 (100%)
+- Unmapped: 0
+
+**Phase Distribution:**
+- Phase 17 (Foundation Types): 3 requirements
+- Phase 18 (Template System & Data Layer): 5 requirements
+- Phase 19 (Server & MCP): 2 requirements
+- Phase 20 (ComfyUI, CLI & Enforcement): 8 requirements
 
 ---
 *Requirements defined: 2026-01-27*
-*Last updated: 2026-01-27 after initial definition*
+*Last updated: 2026-01-27 after roadmap creation*

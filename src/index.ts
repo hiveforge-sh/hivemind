@@ -97,7 +97,7 @@ function loadConfig(): HivemindConfig {
   console.error('No config file found, using defaults');
   return {
     vault: {
-      path: process.env.HIVEMIND_VAULT_PATH || join(process.cwd(), 'sample-vault'),
+      path: process.env.HIVEMIND_VAULT_PATH || process.cwd(),
       watchForChanges: true,
       debounceMs: 100,
     },

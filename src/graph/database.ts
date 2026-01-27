@@ -33,7 +33,7 @@ export class HivemindDatabase {
     const dir = dirname(dbPath);
     try {
       mkdirSync(dir, { recursive: true });
-    } catch (error) {
+    } catch (_error) {
       // Directory might already exist
     }
   }

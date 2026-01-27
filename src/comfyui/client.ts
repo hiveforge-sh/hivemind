@@ -52,7 +52,7 @@ export class ComfyUIClient {
     try {
       await this.httpClient.get('/system_stats');
       return true;
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
   }

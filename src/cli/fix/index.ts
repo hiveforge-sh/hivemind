@@ -174,7 +174,7 @@ export async function fixCommand(): Promise<void> {
     process.exit(2);
   }
 
-  let operations = await fixer.analyze();
+  const operations = await fixer.analyze();
 
   // 5. Handle ambiguous types (prompt user once per folder)
   if (!options.yes && !options.json) {
@@ -203,7 +203,7 @@ export async function fixCommand(): Promise<void> {
     operations.push(...additionalOps);
   }
 
-  let skippedFiles = 0;
+  const skippedFiles = 0;
 
   // 6. Build summary
   const byType: Record<string, number> = {};

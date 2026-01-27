@@ -32,7 +32,6 @@ test-query.js
 
 # Configuration examples
 config.json
-sample-vault/
 
 # Editor files
 .vscode/
