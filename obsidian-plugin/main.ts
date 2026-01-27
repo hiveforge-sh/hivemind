@@ -252,6 +252,24 @@ export default class HivemindPlugin extends Plugin {
       }
     });
 
+    this.addCommand({
+      id: 'fix-frontmatter',
+      name: 'Fix frontmatter',
+      editorCallback: (editor: Editor, view: MarkdownView) => {
+        if (view.file) {
+          this.fixCurrentFile(view.file);
+        }
+      }
+    });
+
+    this.addCommand({
+      id: 'fix-all-frontmatter',
+      name: 'Fix all frontmatter',
+      callback: () => {
+        this.fixAllFiles();
+      }
+    });
+
     // Register context menu events
     this.registerEvent(
       this.app.workspace.on('file-menu', (menu, file) => {
@@ -269,6 +287,14 @@ export default class HivemindPlugin extends Plugin {
               .setIcon('check-circle')
               .onClick(() => {
                 this.validateCurrentFile(file);
+              });
+          });
+
+          menu.addItem((item) => {
+            item.setTitle('Hivemind: Fix frontmatter')
+              .setIcon('wrench')
+              .onClick(() => {
+                this.fixCurrentFile(file);
               });
           });
         }
@@ -917,6 +943,141 @@ export default class HivemindPlugin extends Plugin {
       new Notice('Failed to validate frontmatter: ' + (error as Error).message);
     }
   }
+
+  private async fixCurrentFile(file: TFile) {
+    try {
+      // Read file and parse frontmatter
+      const content = await this.app.vault.read(file);
+      const { data: existingFrontmatter } = matter(content);
+
+      // If no frontmatter at all, redirect to add-frontmatter flow
+      if (!existingFrontmatter || Object.keys(existingFrontmatter).length === 0) {
+        new Notice('No frontmatter found. Use "Add frontmatter" command instead.');
+        return;
+      }
+
+      // If no type, try to resolve it
+      let entityType = existingFrontmatter.type;
+      if (!entityType && this.folderMapper) {
+        const result = await this.folderMapper.resolveType(file.path);
+        if (result.confidence === 'exact') {
+          entityType = result.types[0];
+        } else if (result.confidence === 'ambiguous') {
+          new Notice('Cannot determine entity type. Multiple types match this folder. Please add type field manually.');
+          return;
+        } else {
+          new Notice('Cannot determine entity type. Please add type field manually.');
+          return;
+        }
+      } else if (!entityType) {
+        new Notice('No type field found and folder mapping not available. Please add type field manually.');
+        return;
+      }
+
+      // Get template for this type
+      const template = FRONTMATTER_TEMPLATES[entityType];
+      if (!template) {
+        new Notice(`Unknown entity type: ${entityType}`);
+        return;
+      }
+
+      // Find missing fields
+      const missingFields = this.findMissingFields(existingFrontmatter, template);
+
+      if (Object.keys(missingFields).length === 0) {
+        new Notice('No issues to fix ✓', 3000);
+        return;
+      }
+
+      // Open FixFieldsModal with missing fields
+      new FixFieldsModal(this.app, this, file, existingFrontmatter, missingFields, entityType).open();
+
+    } catch (error) {
+      console.error('Failed to fix frontmatter:', error);
+      new Notice('Failed to fix frontmatter: ' + (error as Error).message);
+    }
+  }
+
+  private async fixAllFiles() {
+    try {
+      new Notice('Starting bulk fix operation...');
+
+      // Get all markdown files in vault
+      const allFiles = this.app.vault.getMarkdownFiles();
+
+      let fixedCount = 0;
+      let skippedCount = 0;
+      let errorCount = 0;
+
+      for (const file of allFiles) {
+        try {
+          // Read file and parse frontmatter
+          const content = await this.app.vault.read(file);
+          const { data: existingFrontmatter } = matter(content);
+
+          // Skip files without frontmatter
+          if (!existingFrontmatter || Object.keys(existingFrontmatter).length === 0) {
+            skippedCount++;
+            continue;
+          }
+
+          // Resolve type
+          let entityType = existingFrontmatter.type;
+          if (!entityType && this.folderMapper) {
+            const result = await this.folderMapper.resolveType(file.path);
+            if (result.confidence === 'exact') {
+              entityType = result.types[0];
+            } else {
+              // Skip ambiguous files
+              skippedCount++;
+              continue;
+            }
+          } else if (!entityType) {
+            skippedCount++;
+            continue;
+          }
+
+          // Get template
+          const template = FRONTMATTER_TEMPLATES[entityType];
+          if (!template) {
+            skippedCount++;
+            continue;
+          }
+
+          // Auto-fill id and name/title from filename if missing
+          const fileName = file.basename;
+          const autoFilledTemplate = {
+            ...template,
+            id: existingFrontmatter.id || this.generateId(fileName, entityType),
+            name: existingFrontmatter.name || fileName,
+            title: existingFrontmatter.title || fileName
+          };
+
+          // Find missing fields
+          const missingFields = this.computeNewFieldsForBulk(existingFrontmatter, autoFilledTemplate);
+
+          if (Object.keys(missingFields).length === 0) {
+            skippedCount++;
+            continue;
+          }
+
+          // Apply fixes automatically
+          await this.insertMissingFrontmatter(file, existingFrontmatter, missingFields);
+          fixedCount++;
+
+        } catch (error) {
+          console.error(`Failed to fix ${file.path}:`, error);
+          errorCount++;
+        }
+      }
+
+      new Notice(`✅ Fixed ${fixedCount} files (${skippedCount} skipped, ${errorCount} errors)`);
+
+    } catch (error) {
+      console.error('Failed to fix all files:', error);
+      new Notice('Failed to fix all files: ' + (error as Error).message);
+    }
+  }
 }
 
 // Validation Result Modal
@@ -985,6 +1146,211 @@ class ValidationResultModal extends Modal {
     closeBtn.addEventListener('click', () => {
       this.close();
     });
+  }
+
+  onClose() {
+    const { contentEl } = this;
+    contentEl.empty();
+  }
+}
+
+// Fix Fields Modal
+class FixFieldsModal extends Modal {
+  plugin: HivemindPlugin;
+  file: TFile;
+  existingFrontmatter: Record<string, any>;
+  missingFields: Record<string, any>;
+  entityType: string;
+  private editedValues: Record<string, any> = {};
+
+  constructor(
+    app: App,
+    plugin: HivemindPlugin,
+    file: TFile,
+    existingFrontmatter: Record<string, any>,
+    missingFields: Record<string, any>,
+    entityType: string
+  ) {
+    super(app);
+    this.plugin = plugin;
+    this.file = file;
+    this.existingFrontmatter = existingFrontmatter;
+    this.missingFields = missingFields;
+    this.entityType = entityType;
+
+    // Initialize edited values with defaults
+    this.editedValues = { ...missingFields };
+  }
+
+  onOpen() {
+    const { contentEl } = this;
+
+    // Heading
+    contentEl.createEl('h2', { text: 'Fix Frontmatter' });
+
+    // Subheading with file name and entity type
+    const subheading = contentEl.createDiv();
+    subheading.style.marginBottom = '15px';
+
+    subheading.createEl('p', {
+      text: this.file.name,
+      cls: 'setting-item-description'
+    });
+
+    const typeBadge = subheading.createEl('span', {
+      cls: 'frontmatter-type-badge'
+    });
+    typeBadge.style.display = 'inline-block';
+    typeBadge.style.padding = '2px 8px';
+    typeBadge.style.backgroundColor = 'var(--interactive-accent)';
+    typeBadge.style.color = 'var(--text-on-accent)';
+    typeBadge.style.borderRadius = '10px';
+    typeBadge.style.fontSize = '0.85em';
+    typeBadge.setText(this.entityType);
+
+    // Fields container
+    const fieldsContainer = contentEl.createDiv({ cls: 'fix-fields-container' });
+    fieldsContainer.style.maxHeight = '400px';
+    fieldsContainer.style.overflowY = 'auto';
+    fieldsContainer.style.marginBottom = '20px';
+
+    // Create editable Settings for each missing field
+    for (const [fieldPath, defaultValue] of Object.entries(this.missingFields)) {
+      const displayValue = this.getDefaultDisplay(fieldPath, defaultValue);
+
+      new Setting(fieldsContainer)
+        .setName(fieldPath)
+        .setDesc(`Default: ${this.formatValueForDisplay(defaultValue)}`)
+        .addText(text => text
+          .setValue(displayValue)
+          .onChange(value => {
+            this.editedValues[fieldPath] = value;
+          })
+        );
+    }
+
+    // Buttons
+    const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container' });
+    buttonContainer.style.display = 'flex';
+    buttonContainer.style.gap = '10px';
+    buttonContainer.style.justifyContent = 'flex-end';
+    buttonContainer.style.marginTop = '15px';
+
+    const cancelBtn = buttonContainer.createEl('button', { text: 'Cancel' });
+    cancelBtn.addEventListener('click', () => {
+      this.close();
+    });
+
+    const applyBtn = buttonContainer.createEl('button', {
+      text: 'Apply All',
+      cls: 'mod-cta'
+    });
+    applyBtn.addEventListener('click', async () => {
+      await this.applyChanges();
+    });
+  }
+
+  private getDefaultDisplay(fieldPath: string, defaultValue: any): string {
+    // For id field, auto-generate from filename
+    if (fieldPath === 'id' && (!defaultValue || defaultValue === '')) {
+      const slug = this.file.basename
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+      return `${this.entityType}-${slug}`;
+    }
+
+    // For arrays, show as comma-separated
+    if (Array.isArray(defaultValue)) {
+      return defaultValue.join(', ');
+    }
+
+    // For objects, show as JSON
+    if (typeof defaultValue === 'object' && defaultValue !== null) {
+      return JSON.stringify(defaultValue);
+    }
+
+    // For null/undefined, show empty
+    if (defaultValue === null || defaultValue === undefined) {
+      return '';
+    }
+
+    return String(defaultValue);
+  }
+
+  private formatValueForDisplay(value: any): string {
+    if (value === null || value === undefined) {
+      return '(empty)';
+    } else if (Array.isArray(value)) {
+      return value.length === 0 ? '[]' : `[${value.length} items]`;
+    } else if (typeof value === 'object') {
+      return '{...}';
+    } else if (typeof value === 'string') {
+      return value === '' ? '(empty)' : `"${value}"`;
+    } else {
+      return String(value);
+    }
+  }
+
+  private async applyChanges() {
+    try {
+      // Convert edited values back to proper types
+      const fieldsToInsert: Record<string, any> = {};
+
+      for (const [fieldPath, value] of Object.entries(this.editedValues)) {
+        // Check if original value was an array
+        const originalValue = this.missingFields[fieldPath];
+
+        if (Array.isArray(originalValue)) {
+          // Convert comma-separated string back to array
+          fieldsToInsert[fieldPath] = typeof value === 'string'
+            ? value.split(',').map(s => s.trim()).filter(s => s !== '')
+            : [];
+        } else if (typeof originalValue === 'object' && originalValue !== null) {
+          // Try to parse as JSON
+          try {
+            fieldsToInsert[fieldPath] = typeof value === 'string' ? JSON.parse(value) : value;
+          } catch {
+            fieldsToInsert[fieldPath] = originalValue;
+          }
+        } else {
+          fieldsToInsert[fieldPath] = value;
+        }
+      }
+
+      // Convert flat field paths to nested object
+      const nestedFields = this.flatToNested(fieldsToInsert);
+
+      // Apply to file
+      await this.plugin.insertMissingFrontmatter(this.file, this.existingFrontmatter, nestedFields);
+
+      this.close();
+
+    } catch (error) {
+      console.error('Failed to apply changes:', error);
+      new Notice('Failed to apply changes: ' + (error as Error).message);
+    }
+  }
+
+  private flatToNested(flat: Record<string, any>): Record<string, any> {
+    const result: Record<string, any> = {};
+
+    for (const [path, value] of Object.entries(flat)) {
+      const parts = path.split('.');
+      let current = result;
+
+      for (let i = 0; i < parts.length - 1; i++) {
+        const part = parts[i];
+        if (!current[part]) {
+          current[part] = {};
+        }
+        current = current[part];
+      }
+
+      current[parts[parts.length - 1]] = value;
+    }
+
+    return result;
   }
 
   onClose() {
