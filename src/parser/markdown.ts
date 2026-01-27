@@ -1,13 +1,13 @@
 import matter from 'gray-matter';
 import { remark } from 'remark';
-import type { Root, Heading as MdHeading, Text } from 'mdast';
+import type { Root, Heading as MdHeading, Text, RootContent } from 'mdast';
 import type { VaultNote, Heading, BaseFrontmatter } from '../types/index.js';
 import { BaseFrontmatterSchema } from '../types/index.js';
 import { promises as fs } from 'fs';
-import type { z } from 'zod';
+import { type ZodObject, type ZodRawShape } from 'zod';
 
 export class MarkdownParser {
-  private frontmatterSchema: z.ZodObject<any>;
+  private frontmatterSchema: ZodObject<ZodRawShape>;
 
   /**
    * Create a new MarkdownParser.
@@ -15,7 +15,7 @@ export class MarkdownParser {
    * @param frontmatterSchema - Optional custom frontmatter schema for template-aware validation.
    *                            Defaults to BaseFrontmatterSchema for backwards compatibility.
    */
-  constructor(frontmatterSchema?: z.ZodObject<any>) {
+  constructor(frontmatterSchema?: ZodObject<ZodRawShape>) {
     this.frontmatterSchema = frontmatterSchema ?? BaseFrontmatterSchema;
   }
 
@@ -70,7 +70,7 @@ export class MarkdownParser {
   /**
    * Parse and validate frontmatter
    */
-  private parseFrontmatter(raw: any): BaseFrontmatter {
+  private parseFrontmatter(raw: Record<string, unknown>): BaseFrontmatter {
     try {
       // Validate with Zod schema (uses injected schema or default)
       // Cast is safe because injected schemas extend BaseFrontmatterSchema
@@ -105,11 +105,11 @@ export class MarkdownParser {
     const headings: Heading[] = [];
     let position = 0;
 
-    const visit = (node: any, pos: number) => {
+    const visit = (node: Root | RootContent, pos: number) => {
       if (node.type === 'heading') {
         const mdHeading = node as MdHeading;
         const text = this.extractTextFromNode(mdHeading);
-        
+
         headings.push({
           level: mdHeading.depth,
           text,
@@ -118,9 +118,9 @@ export class MarkdownParser {
       }
 
       // Recurse into children
-      if (node.children) {
+      if ('children' in node && node.children) {
         for (const child of node.children) {
-          visit(child, pos++);
+          visit(child as RootContent, pos++);
         }
       }
     };
@@ -135,13 +135,13 @@ export class MarkdownParser {
   /**
    * Extract text content from a node
    */
-  private extractTextFromNode(node: any): string {
+  private extractTextFromNode(node: Root | RootContent): string {
     if (node.type === 'text') {
       return (node as Text).value;
     }
 
-    if (node.children) {
-      return node.children.map((child: any) => this.extractTextFromNode(child)).join('');
+    if ('children' in node && node.children) {
+      return node.children.map((child: RootContent) => this.extractTextFromNode(child)).join('');
     }
 
     return '';
