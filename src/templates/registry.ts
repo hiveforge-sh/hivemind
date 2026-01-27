@@ -10,6 +10,7 @@ import type {
   TemplateRegistryEntry,
   EntityTypeConfig,
   RelationshipTypeConfig,
+  FolderMappingRule,
 } from './types.js';
 
 /**
@@ -195,6 +196,23 @@ export class TemplateRegistry {
       throw new Error('Cannot get relationship types: no active template');
     }
     return active.relationshipTypes || [];
+  }
+
+  /**
+   * Gets folder mappings from the active template.
+   *
+   * Returns the template's configured folder mappings for entity type inference.
+   * Returns undefined if the template has no folder mappings defined.
+   *
+   * @returns Array of folder mapping rules, or undefined if not configured
+   * @throws {Error} If no template is active
+   */
+  getFolderMappings(): FolderMappingRule[] | undefined {
+    const active = this.getActive();
+    if (!active) {
+      throw new Error('Cannot get folder mappings: no active template');
+    }
+    return active.folderMappings;
   }
 
   /**

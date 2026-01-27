@@ -10,16 +10,16 @@
 
 **Milestone**: 3.0 (Developer Experience)
 **Phase**: 13 of 16 (Folder Mapping & Shared Infrastructure)
-**Plan**: 2 of 2 in current phase
+**Plan**: 3 of 3 in current phase
 **Status**: Phase 13 complete
-**Last activity**: 2026-01-26 - Completed 13-02-PLAN.md
+**Last activity**: 2026-01-26 - Completed 13-03-PLAN.md
 
 ## Progress
 
 ```
 Milestone 1.0: MVP + Core      [##########] 100% SHIPPED 2026-01-25
 Milestone 2.0: Template System [##########] 100% SHIPPED 2026-01-26
-Milestone 3.0: Developer Experience [###.......] 30%
+Milestone 3.0: Developer Experience [####......] 40%
   Phase 12: Setup Wizard       [##########] COMPLETE 2026-01-26
   Phase 13: Folder Mapping     [##########] COMPLETE 2026-01-26
   Phase 14: Validate CLI       [..........] Not started
@@ -30,16 +30,16 @@ Milestone 3.0: Developer Experience [###.......] 30%
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6 (v3.0)
-- Average duration: 5min
-- Total execution time: 29min
+- Total plans completed: 7 (v3.0)
+- Average duration: 4.6min
+- Total execution time: 32min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 12 | 4 | 20min | 5min |
-| 13 | 2 | 9min | 4.5min |
+| 13 | 3 | 12min | 4min |
 | 14 | 0 | - | - |
 | 15 | 0 | - | - |
 | 16 | 0 | - | - |
@@ -72,6 +72,9 @@ Recent decisions affecting current work:
 - [13-01]: Case-sensitive matching - "People/" only matches "People/", not "people/"
 - [13-02]: TypeSelectionModal shows suggested types first when folder mapping is ambiguous
 - [13-02]: Shared infrastructure between CLI and Obsidian plugin (no duplication)
+- [13-03]: Title Case for folder patterns to match Obsidian conventions ("Characters" not "characters")
+- [13-03]: FolderMapper.createFromTemplate() falls back to defaults for templates without explicit mappings
+- [13-03]: Template config path complete: template.folderMappings → Zod validation → FolderMapper consumption
 
 ### Research Highlights
 
@@ -93,9 +96,9 @@ None currently blocking.
 ## Session Continuity
 
 Last session: 2026-01-26
-Stopped at: Completed 13-02-PLAN.md
+Stopped at: Completed 13-03-PLAN.md
 Resume file: None
 Next action: `/gsd:plan-phase 14` or `/gsd:discuss-phase 14`
 
 ---
-*Updated: 2026-01-26 - Phase 13 complete (2/2 plans)*
+*Updated: 2026-01-26 - Phase 13 complete (3/3 plans)*
