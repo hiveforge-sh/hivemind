@@ -1,4 +1,4 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder } from 'obsidian';
+import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder, ItemView, WorkspaceLeaf } from 'obsidian';
 import { spawn, ChildProcess } from 'child_process';
 import { FolderMapper } from '../src/templates/folder-mapper.js';
 import type { ResolveResult, FolderMappingRule } from '../src/templates/types.js';
@@ -11,6 +11,10 @@ interface HivemindSettings {
   comfyuiEnabled: boolean;
   comfyuiEndpoint: string;
   autoStartMCP: boolean;
+  defaultEntityType: string;
+  autoMergeFrontmatter: boolean;
+  validationSeverity: 'error' | 'warning';
+  showValidationNotices: boolean;
 }
 
 const DEFAULT_SETTINGS: HivemindSettings = {
@@ -18,6 +22,10 @@ const DEFAULT_SETTINGS: HivemindSettings = {
   comfyuiEnabled: false,
   comfyuiEndpoint: 'http://127.0.0.1:8188',
   autoStartMCP: false,
+  defaultEntityType: '',
+  autoMergeFrontmatter: false,
+  validationSeverity: 'warning',
+  showValidationNotices: false,
 };
 
 interface MCPToolCall {
@@ -167,7 +175,7 @@ export default class HivemindPlugin extends Plugin {
   }> = new Map();
   private requestId: number = 1;
   private statusBarItem: HTMLElement;
-  private folderMapper?: FolderMapper;
+  folderMapper?: FolderMapper;
 
   async onload() {
     await this.loadSettings();
@@ -181,6 +189,12 @@ export default class HivemindPlugin extends Plugin {
     // Initialize folder mapper from active template config
     const folderMappings = templateRegistry.getFolderMappings();
     this.folderMapper = await FolderMapper.createFromTemplate(folderMappings);
+
+    // Register validation sidebar view
+    this.registerView(
+      VIEW_TYPE_VALIDATION,
+      (leaf) => new ValidationSidebarView(leaf, this)
+    );
 
     // Add status bar item
     this.statusBarItem = this.addStatusBarItem();
@@ -270,6 +284,14 @@ export default class HivemindPlugin extends Plugin {
       }
     });
 
+    this.addCommand({
+      id: 'open-validation-sidebar',
+      name: 'Open validation sidebar',
+      callback: () => {
+        this.activateValidationSidebar();
+      }
+    });
+
     // Register context menu events
     this.registerEvent(
       this.app.workspace.on('file-menu', (menu, file) => {
@@ -307,9 +329,36 @@ export default class HivemindPlugin extends Plugin {
                 this.addFrontmatterToFolder(file);
               });
           });
+
+          menu.addItem((item) => {
+            item.setTitle('Hivemind: Validate folder')
+              .setIcon('check-circle')
+              .onClick(() => {
+                this.validateFolder(file);
+              });
+          });
+
+          menu.addItem((item) => {
+            item.setTitle('Hivemind: Fix all in folder')
+              .setIcon('wrench')
+              .onClick(() => {
+                this.fixFolder(file);
+              });
+          });
         }
       })
     );
+
+    // Register file-open event for auto-validation if enabled
+    if (this.settings.showValidationNotices) {
+      this.registerEvent(
+        this.app.workspace.on('file-open', (file) => {
+          if (file instanceof TFile && file.extension === 'md') {
+            this.validateCurrentFile(file);
+          }
+        })
+      );
+    }
 
     // Settings tab
     this.addSettingTab(new HivemindSettingTab(this.app, this));
@@ -998,7 +1047,7 @@ export default class HivemindPlugin extends Plugin {
     }
   }
 
-  private async fixAllFiles() {
+  async fixAllFiles() {
     try {
       new Notice('Starting bulk fix operation...');
 
@@ -1077,6 +1126,463 @@ export default class HivemindPlugin extends Plugin {
       console.error('Failed to fix all files:', error);
       new Notice('Failed to fix all files: ' + (error as Error).message);
     }
+  }
+
+  async validateFolder(folder: TFolder) {
+    try {
+      // Get all markdown files in folder (recursive)
+      const allMarkdownFiles = this.app.vault.getMarkdownFiles();
+      const folderFiles = allMarkdownFiles.filter(f => f.path.startsWith(folder.path + '/'));
+
+      if (folderFiles.length === 0) {
+        new Notice('No markdown files found in this folder');
+        return;
+      }
+
+      let validCount = 0;
+      let invalidCount = 0;
+      const issues: Array<{file: string, issues: Array<{type: string, detail: string}>}> = [];
+
+      for (const file of folderFiles) {
+        try {
+          const content = await this.app.vault.read(file);
+          const { data: frontmatter } = matter(content);
+          const fileIssues: Array<{type: string, detail: string}> = [];
+
+          if (!frontmatter || Object.keys(frontmatter).length === 0) {
+            fileIssues.push({
+              type: 'missing_frontmatter',
+              detail: 'No frontmatter found'
+            });
+          } else {
+            const requiredFields = ['id', 'type', 'status'];
+            for (const field of requiredFields) {
+              if (!(field in frontmatter)) {
+                fileIssues.push({
+                  type: 'missing_field',
+                  detail: `Missing required field: ${field}`
+                });
+              }
+            }
+
+            if (frontmatter.type) {
+              const template = templateRegistry.getActive();
+              const validTypes = template?.entityTypes.map((e) => e.name) || [];
+              if (!validTypes.includes(frontmatter.type)) {
+                fileIssues.push({
+                  type: 'invalid_type',
+                  detail: `Invalid type '${frontmatter.type}'`
+                });
+              }
+            }
+          }
+
+          if (fileIssues.length > 0) {
+            invalidCount++;
+            issues.push({ file: file.path, issues: fileIssues });
+          } else {
+            validCount++;
+          }
+        } catch (error) {
+          console.error(`Failed to validate ${file.path}:`, error);
+        }
+      }
+
+      new FolderValidationResultModal(this.app, folder.path, validCount, invalidCount, issues).open();
+
+    } catch (error) {
+      console.error('Failed to validate folder:', error);
+      new Notice('Failed to validate folder: ' + (error as Error).message);
+    }
+  }
+
+  async fixFolder(folder: TFolder) {
+    try {
+      // Get all markdown files in folder (recursive)
+      const allMarkdownFiles = this.app.vault.getMarkdownFiles();
+      const folderFiles = allMarkdownFiles.filter(f => f.path.startsWith(folder.path + '/'));
+
+      if (folderFiles.length === 0) {
+        new Notice('No markdown files found in this folder');
+        return;
+      }
+
+      new Notice(`Fixing ${folderFiles.length} files...`);
+
+      let fixedCount = 0;
+      let skippedCount = 0;
+      let errorCount = 0;
+
+      for (const file of folderFiles) {
+        try {
+          const content = await this.app.vault.read(file);
+          const { data: existingFrontmatter } = matter(content);
+
+          if (!existingFrontmatter || Object.keys(existingFrontmatter).length === 0) {
+            skippedCount++;
+            continue;
+          }
+
+          let entityType = existingFrontmatter.type;
+          if (!entityType && this.folderMapper) {
+            const result = await this.folderMapper.resolveType(file.path);
+            if (result.confidence === 'exact') {
+              entityType = result.types[0];
+            } else {
+              skippedCount++;
+              continue;
+            }
+          } else if (!entityType) {
+            skippedCount++;
+            continue;
+          }
+
+          const template = FRONTMATTER_TEMPLATES[entityType];
+          if (!template) {
+            skippedCount++;
+            continue;
+          }
+
+          const fileName = file.basename;
+          const autoFilledTemplate = {
+            ...template,
+            id: existingFrontmatter.id || this.generateId(fileName, entityType),
+            name: existingFrontmatter.name || fileName,
+            title: existingFrontmatter.title || fileName
+          };
+
+          const missingFields = this.computeNewFieldsForBulk(existingFrontmatter, autoFilledTemplate);
+
+          if (Object.keys(missingFields).length === 0) {
+            skippedCount++;
+            continue;
+          }
+
+          await this.insertMissingFrontmatter(file, existingFrontmatter, missingFields);
+          fixedCount++;
+
+        } catch (error) {
+          console.error(`Failed to fix ${file.path}:`, error);
+          errorCount++;
+        }
+      }
+
+      new Notice(`✅ Fixed ${fixedCount} files in folder (${skippedCount} skipped, ${errorCount} errors)`);
+
+    } catch (error) {
+      console.error('Failed to fix folder:', error);
+      new Notice('Failed to fix folder: ' + (error as Error).message);
+    }
+  }
+
+  activateValidationSidebar() {
+    this.app.workspace.detachLeavesOfType('hivemind-validation-sidebar');
+
+    this.app.workspace.getRightLeaf(false)?.setViewState({
+      type: 'hivemind-validation-sidebar',
+      active: true,
+    });
+
+    this.app.workspace.revealLeaf(
+      this.app.workspace.getLeavesOfType('hivemind-validation-sidebar')[0]
+    );
+  }
+}
+
+const VIEW_TYPE_VALIDATION = 'hivemind-validation-sidebar';
+
+class ValidationSidebarView extends ItemView {
+  plugin: HivemindPlugin;
+
+  constructor(leaf: WorkspaceLeaf, plugin: HivemindPlugin) {
+    super(leaf);
+    this.plugin = plugin;
+  }
+
+  getViewType(): string {
+    return VIEW_TYPE_VALIDATION;
+  }
+
+  getDisplayText(): string {
+    return 'Hivemind Validation';
+  }
+
+  getIcon(): string {
+    return 'check-circle';
+  }
+
+  async onOpen() {
+    const container = this.containerEl.children[1];
+    container.empty();
+    container.addClass('hivemind-validation-sidebar');
+
+    // Header
+    const headerEl = container.createDiv({ cls: 'hivemind-validation-header' });
+    headerEl.style.padding = '16px';
+    headerEl.style.borderBottom = '1px solid var(--background-modifier-border)';
+
+    headerEl.createEl('h2', { text: 'Validation Results' });
+
+    // Buttons
+    const buttonContainer = headerEl.createDiv({ cls: 'button-container' });
+    buttonContainer.style.display = 'flex';
+    buttonContainer.style.gap = '8px';
+    buttonContainer.style.marginTop = '12px';
+
+    const refreshBtn = buttonContainer.createEl('button', {
+      text: 'Refresh',
+      cls: 'mod-cta'
+    });
+    refreshBtn.addEventListener('click', () => {
+      this.runValidation();
+    });
+
+    const fixAllBtn = buttonContainer.createEl('button', {
+      text: 'Fix All',
+    });
+    fixAllBtn.addEventListener('click', async () => {
+      await this.plugin.fixAllFiles();
+      this.runValidation();
+    });
+
+    // Results container
+    const resultsContainer = container.createDiv({ cls: 'hivemind-validation-results' });
+    resultsContainer.style.padding = '16px';
+    resultsContainer.style.overflowY = 'auto';
+
+    // Run initial validation
+    await this.runValidation();
+  }
+
+  async runValidation() {
+    const container = this.containerEl.children[1];
+    const resultsContainer = container.querySelector('.hivemind-validation-results') as HTMLElement;
+
+    if (!resultsContainer) return;
+
+    resultsContainer.empty();
+
+    // Show scanning message
+    const scanningEl = resultsContainer.createDiv();
+    scanningEl.style.textAlign = 'center';
+    scanningEl.style.padding = '20px';
+    scanningEl.setText('Scanning vault...');
+
+    // Get all markdown files
+    const allFiles = this.app.vault.getMarkdownFiles();
+    const validFiles: TFile[] = [];
+    const invalidFiles: Array<{file: TFile, issues: Array<{type: string, detail: string}>}> = [];
+
+    for (const file of allFiles) {
+      try {
+        const content = await this.app.vault.read(file);
+        const { data: frontmatter } = matter(content);
+        const issues: Array<{type: string, detail: string}> = [];
+
+        if (!frontmatter || Object.keys(frontmatter).length === 0) {
+          issues.push({
+            type: 'missing_frontmatter',
+            detail: 'No frontmatter found'
+          });
+        } else {
+          const requiredFields = ['id', 'type', 'status'];
+          for (const field of requiredFields) {
+            if (!(field in frontmatter)) {
+              issues.push({
+                type: 'missing_field',
+                detail: `Missing required field: ${field}`
+              });
+            }
+          }
+
+          if (frontmatter.type) {
+            const template = templateRegistry.getActive();
+            const validTypes = template?.entityTypes.map((e) => e.name) || [];
+            if (!validTypes.includes(frontmatter.type)) {
+              issues.push({
+                type: 'invalid_type',
+                detail: `Invalid type '${frontmatter.type}'`
+              });
+            }
+
+            // Check folder mismatch
+            if (this.plugin.folderMapper && issues.length === 0) {
+              try {
+                const resolved = await this.plugin.folderMapper.resolveType(file.path);
+                if (resolved.confidence === 'exact' && resolved.types[0] !== frontmatter.type) {
+                  issues.push({
+                    type: 'folder_mismatch',
+                    detail: `Type '${frontmatter.type}' doesn't match folder (expected '${resolved.types[0]}')`
+                  });
+                }
+              } catch (error) {
+                // Folder mapping is optional
+              }
+            }
+          }
+        }
+
+        if (issues.length > 0) {
+          invalidFiles.push({ file, issues });
+        } else {
+          validFiles.push(file);
+        }
+      } catch (error) {
+        console.error(`Failed to validate ${file.path}:`, error);
+      }
+    }
+
+    // Clear scanning message
+    resultsContainer.empty();
+
+    // Show summary
+    const summaryEl = resultsContainer.createDiv({ cls: 'validation-summary' });
+    summaryEl.style.padding = '12px';
+    summaryEl.style.marginBottom = '16px';
+    summaryEl.style.backgroundColor = 'var(--background-secondary)';
+    summaryEl.style.borderRadius = '6px';
+
+    summaryEl.createEl('div', {
+      text: `✅ Valid: ${validFiles.length}`,
+      cls: 'validation-summary-item'
+    }).style.color = 'var(--text-success)';
+
+    summaryEl.createEl('div', {
+      text: `⚠️ Issues: ${invalidFiles.length}`,
+      cls: 'validation-summary-item'
+    }).style.color = 'var(--text-warning)';
+
+    // Show invalid files
+    if (invalidFiles.length > 0) {
+      resultsContainer.createEl('h3', { text: 'Files with Issues' });
+
+      for (const { file, issues } of invalidFiles) {
+        const fileEl = resultsContainer.createDiv({ cls: 'validation-file-item' });
+        fileEl.style.padding = '12px';
+        fileEl.style.marginBottom = '8px';
+        fileEl.style.backgroundColor = 'var(--background-secondary)';
+        fileEl.style.borderRadius = '6px';
+        fileEl.style.borderLeft = '3px solid var(--text-warning)';
+        fileEl.style.cursor = 'pointer';
+
+        fileEl.addEventListener('click', () => {
+          this.app.workspace.getLeaf().openFile(file);
+        });
+
+        const fileNameEl = fileEl.createDiv({ cls: 'validation-file-name' });
+        fileNameEl.style.fontWeight = 'bold';
+        fileNameEl.style.marginBottom = '6px';
+        fileNameEl.setText(file.path);
+
+        const issuesEl = fileEl.createDiv({ cls: 'validation-file-issues' });
+        issuesEl.style.fontSize = '0.9em';
+        issuesEl.style.color = 'var(--text-muted)';
+
+        for (const issue of issues) {
+          const issueEl = issuesEl.createDiv();
+          issueEl.setText(`• ${issue.detail}`);
+        }
+      }
+    } else {
+      const noIssuesEl = resultsContainer.createDiv();
+      noIssuesEl.style.textAlign = 'center';
+      noIssuesEl.style.padding = '40px 20px';
+      noIssuesEl.style.color = 'var(--text-muted)';
+      noIssuesEl.setText('🎉 All files have valid frontmatter!');
+    }
+  }
+
+  async onClose() {
+    // Cleanup
+  }
+}
+
+// Folder Validation Result Modal
+class FolderValidationResultModal extends Modal {
+  folderPath: string;
+  validCount: number;
+  invalidCount: number;
+  issues: Array<{file: string, issues: Array<{type: string, detail: string}>}>;
+
+  constructor(app: App, folderPath: string, validCount: number, invalidCount: number, issues: Array<{file: string, issues: Array<{type: string, detail: string}>}>) {
+    super(app);
+    this.folderPath = folderPath;
+    this.validCount = validCount;
+    this.invalidCount = invalidCount;
+    this.issues = issues;
+  }
+
+  onOpen() {
+    const { contentEl } = this;
+
+    contentEl.createEl('h2', { text: 'Folder Validation Results' });
+
+    contentEl.createEl('p', {
+      text: this.folderPath,
+      cls: 'setting-item-description'
+    });
+
+    // Summary
+    const summaryEl = contentEl.createDiv({ cls: 'validation-summary' });
+    summaryEl.style.padding = '12px';
+    summaryEl.style.marginTop = '16px';
+    summaryEl.style.marginBottom = '16px';
+    summaryEl.style.backgroundColor = 'var(--background-secondary)';
+    summaryEl.style.borderRadius = '6px';
+
+    summaryEl.createEl('div', {
+      text: `✅ Valid: ${this.validCount}`,
+    }).style.color = 'var(--text-success)';
+
+    summaryEl.createEl('div', {
+      text: `⚠️ Issues: ${this.invalidCount}`,
+    }).style.color = 'var(--text-warning)';
+
+    // Issues list
+    if (this.issues.length > 0) {
+      const issuesContainer = contentEl.createDiv({ cls: 'validation-issues' });
+      issuesContainer.style.maxHeight = '400px';
+      issuesContainer.style.overflowY = 'auto';
+      issuesContainer.style.marginBottom = '20px';
+
+      for (const { file, issues } of this.issues) {
+        const fileItem = issuesContainer.createDiv({ cls: 'validation-file-item' });
+        fileItem.style.padding = '10px';
+        fileItem.style.marginBottom = '8px';
+        fileItem.style.backgroundColor = 'var(--background-secondary)';
+        fileItem.style.borderRadius = '5px';
+        fileItem.style.borderLeft = '3px solid var(--text-warning)';
+
+        fileItem.createEl('strong', { text: file });
+
+        const issuesList = fileItem.createDiv();
+        issuesList.style.marginTop = '6px';
+        issuesList.style.fontSize = '0.9em';
+
+        for (const issue of issues) {
+          issuesList.createDiv({ text: `• ${issue.detail}` });
+        }
+      }
+    }
+
+    // Close button
+    const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container' });
+    buttonContainer.style.display = 'flex';
+    buttonContainer.style.justifyContent = 'flex-end';
+    buttonContainer.style.marginTop = '15px';
+
+    const closeBtn = buttonContainer.createEl('button', {
+      text: 'Close',
+      cls: 'mod-cta'
+    });
+    closeBtn.addEventListener('click', () => {
+      this.close();
+    });
+  }
+
+  onClose() {
+    const { contentEl } = this;
+    contentEl.empty();
   }
 }
 
