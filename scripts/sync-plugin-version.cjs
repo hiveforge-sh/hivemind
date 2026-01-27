@@ -14,12 +14,19 @@ if (!version) {
   process.exit(1);
 }
 
-// Update manifest.json
+// Update obsidian-plugin/manifest.json
 const manifestPath = path.join(__dirname, '..', 'obsidian-plugin', 'manifest.json');
 const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
 manifest.version = version;
 fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
-console.log(`Updated manifest.json to version ${version}`);
+console.log(`Updated obsidian-plugin/manifest.json to version ${version}`);
+
+// Update root manifest.json
+const rootManifestPath = path.join(__dirname, '..', 'manifest.json');
+const rootManifest = JSON.parse(fs.readFileSync(rootManifestPath, 'utf8'));
+rootManifest.version = version;
+fs.writeFileSync(rootManifestPath, JSON.stringify(rootManifest, null, 2) + '\n');
+console.log(`Updated root manifest.json to version ${version}`);
 
 // Update versions.json
 const versionsPath = path.join(__dirname, '..', 'obsidian-plugin', 'versions.json');

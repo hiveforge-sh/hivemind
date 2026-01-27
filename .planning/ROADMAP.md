@@ -183,10 +183,11 @@ Plans:
   1. `templates/schema-factory.ts` uses Zod generics instead of `any` for schema operations
   2. `graph/database.ts` uses typed interfaces for all SQLite query results
   3. `search/engine.ts` has explicit types for search parameters and results
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 18-01: TBD
+- [ ] 18-01-PLAN.md — Replace `any` types in template system (schema-factory.ts, loader.ts)
+- [ ] 18-02-PLAN.md — Replace `any` types in data layer (database.ts, builder.ts, engine.ts)
 
 #### Phase 19: Server & MCP
 **Goal**: Type safety in MCP server and dynamic tool generation
