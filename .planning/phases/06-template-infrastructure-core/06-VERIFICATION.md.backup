@@ -1,0 +1,158 @@
+---
+phase: 06-template-infrastructure-core
+verified: 2026-01-26T01:21:19Z
+status: gaps_found
+score: 4/5 must-haves verified
+gaps:
+  - truth: "System loads template definitions from config at startup"
+    status: failed
+    reason: "Template system not integrated into server initialization - initializeTemplates() never called"
+    artifacts:
+      - path: "src/index.ts"
+        issue: "No import or call to initializeTemplates()"
+      - path: "src/server.ts"
+        issue: "HivemindServer constructor does not initialize template system"
+    missing:
+      - "Import initializeTemplates from templates module in src/index.ts or src/server.ts"
+      - "Call initializeTemplates() during server startup (before creating HivemindServer or in constructor)"
+      - "Store active template reference in HivemindServer for runtime access"
+---
+
+# Phase 6: Template Infrastructure Core Verification Report
+
+**Phase Goal:** Foundation for pluggable template system with config-driven entity definitions
+
+**Verified:** 2026-01-26T01:21:19Z
+
+**Status:** gaps_found
+
+**Re-verification:** No - initial verification
+
+## Goal Achievement
+
+### Observable Truths
+
+| # | Truth | Status | Evidence |
+|---|-------|--------|----------|
+| 1 | User can create config.json with custom entity type definitions without writing code | VERIFIED | TemplateConfig interface exists, validateTemplateConfig accepts user configs, config.json has template section |
+| 2 | System loads template definitions from config at startup and validates them | FAILED | initializeTemplates() function exists and works, but is NOT called in src/index.ts or src/server.ts startup flow |
+| 3 | System generates Zod schemas dynamically from template config | VERIFIED | createEntitySchema() generates schemas, SchemaFactory caches them, end-to-end test passes |
+| 4 | User can select which template is active via config.json | VERIFIED | config.json has activeTemplate: worldbuilding, templateRegistry.activate() works, validated successfully |
+| 5 | Invalid template configs are rejected with clear error messages | VERIFIED | TemplateValidationError.toUserMessage() provides user-friendly errors, Zod schemas validate all fields |
+
+**Score:** 4/5 truths verified (80%)
+
+### Required Artifacts
+
+| Artifact | Expected | Status | Details |
+|----------|----------|--------|---------|
+| src/templates/types.ts | Template configuration interfaces | VERIFIED | 131 lines, exports TemplateConfig, EntityTypeConfig, FieldConfig, TemplateDefinition - all substantive |
+| src/templates/index.ts | Module barrel export | VERIFIED | 13 lines, re-exports all modules |
+| src/templates/validator.ts | Template config validation with Zod | VERIFIED | 169 lines, exports validateTemplateConfig, TemplateValidationError - fully implemented |
+| src/templates/registry.ts | Template registry singleton | VERIFIED | 170 lines, exports TemplateRegistry class and singleton, O(1) lookups via Map |
+| src/templates/schema-factory.ts | Zod schema generation from config | VERIFIED | 209 lines, exports createEntitySchema, SchemaFactory - handles all 7 field types |
+| src/templates/loader.ts | Config loading and initialization | VERIFIED | 229 lines, exports initializeTemplates, loadTemplateConfig, getEntitySchema |
+| src/templates/builtin/worldbuilding.ts | Built-in worldbuilding template | VERIFIED | 404 lines, exports worldbuildingTemplate with 6 entity types |
+| config.json | Template section with activeTemplate | VERIFIED | Has template section with activeTemplate: worldbuilding |
+
+**All artifacts exist and are substantive** (no stubs, no TODOs, 1,325 total lines of code)
+
+### Key Link Verification
+
+| From | To | Via | Status | Details |
+|------|----|----|--------|---------|
+| src/templates/index.ts | src/templates/types.ts | re-export | WIRED | export * from './types.js' |
+| src/templates/validator.ts | src/templates/types.ts | validates against | WIRED | Imports TemplateConfig, creates Zod schemas |
+| src/templates/registry.ts | src/templates/types.ts | uses types | WIRED | Imports TemplateDefinition, TemplateRegistryEntry |
+| src/templates/schema-factory.ts | src/types/index.ts | extends base schemas | WIRED | Imports BaseFrontmatterSchema, extends it |
+| src/templates/loader.ts | src/templates/validator.ts | validates config | WIRED | Calls validateTemplateConfig() |
+| src/templates/loader.ts | src/templates/registry.ts | registers templates | WIRED | Calls templateRegistry.register/activate |
+| src/templates/loader.ts | config.json | reads template config | WIRED | Reads template section from config.json |
+| src/index.ts | src/templates/loader.ts | initializes at startup | NOT_WIRED | No import, no call to initializeTemplates() |
+| src/server.ts | src/templates/loader.ts | initializes in constructor | NOT_WIRED | No initialization in HivemindServer class |
+
+**Critical gap:** Template system fully implemented but NOT integrated into server startup flow.
+
+### Requirements Coverage
+
+| Requirement | Status | Blocking Issue |
+|-------------|--------|----------------|
+| INFRA-01: System loads template definitions from config at startup | BLOCKED | initializeTemplates() not called at startup |
+| INFRA-02: User can select active template via config.json | SATISFIED | - |
+| INFRA-03: User can define custom entity types via config without coding | SATISFIED | - |
+| INFRA-04: System generates Zod schemas dynamically from template config | SATISFIED | - |
+| INFRA-06: Template registry validates config on load | SATISFIED | - |
+
+**Requirements score:** 4/5 satisfied (80%)
+
+### Anti-Patterns Found
+
+No anti-patterns detected. Code quality is excellent:
+- No TODOs, FIXMEs, placeholders, or stub patterns
+- Comprehensive JSDoc comments throughout
+- Proper error handling with user-friendly messages
+- Clean separation of concerns
+
+### Tests
+
+**Test coverage:** 18 tests for schema-factory (all passing)
+
+Test file: tests/templates/schema-factory.test.ts
+
+Tests cover:
+- String, number, boolean, enum, array, date, record field types
+- Required vs optional fields
+- Default values
+- Type literal enforcement
+- Schema caching behavior
+
+**Missing tests:** validator.ts, registry.ts, loader.ts lack unit tests
+
+**Test status:** Core functionality tested, but coverage incomplete
+
+### Functional Verification
+
+**Manual tests conducted:**
+
+1. Config validation - PASSED
+2. Template initialization - PASSED  
+3. Schema generation and validation - PASSED
+4. TypeScript compilation - PASSED
+
+All manual tests pass - template system works when called directly.
+
+### Gaps Summary
+
+**Single critical gap blocking phase completion:**
+
+**Gap: Template system not integrated into server startup**
+
+**Root cause:** The template infrastructure is fully implemented and functional, but the integration point is missing. The initializeTemplates() function exists in src/templates/loader.ts but is never imported or called in:
+- src/index.ts (main entry point)
+- src/server.ts (HivemindServer class)
+
+**Impact:**
+- Templates are defined but never loaded at runtime
+- Schema generation happens in isolation, not used by MCP server
+- Config.json template section is read but never activates
+- Phase goal "System loads template definitions from config at startup" is NOT achieved
+
+**What is working:**
+- All 7 modules implemented (types, validator, registry, schema-factory, loader, builtin/worldbuilding, index)
+- All exports present and correct
+- All artifacts substantive (1,325 total lines of code)
+- 18 tests passing for schema generation
+- Manual testing confirms all functions work correctly
+- No stub patterns or anti-patterns
+
+**What is missing:**
+- Single line in src/index.ts or src/server.ts: import { initializeTemplates } from './templates/index.js';
+- Single line in startup flow: initializeTemplates();
+- Optional: Store active template reference for runtime access
+
+**Recommendation:** This is a straightforward wiring gap, not an implementation issue. All components are complete and tested. A single plan to add the initialization call would close this gap.
+
+---
+
+_Verified: 2026-01-26T01:21:19Z_
+_Verifier: Claude Code (gsd-verifier)_

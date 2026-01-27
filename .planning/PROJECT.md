@@ -11,6 +11,7 @@ Consistent AI output. Give any AI tool context from your canon, get results that
 ## Current State: v3.0 Shipped
 
 **Shipped:** 2026-01-27
+**Tagged:** v3.0
 
 **What's in v3.0:**
 - `npx hivemind init` — interactive setup wizard with config generation
@@ -59,6 +60,14 @@ Consistent AI output. Give any AI tool context from your canon, get results that
 - ✓ Dynamic Zod schema generation from template config — v2.0
 - ✓ Migration of hardcoded worldbuilding to template system — v2.0
 - ✓ Backwards compatibility for existing vaults — v2.0
+- ✓ Interactive setup wizard with template detection — v3.0
+- ✓ Vault validation CLI with schema checking — v3.0
+- ✓ Bulk frontmatter fix with dry-run preview — v3.0
+- ✓ Folder-to-type mapping shared across CLI and plugin — v3.0
+- ✓ Obsidian add/validate/fix frontmatter commands — v3.0
+- ✓ Validation sidebar panel for vault-wide overview — v3.0
+- ✓ CI-compatible output (JSON, exit codes) — v3.0
+- ✓ Non-interactive mode for automation — v3.0
 
 ### Active
 
@@ -115,6 +124,10 @@ Consistent AI output. Give any AI tool context from your canon, get results that
 | Config-based entity definitions | No coding required for custom templates — accessibility | ✓ Good |
 | Initialize templates before vault scan | Templates needed before entity parsing | ✓ Good |
 | Deprecation via _meta field | MCP SDK lacks native deprecation, one year migration window | ✓ Good |
+| Dry-run default for fix | Destructive by default is anti-pattern | ✓ Good |
+| Shared FolderMapper | No logic duplication between CLI and plugin | ✓ Good |
+| Inline validation in plugin | Avoid Node fs dependencies in Obsidian | ✓ Good |
+| Picomatch for glob matching | Already in dep tree, 4x faster than minimatch | ✓ Good |
 
 ---
-*Last updated: 2026-01-27 after v3.0 milestone completion*
+*Last updated: 2026-01-27 after v3.0 milestone archived*
