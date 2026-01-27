@@ -77,7 +77,7 @@ export function loadTemplateConfig(configPath?: string): TemplateConfig {
   }
 
   // Read and parse config file
-  let configContent: any;
+  let configContent: unknown;
   try {
     const fileContent = readFileSync(configFilePath, 'utf-8');
     configContent = JSON.parse(fileContent);
@@ -87,11 +87,18 @@ export function loadTemplateConfig(configPath?: string): TemplateConfig {
     );
   }
 
+  // Validate that config is an object
+  if (typeof configContent !== 'object' || configContent === null) {
+    throw new Error(`Config file at ${configFilePath} must contain a JSON object`);
+  }
+
   // Extract template section (use defaults if missing)
-  const templateConfig = configContent.template || {
+  const configObj = configContent as Record<string, unknown>;
+  // Template config will be validated by validateTemplateConfig before being returned
+  const templateConfig = (configObj.template || {
     activeTemplate: 'worldbuilding',
     templates: [],
-  };
+  }) as { activeTemplate?: string; templates?: TemplateDefinition[] };
 
   // Check for standalone template.json alongside config.json
   const configDir = dirname(configFilePath);
