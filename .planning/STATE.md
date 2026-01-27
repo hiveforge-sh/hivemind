@@ -4,35 +4,35 @@
 
 **Core Value**: Consistent AI output. Give any AI tool context from your canon, get results that belong in your world - every time, across every tool.
 
-**Current Focus**: v3.0 Developer Experience - Phase 14 (Validate CLI)
+**Current Focus**: v3.0 Developer Experience - Phase 15 (Fix CLI)
 
 ## Current Position
 
 **Milestone**: 3.0 (Developer Experience)
-**Phase**: 14 of 16 (Validate CLI)
-**Plan**: 3 of 3 in current phase
-**Status**: Phase complete
-**Last activity**: 2026-01-27 - Completed 14-03-PLAN.md
+**Phase**: 15 of 16 (Fix CLI)
+**Plan**: 1 of 3 in current phase
+**Status**: In progress
+**Last activity**: 2026-01-27 - Completed 15-01-PLAN.md
 
 ## Progress
 
 ```
 Milestone 1.0: MVP + Core      [##########] 100% SHIPPED 2026-01-25
 Milestone 2.0: Template System [##########] 100% SHIPPED 2026-01-26
-Milestone 3.0: Developer Experience [######....] 60%
+Milestone 3.0: Developer Experience [#######...] 70%
   Phase 12: Setup Wizard       [##########] COMPLETE 2026-01-26
   Phase 13: Folder Mapping     [##########] COMPLETE 2026-01-27
   Phase 14: Validate CLI       [##########] COMPLETE 2026-01-27
-  Phase 15: Fix CLI            [..........] Not started
+  Phase 15: Fix CLI            [###.......] 1/3 plans
   Phase 16: Obsidian Commands  [..........] Not started
 ```
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 11 (v3.0)
-- Average duration: 5.2min
-- Total execution time: 57min
+- Total plans completed: 12 (v3.0)
+- Average duration: 5.0min
+- Total execution time: 61min
 
 **By Phase:**
 
@@ -41,7 +41,7 @@ Milestone 3.0: Developer Experience [######....] 60%
 | 12 | 4 | 20min | 5min |
 | 13 | 4 | 15min | 3.8min |
 | 14 | 3 | 22min | 7.3min |
-| 15 | 0 | - | - |
+| 15 | 1 | 4min | 4min |
 | 16 | 0 | - | - |
 
 *Updated after each plan completion*
@@ -90,6 +90,10 @@ Recent decisions affecting current work:
 - [14-03]: Status field uses valid enum values (canon, draft, not 'approved')
 - [14-03]: Integration tests verify behavior without mocking process.exit
 - [14-03]: Test organization: unit tests per module, integration tests for full flow
+- [15-01]: ID collision algorithm: base ID, then type-prefixed, then numbered
+- [15-01]: Reuse ValidationScanner for file discovery (no duplication)
+- [15-01]: FileFixer generates operations without modifying files
+- [15-01]: Preserve existing frontmatter values when adding missing fields
 
 ### Research Highlights
 
@@ -111,9 +115,9 @@ None currently blocking.
 ## Session Continuity
 
 Last session: 2026-01-27
-Stopped at: Completed 14-03-PLAN.md
+Stopped at: Completed 15-01-PLAN.md
 Resume file: None
-Next action: Phase 14 complete, ready for Phase 15 (Fix CLI)
+Next action: Continue to 15-02-PLAN.md (formatter and writer modules)
 
 ---
-*Updated: 2026-01-27 - Phase 14 complete (3/3 plans)*
+*Updated: 2026-01-27 - Phase 15 in progress (1/3 plans)*
