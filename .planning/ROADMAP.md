@@ -170,10 +170,10 @@ Plans:
   1. `types/index.ts` uses explicit types for all interfaces and exports
   2. `parser/markdown.ts` uses `Record<string, unknown>` for frontmatter parsing
   3. `vault/reader.ts` has zero `any` types in file operations and entity parsing
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 17-01: TBD
+- [ ] 17-01-PLAN.md — Replace all `any` types in foundation files (types, parser, reader)
 
 #### Phase 18: Template System & Data Layer
 **Goal**: Type safety in template operations and data access layer
