@@ -8,7 +8,7 @@ import { templateRegistry } from '../templates/registry.js';
 export interface ParseError {
   filePath: string;
   reason: string;
-  error?: any;
+  error?: unknown;
 }
 
 export interface VaultIndex {
