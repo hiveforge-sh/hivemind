@@ -1,3 +1,17 @@
+# [3.1.0](https://github.com/hiveforge-sh/hivemind/compare/3.0.3...3.1.0) (2026-01-27)
+
+
+### Bug Fixes
+
+* **obsidian-plugin:** resolve all eslint-plugin-obsidianmd review issues ([ea57274](https://github.com/hiveforge-sh/hivemind/commit/ea57274941eecd2f7cc0a15dff721d1dd5eea800))
+* **server:** resolve TS error for appearance property access on object type ([e9d17a0](https://github.com/hiveforge-sh/hivemind/commit/e9d17a0ed825cf84babc881b0a322b930b8e2a81))
+
+
+### Features
+
+* **18-02:** add SQLite row interfaces and replace any types in database.ts ([2d02704](https://github.com/hiveforge-sh/hivemind/commit/2d027040f84a291b82ee2cc76beb7d032e7d8d76))
+* **18-02:** replace any types in builder.ts and engine.ts ([dad4e1c](https://github.com/hiveforge-sh/hivemind/commit/dad4e1c4dd86278768e48f4f8138ac544f529eb2))
+
 ## [3.0.3](https://github.com/hiveforge-sh/hivemind/compare/3.0.2...3.0.3) (2026-01-27)
 
 
