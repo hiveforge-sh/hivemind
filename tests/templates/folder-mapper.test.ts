@@ -5,7 +5,7 @@ import {
   DEFAULT_FOLDER_MAPPINGS,
   folderMapper,
 } from '../../src/templates/folder-mapper.js';
-import type { FolderMappingConfig } from '../../src/templates/types.js';
+import type { FolderMappingConfig, FolderMappingRule } from '../../src/templates/types.js';
 
 describe('FolderMapper', () => {
   describe('DEFAULT_FOLDER_MAPPINGS', () => {
@@ -421,6 +421,53 @@ describe('FolderMapper', () => {
 
         expect(charResult.types).toEqual(['character']);
         expect(locResult.types).toEqual(['location']);
+      });
+    });
+
+    describe('createFromTemplate', () => {
+      it('should use template folderMappings when provided', async () => {
+        const customMappings: FolderMappingRule[] = [
+          { folder: '**/CustomFolder/**', types: ['custom_type'] },
+          { folder: '**/AnotherFolder/**', types: ['another_type'] },
+        ];
+
+        const mapper = await FolderMapper.createFromTemplate(customMappings);
+
+        const result1 = await mapper.resolveType('vault/CustomFolder/test.md');
+        expect(result1.types).toEqual(['custom_type']);
+        expect(result1.confidence).toBe('exact');
+
+        const result2 = await mapper.resolveType('vault/AnotherFolder/test.md');
+        expect(result2.types).toEqual(['another_type']);
+        expect(result2.confidence).toBe('exact');
+      });
+
+      it('should fall back to defaults when no mappings provided', async () => {
+        const mapper = await FolderMapper.createFromTemplate();
+
+        // Should match default worldbuilding patterns (lowercase for defaults)
+        const result = await mapper.resolveType('vault/characters/alice.md');
+        expect(result.types).toContain('character');
+      });
+
+      it('should fall back to defaults when empty array provided', async () => {
+        const mapper = await FolderMapper.createFromTemplate([]);
+
+        // Should match default worldbuilding patterns (lowercase for defaults)
+        const result = await mapper.resolveType('vault/locations/castle.md');
+        expect(result.types).toContain('location');
+      });
+
+      it('should pass through fallback type', async () => {
+        const customMappings: FolderMappingRule[] = [
+          { folder: '**/Known/**', types: ['known'] },
+        ];
+
+        const mapper = await FolderMapper.createFromTemplate(customMappings, 'unknown_type');
+
+        const result = await mapper.resolveType('vault/Other/test.md');
+        expect(result.types).toEqual(['unknown_type']);
+        expect(result.confidence).toBe('fallback');
       });
     });
   });
