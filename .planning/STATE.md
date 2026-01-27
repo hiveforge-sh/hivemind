@@ -10,9 +10,9 @@
 
 **Milestone**: 3.0 (Developer Experience)
 **Phase**: 16 of 16 (Obsidian Commands) - IN PROGRESS
-**Plan**: 1 of 3 in current phase
+**Plan**: 2 of 3 in current phase
 **Status**: In progress
-**Last activity**: 2026-01-27 - Completed 16-01-PLAN.md
+**Last activity**: 2026-01-27 - Completed 16-02-PLAN.md
 
 ## Progress
 
@@ -24,15 +24,15 @@ Milestone 3.0: Developer Experience [#########.] 93%
   Phase 13: Folder Mapping     [##########] COMPLETE 2026-01-27
   Phase 14: Validate CLI       [##########] COMPLETE 2026-01-27
   Phase 15: Fix CLI            [##########] COMPLETE 2026-01-27
-  Phase 16: Obsidian Commands  [###.......] 1/3 plans
+  Phase 16: Obsidian Commands  [######....] 2/3 plans
 ```
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 16 (v3.0)
-- Average duration: 5.2min
-- Total execution time: 94min
+- Total plans completed: 17 (v3.0)
+- Average duration: 5.6min
+- Total execution time: 98min
 
 **By Phase:**
 
@@ -42,7 +42,7 @@ Milestone 3.0: Developer Experience [#########.] 93%
 | 13 | 4 | 15min | 3.8min |
 | 14 | 3 | 22min | 7.3min |
 | 15 | 4 | 19min | 4.8min |
-| 16 | 1 | 18min | 18min |
+| 16 | 2 | 22min | 11min |
 
 *Updated after each plan completion*
 
@@ -106,6 +106,10 @@ Recent decisions affecting current work:
 - [16-01]: Preview modal shows all fields to be added before applying
 - [16-01]: Bulk folder operation only applies when all files resolve to same type
 - [16-01]: TypeSelectionModal callback pattern enables reuse for add-frontmatter flow
+- [16-02]: Inline validation logic in plugin instead of importing from CLI (avoid Node fs dependencies)
+- [16-02]: gray-matter for frontmatter parsing to match CLI validator approach
+- [16-02]: Auto-generate ID field from filename in fix modal with editable preview
+- [16-02]: Skip ambiguous files in fix-all bulk operations (process only clear type resolutions)
 
 ### Research Highlights
 
@@ -127,9 +131,9 @@ None currently blocking.
 ## Session Continuity
 
 Last session: 2026-01-27
-Stopped at: Completed 16-01-PLAN.md (Phase 16 in progress)
+Stopped at: Completed 16-02-PLAN.md (Phase 16 in progress)
 Resume file: None
-Next action: Continue Phase 16 Plans 02-03 (Validate and Fix commands)
+Next action: Continue Phase 16 Plan 03 (File Context command)
 
 ---
-*Updated: 2026-01-27 - Phase 16 Plan 01 complete (1/3 plans)*
+*Updated: 2026-01-27 - Phase 16 Plan 02 complete (2/3 plans)*
