@@ -1,3 +1,10 @@
+## [2.7.2](https://github.com/hiveforge-sh/hivemind/compare/v2.7.1...v2.7.2) (2026-01-27)
+
+
+### Bug Fixes
+
+* **ci:** install root deps for plugin build ([9dda708](https://github.com/hiveforge-sh/hivemind/commit/9dda7081b55d369544f67c2d2cc2cb95665b358f))
+
 ## [2.7.1](https://github.com/hiveforge-sh/hivemind/compare/v2.7.0...v2.7.1) (2026-01-27)
 
 
