@@ -7,14 +7,14 @@
  */
 
 import { promises as fs } from 'fs';
-import { join, basename } from 'path';
+import { join, basename, dirname } from 'path';
 import matter from 'gray-matter';
 import { ValidationScanner } from '../validate/scanner.js';
 import { templateRegistry } from '../../templates/registry.js';
 import { FolderMapper } from '../../templates/folder-mapper.js';
 import { initializeTemplateRegistry } from '../validate/validator.js';
 import { collectExistingIds, generateUniqueId } from './id-generator.js';
-import type { FixOptions, FileOperation } from './types.js';
+import type { FixOptions, FileOperation, AmbiguousFile } from './types.js';
 import type { ValidationResult } from '../validate/types.js';
 
 /**
@@ -27,6 +27,9 @@ export class FileFixer {
   private options: FixOptions;
   private folderMapper: FolderMapper | null = null;
   private existingIds: Set<string> = new Set();
+  private ambiguousFiles: AmbiguousFile[] = [];
+  private pendingAmbiguous: ValidationResult[] = [];
+  private typeResolutions: Map<string, string> = new Map();
 
   constructor(options: FixOptions) {
     this.options = options;
@@ -100,9 +103,9 @@ export class FileFixer {
     const filePath = join(this.options.vaultPath, result.path);
 
     // Resolve entity type from folder or explicit override
-    const entityType = await this.resolveEntityType(result.path);
+    const entityType = await this.resolveEntityType(result.path, result);
     if (!entityType) {
-      // Ambiguous type and not in interactive mode - skip
+      // Ambiguous type and not in interactive mode - skip for now
       return null;
     }
 
@@ -150,9 +153,10 @@ export class FileFixer {
    * Returns null if type is ambiguous and not in interactive mode.
    *
    * @param relativePath - Path relative to vault root
+   * @param result - Validation result (used to store pending for interactive resolution)
    * @returns Entity type name or null
    */
-  private async resolveEntityType(relativePath: string): Promise<string | null> {
+  private async resolveEntityType(relativePath: string, result?: ValidationResult): Promise<string | null> {
     // Explicit type override takes precedence
     if (this.options.type) {
       return this.options.type;
@@ -160,6 +164,12 @@ export class FileFixer {
 
     if (!this.folderMapper) {
       return null;
+    }
+
+    // Check if folder has already been resolved by user
+    const folder = dirname(relativePath);
+    if (this.typeResolutions.has(folder)) {
+      return this.typeResolutions.get(folder)!;
     }
 
     const resolved = await this.folderMapper.resolveType(relativePath);
@@ -172,9 +182,20 @@ export class FileFixer {
         if (this.options.yes) {
           return resolved.types[0];
         }
-        // In interactive mode, would prompt - for now return first type
-        // Interactive prompting will be added in 15-02
-        return resolved.types[0];
+        // In interactive mode, store for later prompting
+        if (result) {
+          this.pendingAmbiguous.push(result);
+          // Track unique ambiguous files by folder
+          const existingFolder = this.ambiguousFiles.find(af => af.folder === folder);
+          if (!existingFolder) {
+            this.ambiguousFiles.push({
+              path: relativePath,
+              folder,
+              possibleTypes: resolved.types,
+            });
+          }
+        }
+        return null;
       case 'fallback':
         return resolved.types[0];
       case 'none':
@@ -234,5 +255,52 @@ export class FileFixer {
     }
 
     return result;
+  }
+
+  /**
+   * Get list of files with ambiguous type mappings.
+   *
+   * Returns unique folders with their possible types for prompting.
+   *
+   * @returns Array of ambiguous files grouped by folder
+   */
+  getAmbiguousFiles(): AmbiguousFile[] {
+    return this.ambiguousFiles;
+  }
+
+  /**
+   * Resolve ambiguous type for a folder.
+   *
+   * Stores the user's type selection for all files in that folder.
+   *
+   * @param folder - Folder path to resolve
+   * @param selectedType - Entity type selected by user
+   */
+  resolveAmbiguousType(folder: string, selectedType: string): void {
+    this.typeResolutions.set(folder, selectedType);
+  }
+
+  /**
+   * Process pending ambiguous files after user has resolved types.
+   *
+   * Creates operations for files that were skipped during analyze()
+   * due to ambiguous type mappings.
+   *
+   * @returns Array of file operations for resolved files
+   */
+  async processPendingAmbiguous(): Promise<FileOperation[]> {
+    const operations: FileOperation[] = [];
+
+    for (const result of this.pendingAmbiguous) {
+      const operation = await this.createOperation(result);
+      if (operation) {
+        operations.push(operation);
+      }
+    }
+
+    // Clear pending queue
+    this.pendingAmbiguous = [];
+
+    return operations;
   }
 }

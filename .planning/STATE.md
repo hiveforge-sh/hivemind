@@ -4,35 +4,35 @@
 
 **Core Value**: Consistent AI output. Give any AI tool context from your canon, get results that belong in your world - every time, across every tool.
 
-**Current Focus**: v3.0 Developer Experience - Phase 15 (Fix CLI)
+**Current Focus**: v3.0 Developer Experience - Phase 15 Complete, ready for Phase 16
 
 ## Current Position
 
 **Milestone**: 3.0 (Developer Experience)
-**Phase**: 15 of 16 (Fix CLI)
-**Plan**: 2 of 3 in current phase
-**Status**: In progress
-**Last activity**: 2026-01-27 - Completed 15-02-PLAN.md
+**Phase**: 15 of 16 (Fix CLI) - COMPLETE
+**Plan**: 3 of 3 in current phase
+**Status**: Phase complete
+**Last activity**: 2026-01-27 - Completed 15-03-PLAN.md
 
 ## Progress
 
 ```
 Milestone 1.0: MVP + Core      [##########] 100% SHIPPED 2026-01-25
 Milestone 2.0: Template System [##########] 100% SHIPPED 2026-01-26
-Milestone 3.0: Developer Experience [########..] 80%
+Milestone 3.0: Developer Experience [#########.] 90%
   Phase 12: Setup Wizard       [##########] COMPLETE 2026-01-26
   Phase 13: Folder Mapping     [##########] COMPLETE 2026-01-27
   Phase 14: Validate CLI       [##########] COMPLETE 2026-01-27
-  Phase 15: Fix CLI            [######....] 2/3 plans
+  Phase 15: Fix CLI            [##########] COMPLETE 2026-01-27
   Phase 16: Obsidian Commands  [..........] Not started
 ```
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 13 (v3.0)
-- Average duration: 5.1min
-- Total execution time: 66min
+- Total plans completed: 14 (v3.0)
+- Average duration: 5.2min
+- Total execution time: 73min
 
 **By Phase:**
 
@@ -41,7 +41,7 @@ Milestone 3.0: Developer Experience [########..] 80%
 | 12 | 4 | 20min | 5min |
 | 13 | 4 | 15min | 3.8min |
 | 14 | 3 | 22min | 7.3min |
-| 15 | 2 | 9min | 4.5min |
+| 15 | 3 | 16min | 5.3min |
 | 16 | 0 | - | - |
 
 *Updated after each plan completion*
@@ -74,7 +74,7 @@ Recent decisions affecting current work:
 - [13-02]: Shared infrastructure between CLI and Obsidian plugin (no duplication)
 - [13-03]: Title Case for folder patterns to match Obsidian conventions ("Characters" not "characters")
 - [13-03]: FolderMapper.createFromTemplate() falls back to defaults for templates without explicit mappings
-- [13-03]: Template config path complete: template.folderMappings → Zod validation → FolderMapper consumption
+- [13-03]: Template config path complete: template.folderMappings -> Zod validation -> FolderMapper consumption
 - [13-04]: Registry accessors follow consistent pattern (throw if no active, return field value)
 - [13-04]: Template config flows to runtime consumers via registry getFolderMappings()
 - [13-04]: CLI fix command uses first type when resolveType() returns multiple matches (ambiguous handling)
@@ -97,6 +97,9 @@ Recent decisions affecting current work:
 - [15-02]: Atomic writes via temp file + rename pattern
 - [15-02]: Batch processing continues on individual failures
 - [15-02]: Dry-run shows field names only (not values) per CONTEXT.md
+- [15-03]: TTY check before interactive mode - exit code 2 for config errors
+- [15-03]: Old fix() function replaced with validation-based approach
+- [15-03]: Interactive prompting deferred - FileFixer handles type resolution internally
 
 ### Research Highlights
 
@@ -118,9 +121,9 @@ None currently blocking.
 ## Session Continuity
 
 Last session: 2026-01-27
-Stopped at: Completed 15-02-PLAN.md
+Stopped at: Completed 15-03-PLAN.md (Phase 15 complete)
 Resume file: None
-Next action: Continue to 15-03-PLAN.md (CLI command handler and wiring)
+Next action: Continue to Phase 16 (Obsidian Commands)
 
 ---
-*Updated: 2026-01-27 - Phase 15 in progress (2/3 plans)*
+*Updated: 2026-01-27 - Phase 15 complete (3/3 plans)*

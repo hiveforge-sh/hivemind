@@ -44,6 +44,19 @@ export interface FileOperation {
 }
 
 /**
+ * Tracks a file with ambiguous type resolution.
+ * Used for interactive prompting grouped by folder.
+ */
+export interface AmbiguousFile {
+  /** Path to file (relative to vault) */
+  path: string;
+  /** Folder path (for grouping prompts) */
+  folder: string;
+  /** Possible entity types from folder mapping */
+  possibleTypes: string[];
+}
+
+/**
  * Result of fix operation.
  */
 export interface FixResult {
