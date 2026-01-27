@@ -118,7 +118,12 @@ jobs:
         with:
           node-version: 22
           cache: 'npm'
-          cache-dependency-path: obsidian-plugin/package-lock.json
+          cache-dependency-path: |
+            package-lock.json
+            obsidian-plugin/package-lock.json
+
+      - name: Install root dependencies
+        run: npm ci
 
       - name: Install plugin dependencies
         working-directory: obsidian-plugin
