@@ -1,12 +1,11 @@
 #!/usr/bin/env node
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
-import { resolve, join, basename, dirname } from 'path';
+import { resolve, join, dirname } from 'path';
 import { homedir } from 'os';
 import * as readline from 'readline/promises';
 import { stdin as input, stdout as output } from 'process';
-import { FolderMapper } from './templates/folder-mapper.js';
-import { templateRegistry } from './templates/registry.js';
+// FolderMapper and templateRegistry are now used internally by cli/fix modules
 import { worldbuildingTemplate } from './templates/builtin/worldbuilding.js';
 import { researchTemplate } from './templates/builtin/research.js';
 import { peopleManagementTemplate } from './templates/builtin/people-management.js';
@@ -18,6 +17,7 @@ import { checkTemplateCompatibility, getHivemindVersion } from './templates/vers
 import { initCommand } from './cli/init/index.js';
 import { outputMissingConfigError } from './cli/init/output.js';
 import { validateCommand } from './cli/validate/index.js';
+import { fixCommand } from './cli/fix/index.js';
 
 /**
  * All available templates from registry (built-in + community)
@@ -54,114 +54,8 @@ async function start() {
   await startServer();
 }
 
-/**
- * Fix command: helps add frontmatter to skipped files
- */
-async function fix() {
-  const vaultPath = getVaultPath();
-  if (!vaultPath) {
-    outputMissingConfigError();
-    process.exit(1);
-  }
-
-  const skippedLogPath = join(vaultPath, '.hivemind', 'skipped-files.log');
-
-  if (!existsSync(skippedLogPath)) {
-    console.log('✅ No skipped files log found. Run "npx @hiveforge/hivemind-mcp start" first to scan vault.');
-    return;
-  }
-
-  console.log('🔧 Hivemind Fix - Add frontmatter to skipped files\n');
-
-  // Read and parse skipped files log
-  const logContent = readFileSync(skippedLogPath, 'utf-8');
-  const skippedFiles = parseSkippedFilesLog(logContent);
-
-  if (skippedFiles.length === 0) {
-    console.log('✅ No skipped files found!');
-    return;
-  }
-
-  console.log(`Found ${skippedFiles.length} file(s) needing frontmatter.\n`);
-
-  // Initialize template registry for entity types
-  if (!templateRegistry.has('worldbuilding')) {
-    templateRegistry.register(worldbuildingTemplate, 'builtin');
-    templateRegistry.activate('worldbuilding');
-  }
-  const activeTemplate = templateRegistry.getActive();
-  const entityTypes = activeTemplate?.entityTypes.map(e => e.name) || ['character', 'location', 'event', 'faction', 'lore', 'asset', 'reference'];
-
-  // Initialize folder mapper from active template config
-  const folderMappings = templateRegistry.getActive()?.folderMappings;
-  const folderMapper = await FolderMapper.createFromTemplate(folderMappings);
-
-  const rl = readline.createInterface({ input, output });
-
-  try {
-    let fixed = 0;
-    let skipped = 0;
-
-    for (const filePath of skippedFiles) {
-      const fullPath = join(vaultPath, filePath);
-
-      if (!existsSync(fullPath)) {
-        console.log(`⚠️  File not found: ${filePath}`);
-        skipped++;
-        continue;
-      }
-
-      // Infer type from folder
-      const result = await folderMapper.resolveType(filePath);
-      const inferredType = result.types.length === 1 ? result.types[0] :
-                           result.types.length > 1 ? result.types[0] : null;
-      const fileName = basename(filePath, '.md');
-
-      console.log(`\n📄 ${filePath}`);
-
-      if (inferredType) {
-        console.log(`   Inferred type: ${inferredType}`);
-        const confirm = await rl.question(`   Use '${inferredType}'? (Y/n/skip): `);
-
-        if (confirm.toLowerCase() === 'skip' || confirm.toLowerCase() === 's') {
-          console.log('   Skipped.');
-          skipped++;
-          continue;
-        }
-
-        if (confirm.toLowerCase() === 'n' || confirm.toLowerCase() === 'no') {
-          // Let user choose type
-          const selectedType = await selectType(rl, entityTypes);
-          if (selectedType) {
-            await addFrontmatter(fullPath, selectedType, fileName);
-            fixed++;
-          } else {
-            skipped++;
-          }
-        } else {
-          // Use inferred type
-          await addFrontmatter(fullPath, inferredType, fileName);
-          fixed++;
-        }
-      } else {
-        console.log('   Could not infer type from folder.');
-        const selectedType = await selectType(rl, entityTypes);
-        if (selectedType) {
-          await addFrontmatter(fullPath, selectedType, fileName);
-          fixed++;
-        } else {
-          skipped++;
-        }
-      }
-    }
-
-    console.log(`\n✅ Done! Fixed: ${fixed}, Skipped: ${skipped}`);
-    console.log('   Run "npx @hiveforge/hivemind-mcp start" to re-index vault.');
-
-  } finally {
-    rl.close();
-  }
-}
+// Note: The fix command has been moved to src/cli/fix/index.ts
+// It now uses the validation-based approach instead of skipped-files.log
 
 /**
  * Get vault path from config or args
@@ -195,88 +89,6 @@ function getVaultPath(): string | null {
 
   // Fall back to current directory
   return process.cwd();
-}
-
-/**
- * Parse skipped files from log content
- */
-function parseSkippedFilesLog(content: string): string[] {
-  const files: string[] = [];
-  const lines = content.split('\n');
-
-  for (const line of lines) {
-    // Match lines like "  • path/to/file.md"
-    const match = line.match(/^\s+[•]\s+(.+\.md)$/);
-    if (match) {
-      files.push(match[1].trim());
-    }
-  }
-
-  return files;
-}
-
-/**
- * Let user select an entity type
- */
-async function selectType(rl: readline.Interface, types: string[]): Promise<string | null> {
-  console.log('   Available types:');
-  types.forEach((t, i) => console.log(`     ${i + 1}. ${t}`));
-  console.log(`     0. Skip this file`);
-
-  const choice = await rl.question('   Enter number: ');
-  const num = parseInt(choice, 10);
-
-  if (num === 0 || isNaN(num) || num < 1 || num > types.length) {
-    return null;
-  }
-
-  return types[num - 1];
-}
-
-/**
- * Add frontmatter to a file
- */
-async function addFrontmatter(filePath: string, entityType: string, name: string): Promise<void> {
-  const content = readFileSync(filePath, 'utf-8');
-
-  // Generate unique ID
-  const id = generateId(name, entityType);
-
-  // Create frontmatter
-  const frontmatter = [
-    '---',
-    `id: ${id}`,
-    `type: ${entityType}`,
-    `status: draft`,
-    `name: "${name}"`,
-    `tags: []`,
-    `aliases: []`,
-    '---',
-    '',
-  ].join('\n');
-
-  // Check if file already has frontmatter
-  if (content.trimStart().startsWith('---')) {
-    console.log('   ⚠️  File already has frontmatter block, skipping...');
-    return;
-  }
-
-  // Prepend frontmatter
-  const newContent = frontmatter + content;
-  writeFileSync(filePath, newContent, 'utf-8');
-  console.log(`   ✅ Added frontmatter (id: ${id})`);
-}
-
-/**
- * Generate a unique ID from name and type
- */
-function generateId(name: string, entityType: string): string {
-  const slug = name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
-
-  return `${entityType}-${slug}`;
 }
 
 /**
@@ -1185,7 +997,7 @@ if (command === '--vault') {
       setupMcp();
       break;
     case 'fix':
-      fix();
+      fixCommand();
       break;
     case 'create-template':
       createTemplate();
@@ -1216,7 +1028,13 @@ if (command === '--vault') {
       console.log('    --ignore <glob>  Exclude files matching pattern');
       console.log('  npx @hiveforge/hivemind-mcp start                      - Start the MCP server');
       console.log('  npx @hiveforge/hivemind-mcp setup-mcp                  - Generate MCP client config');
-      console.log('  npx @hiveforge/hivemind-mcp fix                        - Add frontmatter to skipped files');
+      console.log('  npx @hiveforge/hivemind-mcp fix [path]                 - Add frontmatter to files (dry-run)');
+      console.log('    --apply          Apply changes (default: dry-run)');
+      console.log('    --yes            Skip prompts, use defaults');
+      console.log('    --json           Output machine-readable JSON');
+      console.log('    --verbose        Show all files in dry-run');
+      console.log('    --type <type>    Override folder mapping');
+      console.log('    --ignore <glob>  Exclude files matching pattern');
       console.log('');
       console.log('Template commands:');
       console.log('  npx @hiveforge/hivemind-mcp list-templates             - List available templates');
