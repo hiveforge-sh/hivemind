@@ -10,19 +10,19 @@
 
 **Milestone**: 3.0 (Developer Experience)
 **Phase**: 14 of 16 (Validate CLI)
-**Plan**: 1 of 4 in current phase
+**Plan**: 2 of 3 in current phase
 **Status**: In progress
-**Last activity**: 2026-01-27 - Completed 14-01-PLAN.md
+**Last activity**: 2026-01-27 - Completed 14-02-PLAN.md
 
 ## Progress
 
 ```
 Milestone 1.0: MVP + Core      [##########] 100% SHIPPED 2026-01-25
 Milestone 2.0: Template System [##########] 100% SHIPPED 2026-01-26
-Milestone 3.0: Developer Experience [####......] 47%
+Milestone 3.0: Developer Experience [#####.....] 50%
   Phase 12: Setup Wizard       [##########] COMPLETE 2026-01-26
   Phase 13: Folder Mapping     [##########] COMPLETE 2026-01-27
-  Phase 14: Validate CLI       [##........] 1/4 plans complete
+  Phase 14: Validate CLI       [######....] 2/3 plans complete
   Phase 15: Fix CLI            [..........] Not started
   Phase 16: Obsidian Commands  [..........] Not started
 ```
@@ -30,9 +30,9 @@ Milestone 3.0: Developer Experience [####......] 47%
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9 (v3.0)
-- Average duration: 4.1min
-- Total execution time: 37min
+- Total plans completed: 10 (v3.0)
+- Average duration: 5.2min
+- Total execution time: 52min
 
 **By Phase:**
 
@@ -40,7 +40,7 @@ Milestone 3.0: Developer Experience [####......] 47%
 |-------|-------|-------|----------|
 | 12 | 4 | 20min | 5min |
 | 13 | 4 | 15min | 3.8min |
-| 14 | 1 | 2min | 2min |
+| 14 | 2 | 17min | 8.5min |
 | 15 | 0 | - | - |
 | 16 | 0 | - | - |
 
@@ -82,6 +82,10 @@ Recent decisions affecting current work:
 - [14-01]: Reuse VaultReader patterns for file discovery (no duplication)
 - [14-01]: Optional folder mismatch detection (warning, not error)
 - [14-01]: Skip files without frontmatter when --skip-missing flag set
+- [14-02]: Group text output by issue type (all "missing frontmatter" together)
+- [14-02]: Group JSON output by file (for CI annotations)
+- [14-02]: Silent success (no output when valid, exit code 0 only)
+- [14-02]: Exit codes: 0 success, 1 validation errors, 2 config errors
 
 ### Research Highlights
 
@@ -103,9 +107,9 @@ None currently blocking.
 ## Session Continuity
 
 Last session: 2026-01-27
-Stopped at: Completed 14-01-PLAN.md
+Stopped at: Completed 14-02-PLAN.md
 Resume file: None
-Next action: Continue Phase 14 (3 plans remaining)
+Next action: Continue Phase 14 (1 plan remaining)
 
 ---
-*Updated: 2026-01-27 - Phase 14 in progress (1/4 plans)*
+*Updated: 2026-01-27 - Phase 14 in progress (2/3 plans)*
