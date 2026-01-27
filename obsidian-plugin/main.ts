@@ -525,8 +525,6 @@ export default class HivemindPlugin extends Plugin {
     }
 
     try {
-      // Get the file content
-      const content = await this.app.vault.read(file);
       const cache = this.app.metadataCache.getFileCache(file);
 
       const frontmatter = cache?.frontmatter || {};
