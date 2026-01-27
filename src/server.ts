@@ -1046,23 +1046,28 @@ File watcher keeps index updated automatically.
       race: props.race || 'humanoid',
       species: props.race || props.species || 'humanoid',
       // Flatten appearance properties for easier template access
-      ...(props.appearance && typeof props.appearance === 'object' ? {
-        appearance: props.appearance,
-        'appearance.height': props.appearance.height || '',
-        'appearance.build': props.appearance.build || 'average',
-        'appearance.hair': props.appearance.hair || 'hair',
-        'appearance.eyes': props.appearance.eyes || 'eyes',
-        'appearance.clothing': props.appearance.clothing || 'clothing',
-        'appearance.distinctive_features': props.appearance.distinctive_features || '',
-      } : {
-        appearance: {},
-        'appearance.height': '',
-        'appearance.build': 'average',
-        'appearance.hair': 'hair',
-        'appearance.eyes': 'eyes',
-        'appearance.clothing': 'clothing',
-        'appearance.distinctive_features': '',
-      }),
+      ...(props.appearance && typeof props.appearance === 'object'
+        ? (() => {
+            const app = props.appearance as Record<string, unknown>;
+            return {
+              appearance: props.appearance,
+              'appearance.height': app.height || '',
+              'appearance.build': app.build || 'average',
+              'appearance.hair': app.hair || 'hair',
+              'appearance.eyes': app.eyes || 'eyes',
+              'appearance.clothing': app.clothing || 'clothing',
+              'appearance.distinctive_features': app.distinctive_features || '',
+            };
+          })()
+        : {
+            appearance: {},
+            'appearance.height': '',
+            'appearance.build': 'average',
+            'appearance.hair': 'hair',
+            'appearance.eyes': 'eyes',
+            'appearance.clothing': 'clothing',
+            'appearance.distinctive_features': '',
+          }),
       // Include any other properties
       ...props,
     };
