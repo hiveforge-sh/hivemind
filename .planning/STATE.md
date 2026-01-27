@@ -10,29 +10,29 @@
 
 **Milestone**: 3.0 (Developer Experience)
 **Phase**: 16 of 16 (Obsidian Commands) - IN PROGRESS
-**Plan**: 2 of 3 in current phase
-**Status**: In progress
-**Last activity**: 2026-01-27 - Completed 16-02-PLAN.md
+**Plan**: 3 of 3 in current phase
+**Status**: Phase complete
+**Last activity**: 2026-01-27 - Completed 16-03-PLAN.md
 
 ## Progress
 
 ```
 Milestone 1.0: MVP + Core      [##########] 100% SHIPPED 2026-01-25
 Milestone 2.0: Template System [##########] 100% SHIPPED 2026-01-26
-Milestone 3.0: Developer Experience [#########.] 93%
+Milestone 3.0: Developer Experience [##########] 100%
   Phase 12: Setup Wizard       [##########] COMPLETE 2026-01-26
   Phase 13: Folder Mapping     [##########] COMPLETE 2026-01-27
   Phase 14: Validate CLI       [##########] COMPLETE 2026-01-27
   Phase 15: Fix CLI            [##########] COMPLETE 2026-01-27
-  Phase 16: Obsidian Commands  [######....] 2/3 plans
+  Phase 16: Obsidian Commands  [##########] COMPLETE 2026-01-27
 ```
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 17 (v3.0)
-- Average duration: 5.6min
-- Total execution time: 98min
+- Total plans completed: 18 (v3.0)
+- Average duration: 5.7min
+- Total execution time: 101.6min
 
 **By Phase:**
 
@@ -42,7 +42,7 @@ Milestone 3.0: Developer Experience [#########.] 93%
 | 13 | 4 | 15min | 3.8min |
 | 14 | 3 | 22min | 7.3min |
 | 15 | 4 | 19min | 4.8min |
-| 16 | 2 | 22min | 11min |
+| 16 | 3 | 25.6min | 8.5min |
 
 *Updated after each plan completion*
 
@@ -110,6 +110,10 @@ Recent decisions affecting current work:
 - [16-02]: gray-matter for frontmatter parsing to match CLI validator approach
 - [16-02]: Auto-generate ID field from filename in fix modal with editable preview
 - [16-02]: Skip ambiguous files in fix-all bulk operations (process only clear type resolutions)
+- [16-03]: Validation sidebar provides persistent vault-wide view with clickable navigation
+- [16-03]: Settings control frontmatter command behavior (autoMergeFrontmatter, validationSeverity)
+- [16-03]: Folder context menus enable bulk validate and fix operations
+- [16-03]: autoMergeFrontmatter setting bypasses preview modal when type is exact match
 
 ### Research Highlights
 
@@ -131,9 +135,9 @@ None currently blocking.
 ## Session Continuity
 
 Last session: 2026-01-27
-Stopped at: Completed 16-02-PLAN.md (Phase 16 in progress)
+Stopped at: Completed 16-03-PLAN.md (Phase 16 complete)
 Resume file: None
-Next action: Continue Phase 16 Plan 03 (File Context command)
+Next action: Milestone 3.0 complete - v3.0 Developer Experience ready for release
 
 ---
-*Updated: 2026-01-27 - Phase 16 Plan 02 complete (2/3 plans)*
+*Updated: 2026-01-27 - Phase 16 complete (Milestone 3.0 complete)*
