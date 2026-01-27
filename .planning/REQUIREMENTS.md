@@ -46,14 +46,23 @@ Requirements for type safety milestone. Each maps to roadmap phases.
 - [ ] **ENF-01**: ESLint `@typescript-eslint/no-explicit-any` reports zero warnings
 - [ ] **ENF-02**: All existing tests continue to pass after type changes
 
+### Test Coverage
+
+- [ ] **TEST-01**: `cli/init/` modules have unit tests (detection, output, prompts, validators, wizard) — currently 0%
+- [ ] **TEST-02**: `comfyui/client.ts` coverage above 80% — currently 58%
+- [ ] **TEST-03**: `search/engine.ts` coverage above 80% — currently 71%
+- [ ] **TEST-04**: `mcp/tool-generator.ts` coverage above 80% — currently 75%
+- [ ] **TEST-05**: `vault/watcher.ts` coverage above 70% — currently 47%
+- [ ] **TEST-06**: All tests pass with zero failures
+
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
 | Obsidian plugin `any` types | Plugin is standalone, different build system |
-| Adding new tests for type changes | Existing tests validate behavior; type changes are refactoring |
 | Changing `unknown` to specific types | `unknown` is acceptable where true type is unknowable (e.g., external API responses) |
 | Enabling `strict: true` in tsconfig | Separate concern; may require broader changes |
+| 100% coverage target | Diminishing returns; focus on under-tested modules |
 
 ## Traceability
 
@@ -77,10 +86,16 @@ Requirements for type safety milestone. Each maps to roadmap phases.
 | CLI-04 | Phase 20 | Pending |
 | ENF-01 | Phase 20 | Pending |
 | ENF-02 | Phase 20 | Pending |
+| TEST-01 | Phase 21 | Pending |
+| TEST-02 | Phase 21 | Pending |
+| TEST-03 | Phase 21 | Pending |
+| TEST-04 | Phase 21 | Pending |
+| TEST-05 | Phase 21 | Pending |
+| TEST-06 | Phase 21 | Pending |
 
 **Coverage:**
-- v3.1 requirements: 18 total
-- Mapped to phases: 18 (100%)
+- v3.1 requirements: 24 total
+- Mapped to phases: 24 (100%)
 - Unmapped: 0
 
 **Phase Distribution:**
@@ -88,6 +103,7 @@ Requirements for type safety milestone. Each maps to roadmap phases.
 - Phase 18 (Template System & Data Layer): 5 requirements
 - Phase 19 (Server & MCP): 2 requirements
 - Phase 20 (ComfyUI, CLI & Enforcement): 8 requirements
+- Phase 21 (Test Coverage): 6 requirements
 
 ---
 *Requirements defined: 2026-01-27*
