@@ -9,30 +9,30 @@
 ## Current Position
 
 **Milestone**: 3.0 (Developer Experience)
-**Phase**: 15 of 16 (Fix CLI) - COMPLETE
-**Plan**: 4 of 4 in current phase
-**Status**: Phase complete
-**Last activity**: 2026-01-27 - Completed 15-04-PLAN.md
+**Phase**: 16 of 16 (Obsidian Commands) - IN PROGRESS
+**Plan**: 1 of 3 in current phase
+**Status**: In progress
+**Last activity**: 2026-01-27 - Completed 16-01-PLAN.md
 
 ## Progress
 
 ```
 Milestone 1.0: MVP + Core      [##########] 100% SHIPPED 2026-01-25
 Milestone 2.0: Template System [##########] 100% SHIPPED 2026-01-26
-Milestone 3.0: Developer Experience [#########.] 90%
+Milestone 3.0: Developer Experience [#########.] 93%
   Phase 12: Setup Wizard       [##########] COMPLETE 2026-01-26
   Phase 13: Folder Mapping     [##########] COMPLETE 2026-01-27
   Phase 14: Validate CLI       [##########] COMPLETE 2026-01-27
   Phase 15: Fix CLI            [##########] COMPLETE 2026-01-27
-  Phase 16: Obsidian Commands  [..........] Not started
+  Phase 16: Obsidian Commands  [###.......] 1/3 plans
 ```
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 15 (v3.0)
-- Average duration: 5.1min
-- Total execution time: 76min
+- Total plans completed: 16 (v3.0)
+- Average duration: 5.2min
+- Total execution time: 94min
 
 **By Phase:**
 
@@ -42,7 +42,7 @@ Milestone 3.0: Developer Experience [#########.] 90%
 | 13 | 4 | 15min | 3.8min |
 | 14 | 3 | 22min | 7.3min |
 | 15 | 4 | 19min | 4.8min |
-| 16 | 0 | - | - |
+| 16 | 1 | 18min | 18min |
 
 *Updated after each plan completion*
 
@@ -103,6 +103,9 @@ Recent decisions affecting current work:
 - [15-04]: Pending resolution pattern - analyze() stores ambiguous files, CLI prompts, then processes
 - [15-04]: Folder grouping for prompts - one prompt per folder, applies to all files in folder
 - [15-04]: typeResolutions Map tracks user's folder→type selections
+- [16-01]: Preview modal shows all fields to be added before applying
+- [16-01]: Bulk folder operation only applies when all files resolve to same type
+- [16-01]: TypeSelectionModal callback pattern enables reuse for add-frontmatter flow
 
 ### Research Highlights
 
@@ -124,9 +127,9 @@ None currently blocking.
 ## Session Continuity
 
 Last session: 2026-01-27
-Stopped at: Completed 15-04-PLAN.md (Phase 15 complete)
+Stopped at: Completed 16-01-PLAN.md (Phase 16 in progress)
 Resume file: None
-Next action: Continue to Phase 16 (Obsidian Commands)
+Next action: Continue Phase 16 Plans 02-03 (Validate and Fix commands)
 
 ---
-*Updated: 2026-01-27 - Phase 15 complete (4/4 plans)*
+*Updated: 2026-01-27 - Phase 16 Plan 01 complete (1/3 plans)*
