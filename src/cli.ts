@@ -17,6 +17,7 @@ import type { TemplateDefinition, FieldConfig, EntityTypeConfig } from './templa
 import { checkTemplateCompatibility, getHivemindVersion } from './templates/version.js';
 import { initCommand } from './cli/init/index.js';
 import { outputMissingConfigError } from './cli/init/output.js';
+import { validateCommand } from './cli/validate/index.js';
 
 /**
  * All available templates from registry (built-in + community)
@@ -276,113 +277,6 @@ function generateId(name: string, entityType: string): string {
     .replace(/^-|-$/g, '');
 
   return `${entityType}-${slug}`;
-}
-
-async function validate() {
-  console.log('\nHivemind Configuration Validator');
-  console.log('================================\n');
-
-  // Show config detection order
-  console.log('📍 Config detection order:');
-  console.log('   1. CLI --vault flag (highest priority)');
-  console.log('   2. HIVEMIND_CONFIG_PATH environment variable');
-  console.log('   3. ./config.json');
-  console.log('   4. ./hivemind.config.json');
-  console.log('   5. HIVEMIND_VAULT_PATH environment variable');
-  console.log('');
-
-  const configPath = resolve(process.cwd(), 'config.json');
-
-  // Check config exists
-  if (!existsSync(configPath)) {
-    console.error('❌ config.json not found');
-    console.log('   Run "npx @hiveforge/hivemind-mcp init" to create one');
-    process.exit(1);
-  }
-
-  console.log(`📂 Found config at: ${configPath}\n`);
-
-  // Load and validate config
-  let config: Record<string, unknown>;
-  try {
-    config = JSON.parse(readFileSync(configPath, 'utf-8'));
-  } catch (err) {
-    if (err instanceof SyntaxError) {
-      console.error('❌ config.json contains invalid JSON:');
-      console.error(`   ${err.message}`);
-      console.error('\n   Tip: Use a JSON validator like jsonlint.com to check syntax.');
-    } else {
-      console.error('❌ Error reading config.json:', err);
-    }
-    process.exit(1);
-  }
-
-  console.log('✅ Valid JSON syntax');
-
-  // Import and use schema validation
-  const { validateConfig: schemaValidate, formatValidationErrors } = await import('./config/schema.js');
-  const validation = schemaValidate(config);
-
-  if (!validation.success) {
-    console.error('❌ Schema validation failed:');
-    console.error(formatValidationErrors(validation.errors!));
-    process.exit(1);
-  }
-
-  console.log('✅ Schema validation passed');
-
-  // Check vault path
-  if (!config.vault || typeof config.vault !== 'object' || !('path' in config.vault)) {
-    console.error('❌ vault.path is missing in config');
-    process.exit(1);
-  }
-
-  const vaultPath = resolve((config.vault as { path: string }).path);
-  if (!existsSync(vaultPath)) {
-    console.error(`❌ Vault path does not exist: ${vaultPath}`);
-    console.log('\n   Tip: Update the path in config.json or create the directory.');
-    process.exit(1);
-  }
-
-  console.log(`✅ Vault path exists: ${vaultPath}`);
-
-  // Check for .md files
-  const { readdirSync } = await import('fs');
-  let mdCount = 0;
-  function countMarkdown(dir: string) {
-    try {
-      const entries = readdirSync(dir, { withFileTypes: true });
-      for (const entry of entries) {
-        const fullPath = join(dir, entry.name);
-        if (entry.isDirectory() && !entry.name.startsWith('.')) {
-          countMarkdown(fullPath);
-        } else if (entry.isFile() && entry.name.endsWith('.md')) {
-          mdCount++;
-        }
-      }
-    } catch {
-      // Skip directories we can't read
-    }
-  }
-  countMarkdown(vaultPath);
-
-  console.log(`✅ Found ${mdCount} markdown file(s)`);
-
-  // Show active template if configured
-  if (config.template && typeof config.template === 'object' && 'activeTemplate' in config.template) {
-    console.log(`✅ Active template: ${(config.template as { activeTemplate: string }).activeTemplate}`);
-  }
-
-  // Check if built
-  const distPath = resolve(process.cwd(), 'dist', 'index.js');
-  if (!existsSync(distPath)) {
-    console.warn('⚠️  dist/index.js not found - run "npm run build"');
-  } else {
-    console.log('✅ Server built (dist/index.js exists)');
-  }
-
-  console.log('\n✅ Configuration is valid!');
-  console.log('\nTo start the server: npx @hiveforge/hivemind-mcp start');
 }
 
 /**
@@ -1285,7 +1179,7 @@ if (command === '--vault') {
       start();
       break;
     case 'validate':
-      validate();
+      validateCommand();
       break;
     case 'setup-mcp':
       setupMcp();
@@ -1315,7 +1209,11 @@ if (command === '--vault') {
       console.log('Hivemind MCP Server\n');
       console.log('Usage:');
       console.log('  npx @hiveforge/hivemind-mcp init                       - Interactive setup wizard');
-      console.log('  npx @hiveforge/hivemind-mcp validate                   - Validate configuration');
+      console.log('  npx @hiveforge/hivemind-mcp validate [path]            - Validate vault frontmatter');
+      console.log('    --json           Output machine-readable JSON');
+      console.log('    --quiet          Suppress output, only set exit code');
+      console.log('    --skip-missing   Skip files without frontmatter');
+      console.log('    --ignore <glob>  Exclude files matching pattern');
       console.log('  npx @hiveforge/hivemind-mcp start                      - Start the MCP server');
       console.log('  npx @hiveforge/hivemind-mcp setup-mcp                  - Generate MCP client config');
       console.log('  npx @hiveforge/hivemind-mcp fix                        - Add frontmatter to skipped files');
