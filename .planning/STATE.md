@@ -11,9 +11,9 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 
 **Milestone**: 3.1 (Type Safety)
 **Phase**: 17 (Foundation Types)
-**Plan**: Not started
-**Status**: Roadmap defined, ready to plan Phase 17
-**Last activity**: 2026-01-27 — Roadmap created for v3.1
+**Plan**: 01 of 01 (complete)
+**Status**: Phase 17 complete, ready for Phase 18
+**Last activity**: 2026-01-27 — Completed 17-01-PLAN.md
 
 ## Progress
 
@@ -21,7 +21,7 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 Milestone 1.0: MVP + Core      [##########] 100% SHIPPED 2026-01-25
 Milestone 2.0: Template System [##########] 100% SHIPPED 2026-01-26
 Milestone 3.0: Developer Experience [##########] 100% SHIPPED 2026-01-27
-Milestone 3.1: Type Safety     [░░░░░░░░░░] 0% (Phase 17/20)
+Milestone 3.1: Type Safety     [██░░░░░░░░] 25% (Phase 17/20)
 ```
 
 ## Performance Metrics
@@ -44,6 +44,9 @@ See PROJECT.md Key Decisions table for full log.
 - Use `Record<string, unknown>` for frontmatter parsing
 - Use Zod generics for schema operations
 - Target enforcement via ESLint `@typescript-eslint/no-explicit-any` rule
+- Use `ZodObject<ZodRawShape>` for generic Zod object schema parameters (Phase 17)
+- Use mdast `Root | RootContent` with type guards for AST traversal (Phase 17)
+- Replace error: any with error: unknown for better error handling (Phase 17)
 
 ### Tech Debt
 
@@ -52,10 +55,12 @@ See PROJECT.md Key Decisions table for full log.
 
 ### Todos
 
-- [ ] Run ESLint to get baseline of 79 warnings across 16 files
-- [ ] Plan Phase 17 (Foundation Types)
-- [ ] Execute Phase 17
-- [ ] Continue through Phases 18-20
+- [x] Run ESLint to get baseline of 79 warnings across 16 files
+- [x] Plan Phase 17 (Foundation Types)
+- [x] Execute Phase 17
+- [ ] Plan and execute Phase 18 (Query Types)
+- [ ] Plan and execute Phase 19 (Tool Types)
+- [ ] Plan and execute Phase 20 (ESLint Enforcement)
 
 ### Blockers/Concerns
 
@@ -64,9 +69,9 @@ None currently blocking.
 ## Session Continuity
 
 Last session: 2026-01-27
-Stopped at: Roadmap creation complete
-Resume file: .planning/ROADMAP.md
-Next action: Run `/gsd:plan-phase 17` to create execution plan
+Stopped at: Completed Phase 17 (Foundation Types)
+Resume file: .planning/phases/17-foundation-types/17-01-SUMMARY.md
+Next action: Plan Phase 18 (Query Types) with `/gsd:plan-phase 18`
 
 ---
-*Updated: 2026-01-27 — v3.1 roadmap created*
+*Updated: 2026-01-27 — Phase 17 complete*

@@ -75,9 +75,9 @@ Requirements for type safety and quality milestone. Each maps to roadmap phases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TYPE-01 | Phase 17 | Pending |
-| TYPE-02 | Phase 17 | Pending |
-| TYPE-03 | Phase 17 | Pending |
+| TYPE-01 | Phase 17 | Complete |
+| TYPE-02 | Phase 17 | Complete |
+| TYPE-03 | Phase 17 | Complete |
 | TMPL-01 | Phase 18 | Pending |
 | TMPL-02 | Phase 18 | Pending |
 | DATA-01 | Phase 18 | Pending |

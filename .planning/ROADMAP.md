@@ -173,7 +173,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 17-01-PLAN.md — Replace all `any` types in foundation files (types, parser, reader)
+- [x] 17-01-PLAN.md — Replace all `any` types in foundation files (types, parser, reader)
 
 #### Phase 18: Template System & Data Layer
 **Goal**: Type safety in template operations and data access layer
@@ -265,7 +265,7 @@ Phases execute in numeric order: 17 → 18 → 19 → 20 → 21 → 22
 | 14. Validate CLI | v3.0 | 3/3 | Complete | 2026-01-27 |
 | 15. Fix CLI | v3.0 | 4/4 | Complete | 2026-01-27 |
 | 16. Obsidian Commands | v3.0 | 4/4 | Complete | 2026-01-27 |
-| 17. Foundation Types | v3.1 | 0/0 | Not started | - |
+| 17. Foundation Types | v3.1 | 1/1 | Complete | 2026-01-27 |
 | 18. Template System & Data Layer | v3.1 | 0/0 | Not started | - |
 | 19. Server & MCP | v3.1 | 0/0 | Not started | - |
 | 20. ComfyUI, CLI & Enforcement | v3.1 | 0/0 | Not started | - |
