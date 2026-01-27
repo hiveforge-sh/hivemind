@@ -5,7 +5,7 @@
 - ✅ **v1.0 MVP** - Phases 1-5 (shipped 2026-01-25)
 - ✅ **v2.0 Template System** - Phases 6-11 (shipped 2026-01-26)
 - ✅ **v3.0 Developer Experience** - Phases 12-16 (shipped 2026-01-27)
-- 🚧 **v3.1 Type Safety** - Phases 17-21 (in progress)
+- 🚧 **v3.1 Type Safety & Quality** - Phases 17-22 (in progress)
 
 ## Phases
 
@@ -230,10 +230,24 @@ Plans:
 Plans:
 - [ ] 21-01: TBD
 
+#### Phase 22: CI Quality Gates
+**Goal**: Add license compliance testing and mutation testing to CI pipeline
+**Depends on**: Phase 21
+**Requirements**: CI-01, CI-02, CI-03, CI-04
+**Success Criteria** (what must be TRUE):
+  1. CI pipeline checks all dependencies for license compatibility
+  2. CI fails on disallowed licenses (GPL, AGPL in a permissive project)
+  3. Mutation testing runs on core modules and reports mutation score
+  4. CI pipeline includes quality gates for both license and mutation results
+**Plans**: TBD
+
+Plans:
+- [ ] 22-01: TBD
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 17 → 18 → 19 → 20 → 21
+Phases execute in numeric order: 17 → 18 → 19 → 20 → 21 → 22
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -256,3 +270,4 @@ Phases execute in numeric order: 17 → 18 → 19 → 20 → 21
 | 19. Server & MCP | v3.1 | 0/0 | Not started | - |
 | 20. ComfyUI, CLI & Enforcement | v3.1 | 0/0 | Not started | - |
 | 21. Test Coverage | v3.1 | 0/0 | Not started | - |
+| 22. CI Quality Gates | v3.1 | 0/0 | Not started | - |

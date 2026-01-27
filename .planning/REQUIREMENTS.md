@@ -1,11 +1,11 @@
-# Requirements: Hivemind v3.1 Type Safety
+# Requirements: Hivemind v3.1 Type Safety & Quality
 
 **Defined:** 2026-01-27
 **Core Value:** Consistent AI output. Give any AI tool context from your canon, get results that belong in your world.
 
 ## v3.1 Requirements
 
-Requirements for type safety milestone. Each maps to roadmap phases.
+Requirements for type safety and quality milestone. Each maps to roadmap phases.
 
 ### Core Types
 
@@ -55,6 +55,13 @@ Requirements for type safety milestone. Each maps to roadmap phases.
 - [ ] **TEST-05**: `vault/watcher.ts` coverage above 70% — currently 47%
 - [ ] **TEST-06**: All tests pass with zero failures
 
+### CI Quality Gates
+
+- [ ] **CI-01**: License compliance check runs in CI pipeline
+- [ ] **CI-02**: CI fails on disallowed licenses (GPL, AGPL in permissive project)
+- [ ] **CI-03**: Mutation testing runs on core modules and reports mutation score
+- [ ] **CI-04**: CI pipeline includes quality gates for license and mutation results
+
 ## Out of Scope
 
 | Feature | Reason |
@@ -92,10 +99,14 @@ Requirements for type safety milestone. Each maps to roadmap phases.
 | TEST-04 | Phase 21 | Pending |
 | TEST-05 | Phase 21 | Pending |
 | TEST-06 | Phase 21 | Pending |
+| CI-01 | Phase 22 | Pending |
+| CI-02 | Phase 22 | Pending |
+| CI-03 | Phase 22 | Pending |
+| CI-04 | Phase 22 | Pending |
 
 **Coverage:**
-- v3.1 requirements: 24 total
-- Mapped to phases: 24 (100%)
+- v3.1 requirements: 28 total
+- Mapped to phases: 28 (100%)
 - Unmapped: 0
 
 **Phase Distribution:**
@@ -104,6 +115,7 @@ Requirements for type safety milestone. Each maps to roadmap phases.
 - Phase 19 (Server & MCP): 2 requirements
 - Phase 20 (ComfyUI, CLI & Enforcement): 8 requirements
 - Phase 21 (Test Coverage): 6 requirements
+- Phase 22 (CI Quality Gates): 4 requirements
 
 ---
 *Requirements defined: 2026-01-27*
