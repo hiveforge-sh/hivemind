@@ -29,5 +29,7 @@
     "tslib": "^2.6.2",
     "typescript": "^5.3.3"
   },
-  "dependencies": {}
+  "dependencies": {
+    "gray-matter": "^4.0.3"
+  }
 }

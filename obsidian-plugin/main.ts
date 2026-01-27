@@ -4,6 +4,7 @@ import { FolderMapper } from '../src/templates/folder-mapper.js';
 import type { ResolveResult, FolderMappingRule } from '../src/templates/types.js';
 import { templateRegistry } from '../src/templates/registry.js';
 import { worldbuildingTemplate } from '../src/templates/builtin/worldbuilding.js';
+import matter from 'gray-matter';
 
 interface HivemindSettings {
   mcpServerPath: string;
@@ -241,6 +242,16 @@ export default class HivemindPlugin extends Plugin {
       }
     });
 
+    this.addCommand({
+      id: 'validate-frontmatter',
+      name: 'Validate frontmatter',
+      editorCallback: (editor: Editor, view: MarkdownView) => {
+        if (view.file) {
+          this.validateCurrentFile(view.file);
+        }
+      }
+    });
+
     // Register context menu events
     this.registerEvent(
       this.app.workspace.on('file-menu', (menu, file) => {
@@ -250,6 +261,14 @@ export default class HivemindPlugin extends Plugin {
               .setIcon('plus-circle')
               .onClick(() => {
                 this.addFrontmatterToFile(file);
+              });
+          });
+
+          menu.addItem((item) => {
+            item.setTitle('Hivemind: Validate')
+              .setIcon('check-circle')
+              .onClick(() => {
+                this.validateCurrentFile(file);
               });
           });
         }
@@ -784,11 +803,11 @@ export default class HivemindPlugin extends Plugin {
     try {
       // Show starting notice
       new Notice('🎨 Starting image generation...');
-      
+
       // Open ComfyUI in browser so user can watch
       const comfyUrl = 'http://127.0.0.1:8000';
       window.open(comfyUrl, '_blank');
-      
+
       // Show progress notice
       new Notice('⏳ Generating... (check ComfyUI window)', 5000);
 
@@ -808,10 +827,10 @@ export default class HivemindPlugin extends Plugin {
 
       // Parse the response to get image path
       const resultText = response.content?.[0]?.text || '';
-      
+
       // Show success with details
       new Notice('✅ Image generated successfully!', 5000);
-      
+
       // Show result modal with image path
       if (resultText) {
         new ResultModal(this.app, resultText).open();
@@ -821,6 +840,156 @@ export default class HivemindPlugin extends Plugin {
       console.error('Workflow execution failed:', error);
       new Notice('❌ Workflow execution failed: ' + (error as Error).message, 8000);
     }
+  }
+
+  private async validateCurrentFile(file: TFile) {
+    try {
+      // Read file content
+      const content = await this.app.vault.read(file);
+
+      // Parse frontmatter using gray-matter
+      const { data: frontmatter } = matter(content);
+
+      // Validation issues
+      const issues: Array<{type: string, detail: string}> = [];
+
+      // Check if frontmatter exists and has content
+      if (!frontmatter || Object.keys(frontmatter).length === 0) {
+        issues.push({
+          type: 'missing_frontmatter',
+          detail: 'No frontmatter found'
+        });
+        new ValidationResultModal(this.app, file, issues).open();
+        return;
+      }
+
+      // Check required fields: id, type, status
+      const requiredFields = ['id', 'type', 'status'];
+      for (const field of requiredFields) {
+        if (!(field in frontmatter)) {
+          issues.push({
+            type: 'missing_field',
+            detail: `Missing required field: ${field}`
+          });
+        }
+      }
+
+      // Check type against template entity types
+      if (frontmatter.type) {
+        const template = templateRegistry.getActive();
+        const validTypes = template?.entityTypes.map((e) => e.name) || [];
+
+        if (!validTypes.includes(frontmatter.type)) {
+          issues.push({
+            type: 'invalid_type',
+            detail: `Invalid type '${frontmatter.type}'. Valid types: ${validTypes.join(', ')}`
+          });
+        }
+      }
+
+      // Check folder mismatch via folderMapper
+      if (frontmatter.type && this.folderMapper && issues.length === 0) {
+        try {
+          const resolved = await this.folderMapper.resolveType(file.path);
+
+          // Only warn if folder mapping is exact and differs from declared type
+          if (resolved.confidence === 'exact' && resolved.types[0] !== frontmatter.type) {
+            issues.push({
+              type: 'folder_mismatch',
+              detail: `Type '${frontmatter.type}' doesn't match folder (expected '${resolved.types[0]}')`
+            });
+          }
+        } catch (error) {
+          // Folder mapping is optional - don't fail validation if it errors
+          console.error('Warning: Folder mapping check failed:', error);
+        }
+      }
+
+      // Show result
+      if (issues.length === 0) {
+        new Notice('Valid frontmatter ✓', 3000);
+      } else {
+        new ValidationResultModal(this.app, file, issues).open();
+      }
+
+    } catch (error) {
+      console.error('Failed to validate frontmatter:', error);
+      new Notice('Failed to validate frontmatter: ' + (error as Error).message);
+    }
+  }
+}
+
+// Validation Result Modal
+class ValidationResultModal extends Modal {
+  file: TFile;
+  issues: Array<{type: string, detail: string}>;
+
+  constructor(app: App, file: TFile, issues: Array<{type: string, detail: string}>) {
+    super(app);
+    this.file = file;
+    this.issues = issues;
+  }
+
+  onOpen() {
+    const { contentEl } = this;
+
+    // Heading
+    contentEl.createEl('h2', { text: 'Validation Issues' });
+
+    // Subheading with file name
+    contentEl.createEl('p', {
+      text: this.file.name,
+      cls: 'setting-item-description'
+    });
+
+    // Issues list container
+    const issuesContainer = contentEl.createDiv({ cls: 'validation-issues' });
+    issuesContainer.style.maxHeight = '400px';
+    issuesContainer.style.overflowY = 'auto';
+    issuesContainer.style.marginTop = '15px';
+    issuesContainer.style.marginBottom = '20px';
+
+    // Display each issue with icon and text
+    for (const issue of this.issues) {
+      const issueItem = issuesContainer.createDiv({ cls: 'validation-issue-item' });
+      issueItem.style.display = 'flex';
+      issueItem.style.alignItems = 'flex-start';
+      issueItem.style.padding = '10px';
+      issueItem.style.marginBottom = '8px';
+      issueItem.style.backgroundColor = 'var(--background-secondary)';
+      issueItem.style.borderRadius = '5px';
+      issueItem.style.borderLeft = '3px solid var(--text-warning)';
+
+      // Warning icon
+      const icon = issueItem.createDiv({ cls: 'validation-issue-icon' });
+      icon.style.marginRight = '10px';
+      icon.style.fontSize = '1.2em';
+      icon.setText('⚠️');
+
+      // Issue text
+      const text = issueItem.createDiv({ cls: 'validation-issue-text' });
+      text.style.flex = '1';
+      text.setText(issue.detail);
+    }
+
+    // Close button
+    const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container' });
+    buttonContainer.style.display = 'flex';
+    buttonContainer.style.justifyContent = 'flex-end';
+    buttonContainer.style.marginTop = '15px';
+
+    const closeBtn = buttonContainer.createEl('button', {
+      text: 'Close',
+      cls: 'mod-cta'
+    });
+    closeBtn.addEventListener('click', () => {
+      this.close();
+    });
+  }
+
+  onClose() {
+    const { contentEl } = this;
+    contentEl.empty();
   }
 }
 
