@@ -11,9 +11,9 @@ See: .planning/PROJECT.md (updated 2026-01-27)
 
 **Milestone**: 3.1 (Type Safety)
 **Phase**: 18 (Template System Data Layer)
-**Plan**: 01 of 01 (complete)
+**Plan**: 02 of 02 (complete)
 **Status**: Phase 18 complete, ready for Phase 19
-**Last activity**: 2026-01-27 — Completed 18-01-PLAN.md
+**Last activity**: 2026-01-27 — Completed 18-02-PLAN.md
 
 ## Progress
 
@@ -49,6 +49,9 @@ See PROJECT.md Key Decisions table for full log.
 - Replace error: any with error: unknown for better error handling (Phase 17)
 - Use z.unknown() instead of z.any() for dynamic field values in schemas (Phase 18)
 - Add type guards after JSON.parse before property access (Phase 18)
+- Define SQLite row interfaces for type-safe database queries (Phase 18)
+- Use type assertions for database string → literal type conversions when safe (Phase 18)
+- Use Record<string, unknown> with type narrowing for dynamic frontmatter access (Phase 18)
 
 ### Tech Debt
 
@@ -72,7 +75,7 @@ None currently blocking.
 
 Last session: 2026-01-27
 Stopped at: Completed Phase 18 (Template System Data Layer)
-Resume file: .planning/phases/18-template-system-data-layer/18-01-SUMMARY.md
+Resume file: .planning/phases/18-template-system-data-layer/18-02-SUMMARY.md
 Next action: Plan Phase 19 (Query + Tool Types) with `/gsd:plan-phase 19`
 
 ---
