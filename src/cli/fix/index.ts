@@ -7,6 +7,7 @@
 
 import { existsSync, readFileSync } from 'fs';
 import { resolve } from 'path';
+import { select } from '@inquirer/prompts';
 import { FileFixer } from './fixer.js';
 import { applyOperations } from './writer.js';
 import {
@@ -19,10 +20,11 @@ import type { FixOptions, FixResult, FixSummary } from './types.js';
 import { error } from '../shared/colors.js';
 import { outputMissingConfigError } from '../init/output.js';
 
-// Note: Interactive prompting for ambiguous types is handled by FileFixer.
-// For truly ambiguous cases in non-yes mode, future enhancement could use:
-// import { select } from '@inquirer/prompts';
-// import { dirname } from 'path';
+/**
+ * Interactive prompting for ambiguous folder mappings.
+ * When a folder maps to multiple types, user selects once per folder.
+ * In --yes or --json mode, first type is used without prompting.
+ */
 
 /**
  * Parse command line arguments for fix command.
@@ -174,22 +176,34 @@ export async function fixCommand(): Promise<void> {
 
   let operations = await fixer.analyze();
 
-  // 5. Handle ambiguous types
-  // Filter operations that have 'none' confidence (no folder mapping)
-  // In the current implementation, these return null from createOperation
-  // But we track skipped files here for the summary
+  // 5. Handle ambiguous types (prompt user once per folder)
+  if (!options.yes && !options.json) {
+    const ambiguousFiles = fixer.getAmbiguousFiles();
+
+    // Group by folder (unique folders only)
+    const folderGroups = new Map<string, string[]>();
+    for (const af of ambiguousFiles) {
+      if (!folderGroups.has(af.folder)) {
+        folderGroups.set(af.folder, af.possibleTypes);
+      }
+    }
+
+    // Prompt for each ambiguous folder
+    for (const [folder, types] of folderGroups) {
+      const selectedType = await select({
+        message: `Select entity type for files in "${folder}":`,
+        choices: types.map(t => ({ name: t, value: t })),
+      });
+
+      fixer.resolveAmbiguousType(folder, selectedType);
+    }
+
+    // Process pending files with resolved types
+    const additionalOps = await fixer.processPendingAmbiguous();
+    operations.push(...additionalOps);
+  }
 
   let skippedFiles = 0;
-
-  // Note: The fixer already handles type resolution, but if we wanted
-  // interactive prompting for truly ambiguous types, we'd do it here.
-  // For now, the fixer uses the first type for ambiguous cases in --yes mode.
-
-  // If --yes mode and we have operations with ambiguous detection,
-  // they're already handled (uses first type). Just track for logging.
-  if (options.yes && operations.length === 0) {
-    // Could have skipped all files due to no mappings
-  }
 
   // 6. Build summary
   const byType: Record<string, number> = {};
