@@ -5,7 +5,7 @@ import { resolve, join, basename, dirname } from 'path';
 import { homedir } from 'os';
 import * as readline from 'readline/promises';
 import { stdin as input, stdout as output } from 'process';
-import { LegacyFolderMapper } from './templates/folder-mapper.js';
+import { FolderMapper } from './templates/folder-mapper.js';
 import { templateRegistry } from './templates/registry.js';
 import { worldbuildingTemplate } from './templates/builtin/worldbuilding.js';
 import { researchTemplate } from './templates/builtin/research.js';
@@ -83,9 +83,6 @@ async function fix() {
 
   console.log(`Found ${skippedFiles.length} file(s) needing frontmatter.\n`);
 
-  // Initialize folder mapper (using legacy API for backwards compatibility)
-  const folderMapper = new LegacyFolderMapper();
-
   // Initialize template registry for entity types
   if (!templateRegistry.has('worldbuilding')) {
     templateRegistry.register(worldbuildingTemplate, 'builtin');
@@ -93,6 +90,10 @@ async function fix() {
   }
   const activeTemplate = templateRegistry.getActive();
   const entityTypes = activeTemplate?.entityTypes.map(e => e.name) || ['character', 'location', 'event', 'faction', 'lore', 'asset', 'reference'];
+
+  // Initialize folder mapper from active template config
+  const folderMappings = templateRegistry.getActive()?.folderMappings;
+  const folderMapper = await FolderMapper.createFromTemplate(folderMappings);
 
   const rl = readline.createInterface({ input, output });
 
@@ -110,7 +111,9 @@ async function fix() {
       }
 
       // Infer type from folder
-      const inferredType = folderMapper.inferType(filePath);
+      const result = await folderMapper.resolveType(filePath);
+      const inferredType = result.types.length === 1 ? result.types[0] :
+                           result.types.length > 1 ? result.types[0] : null;
       const fileName = basename(filePath, '.md');
 
       console.log(`\n📄 ${filePath}`);
