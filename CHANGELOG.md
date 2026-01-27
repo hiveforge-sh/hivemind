@@ -1,3 +1,15 @@
+# [3.0.0](https://github.com/hiveforge-sh/hivemind/compare/v2.7.2...v3.0.0) (2026-01-27)
+
+
+* feat!: bump to v3.0.0 ([8eb1d5e](https://github.com/hiveforge-sh/hivemind/commit/8eb1d5e207bb53271bdc00d029b2da457044689c))
+
+
+### BREAKING CHANGES
+
+* Major version bump to v3.0.0
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+
 ## [2.7.2](https://github.com/hiveforge-sh/hivemind/compare/v2.7.1...v2.7.2) (2026-01-27)
 
 
