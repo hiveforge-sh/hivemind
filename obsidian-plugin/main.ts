@@ -1,4 +1,4 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
+import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder } from 'obsidian';
 import { spawn, ChildProcess } from 'child_process';
 import { FolderMapper } from '../src/templates/folder-mapper.js';
 import type { ResolveResult, FolderMappingRule } from '../src/templates/types.js';
@@ -232,10 +232,12 @@ export default class HivemindPlugin extends Plugin {
     });
 
     this.addCommand({
-      id: 'check-missing-frontmatter',
-      name: 'Check and insert missing frontmatter',
+      id: 'add-frontmatter',
+      name: 'Add frontmatter',
       editorCallback: (editor: Editor, view: MarkdownView) => {
-        this.checkMissingFrontmatter(view.file);
+        if (view.file) {
+          this.addFrontmatterToFile(view.file);
+        }
       }
     });
 
@@ -461,60 +463,47 @@ export default class HivemindPlugin extends Plugin {
     }
   }
 
-  private async checkMissingFrontmatter(file: TFile | null) {
-    if (!file) {
-      new Notice('No active file');
-      return;
-    }
-
+  private async addFrontmatterToFile(file: TFile) {
     try {
-      // Get the file content
+      // Read file content and existing frontmatter
       const content = await this.app.vault.read(file);
       const cache = this.app.metadataCache.getFileCache(file);
-
-      const frontmatter = cache?.frontmatter || {};
-      let noteType = frontmatter.type;
+      const existingFrontmatter = cache?.frontmatter || {};
 
       // If no type, use shared FolderMapper to infer from folder path
-      if (!noteType && this.folderMapper) {
+      if (!existingFrontmatter.type && this.folderMapper) {
         const result = await this.folderMapper.resolveType(file.path);
 
         if (result.confidence === 'exact') {
-          // Single type - show inference confirmation modal
-          new TypeInferenceModal(this.app, this, file, result.types[0]).open();
+          // Single type - open AddFrontmatterModal with that type
+          new AddFrontmatterModal(this.app, this, file, result.types[0], existingFrontmatter).open();
           return;
         } else if (result.confidence === 'ambiguous') {
-          // Multiple types - show selection modal with suggested types
-          new TypeSelectionModal(this.app, this, file, result.types).open();
+          // Multiple types - show selection modal with callback to open AddFrontmatterModal
+          new TypeSelectionModal(this.app, this, file, result.types, (selectedType: string) => {
+            new AddFrontmatterModal(this.app, this, file, selectedType, existingFrontmatter).open();
+          }).open();
           return;
         } else {
-          // No match - show full type selection
-          new TypeSelectionModal(this.app, this, file).open();
+          // No match - show full type selection with callback
+          new TypeSelectionModal(this.app, this, file, undefined, (selectedType: string) => {
+            new AddFrontmatterModal(this.app, this, file, selectedType, existingFrontmatter).open();
+          }).open();
           return;
         }
+      } else if (existingFrontmatter.type) {
+        // Type already exists, open AddFrontmatterModal with existing type
+        new AddFrontmatterModal(this.app, this, file, existingFrontmatter.type, existingFrontmatter).open();
+      } else {
+        // No folder mapping and no type - show full type selection
+        new TypeSelectionModal(this.app, this, file, undefined, (selectedType: string) => {
+          new AddFrontmatterModal(this.app, this, file, selectedType, existingFrontmatter).open();
+        }).open();
       }
-
-      // Get template for this type
-      const template = FRONTMATTER_TEMPLATES[noteType];
-      if (!template) {
-        new Notice(`Unknown note type: ${noteType}. Supported types: ${Object.keys(FRONTMATTER_TEMPLATES).join(', ')}`);
-        return;
-      }
-
-      // Find missing fields
-      const missingFields = this.findMissingFields(frontmatter, template);
-
-      if (Object.keys(missingFields).length === 0) {
-        new Notice('All required frontmatter fields are present!');
-        return;
-      }
-
-      // Show modal to insert missing fields
-      new MissingFrontmatterModal(this.app, this, file, frontmatter, missingFields, noteType).open();
 
     } catch (error) {
-      console.error('Failed to check frontmatter:', error);
-      new Notice('Failed to check frontmatter: ' + (error as Error).message);
+      console.error('Failed to add frontmatter:', error);
+      new Notice('Failed to add frontmatter: ' + (error as Error).message);
     }
   }
 
@@ -1260,6 +1249,241 @@ class MissingFrontmatterModal extends Modal {
   }
 }
 
+// Add Frontmatter Modal - shows preview of what will be added
+class AddFrontmatterModal extends Modal {
+  plugin: HivemindPlugin;
+  file: TFile;
+  entityType: string;
+  existingFrontmatter: Record<string, any>;
+  newFields: Record<string, any> = {};
+
+  constructor(
+    app: App,
+    plugin: HivemindPlugin,
+    file: TFile,
+    entityType: string,
+    existingFrontmatter: Record<string, any>
+  ) {
+    super(app);
+    this.plugin = plugin;
+    this.file = file;
+    this.entityType = entityType;
+    this.existingFrontmatter = existingFrontmatter;
+  }
+
+  onOpen() {
+    const { contentEl } = this;
+
+    contentEl.createEl('h2', { text: 'Add Frontmatter' });
+
+    // Show file name
+    contentEl.createEl('p', {
+      text: `File: ${this.file.name}`,
+      cls: 'setting-item-description'
+    });
+
+    // Show detected/selected type with badge
+    const typeBadge = contentEl.createEl('div', {
+      cls: 'frontmatter-type-badge'
+    });
+    typeBadge.style.display = 'inline-block';
+    typeBadge.style.padding = '4px 12px';
+    typeBadge.style.marginBottom = '15px';
+    typeBadge.style.backgroundColor = 'var(--interactive-accent)';
+    typeBadge.style.color = 'var(--text-on-accent)';
+    typeBadge.style.borderRadius = '12px';
+    typeBadge.style.fontSize = '0.9em';
+    typeBadge.style.fontWeight = 'bold';
+    typeBadge.setText(`Type: ${this.entityType}`);
+
+    // Get template for this type
+    const template = FRONTMATTER_TEMPLATES[this.entityType];
+    if (!template) {
+      contentEl.createEl('p', {
+        text: `Error: Unknown entity type "${this.entityType}"`,
+        cls: 'mod-error'
+      });
+      return;
+    }
+
+    // Auto-fill id and name/title from filename
+    const fileName = this.file.basename;
+    const id = this.generateId(fileName, this.entityType);
+    const autoFilledTemplate = {
+      ...template,
+      id: id,
+      name: fileName,
+      title: fileName
+    };
+
+    // Compute fields to add: template fields NOT in existing frontmatter
+    this.newFields = this.computeNewFields(this.existingFrontmatter, autoFilledTemplate);
+
+    if (Object.keys(this.newFields).length === 0) {
+      contentEl.createEl('p', {
+        text: '✅ All frontmatter fields are already present in this file.',
+        cls: 'mod-success'
+      });
+
+      const closeBtn = contentEl.createEl('button', {
+        text: 'Close',
+        cls: 'mod-cta'
+      });
+      closeBtn.style.marginTop = '15px';
+      closeBtn.addEventListener('click', () => {
+        this.close();
+      });
+      return;
+    }
+
+    // Display preview section
+    contentEl.createEl('h3', { text: 'Fields to Add:' });
+
+    const previewContainer = contentEl.createDiv({ cls: 'frontmatter-preview' });
+    previewContainer.style.maxHeight = '400px';
+    previewContainer.style.overflowY = 'auto';
+    previewContainer.style.padding = '10px';
+    previewContainer.style.marginBottom = '20px';
+    previewContainer.style.border = '1px solid var(--background-modifier-border)';
+    previewContainer.style.borderRadius = '5px';
+    previewContainer.style.backgroundColor = 'var(--background-secondary)';
+
+    // List each field name and its default value
+    const fieldList = previewContainer.createEl('ul');
+    fieldList.style.listStyle = 'none';
+    fieldList.style.padding = '0';
+    fieldList.style.margin = '0';
+
+    for (const [fieldPath, value] of Object.entries(this.newFields)) {
+      const listItem = fieldList.createEl('li');
+      listItem.style.marginBottom = '8px';
+      listItem.style.paddingBottom = '8px';
+      listItem.style.borderBottom = '1px solid var(--background-modifier-border-focus)';
+
+      const fieldName = listItem.createEl('strong');
+      fieldName.setText(fieldPath);
+
+      const fieldValue = listItem.createEl('div');
+      fieldValue.style.marginTop = '4px';
+      fieldValue.style.fontSize = '0.9em';
+      fieldValue.style.color = 'var(--text-muted)';
+
+      // Format value for display
+      const displayValue = this.formatValueForDisplay(value);
+      fieldValue.setText(`→ ${displayValue}`);
+    }
+
+    // Buttons
+    const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container' });
+    buttonContainer.style.display = 'flex';
+    buttonContainer.style.gap = '10px';
+    buttonContainer.style.justifyContent = 'flex-end';
+    buttonContainer.style.marginTop = '20px';
+
+    const cancelBtn = buttonContainer.createEl('button', { text: 'Cancel' });
+    cancelBtn.addEventListener('click', () => {
+      this.close();
+    });
+
+    const applyBtn = buttonContainer.createEl('button', {
+      text: 'Apply',
+      cls: 'mod-cta'
+    });
+    applyBtn.addEventListener('click', async () => {
+      try {
+        applyBtn.setAttr('disabled', 'true');
+        applyBtn.setText('Applying...');
+
+        // Convert flat field paths back to nested object
+        const fieldsToInsert = this.flatToNested(this.newFields);
+
+        await this.plugin.insertMissingFrontmatter(
+          this.file,
+          this.existingFrontmatter,
+          fieldsToInsert
+        );
+
+        this.close();
+      } catch (error) {
+        new Notice('Failed to add frontmatter: ' + (error as Error).message);
+        applyBtn.removeAttribute('disabled');
+        applyBtn.setText('Apply');
+      }
+    });
+  }
+
+  private computeNewFields(existing: Record<string, any>, template: Record<string, any>, prefix = ''): Record<string, any> {
+    const newFields: Record<string, any> = {};
+
+    for (const [key, value] of Object.entries(template)) {
+      const fullKey = prefix ? `${prefix}.${key}` : key;
+
+      // Skip if exists and not empty
+      if (existing[key] !== undefined && existing[key] !== null && existing[key] !== '') {
+        // If it's an object, check nested fields
+        if (typeof value === 'object' && !Array.isArray(value) && value !== null) {
+          const nestedNew = this.computeNewFields(existing[key] || {}, value, fullKey);
+          Object.assign(newFields, nestedNew);
+        }
+        continue;
+      }
+
+      // Field is missing or empty
+      newFields[fullKey] = value;
+    }
+
+    return newFields;
+  }
+
+  private formatValueForDisplay(value: any): string {
+    if (value === null || value === undefined) {
+      return '(empty)';
+    } else if (Array.isArray(value)) {
+      return value.length === 0 ? '[]' : `[${value.length} items]`;
+    } else if (typeof value === 'object') {
+      return '{...}';
+    } else if (typeof value === 'string') {
+      return value === '' ? '(empty)' : `"${value}"`;
+    } else {
+      return String(value);
+    }
+  }
+
+  private flatToNested(flat: Record<string, any>): Record<string, any> {
+    const result: Record<string, any> = {};
+
+    for (const [path, value] of Object.entries(flat)) {
+      const parts = path.split('.');
+      let current = result;
+
+      for (let i = 0; i < parts.length - 1; i++) {
+        const part = parts[i];
+        if (!current[part]) {
+          current[part] = {};
+        }
+        current = current[part];
+      }
+
+      current[parts[parts.length - 1]] = value;
+    }
+
+    return result;
+  }
+
+  private generateId(name: string, entityType: string): string {
+    const slug = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+    return `${entityType}-${slug}`;
+  }
+
+  onClose() {
+    const { contentEl } = this;
+    contentEl.empty();
+  }
+}
+
 // Type Inference Modal - shows inferred type, asks for confirmation
 class TypeInferenceModal extends Modal {
   plugin: HivemindPlugin;
@@ -1372,12 +1596,14 @@ class TypeSelectionModal extends Modal {
   plugin: HivemindPlugin;
   file: TFile;
   suggestedTypes?: string[];  // Optional suggested types from folder mapping
+  onTypeSelected?: (type: string) => void;  // Optional callback for reuse
 
-  constructor(app: App, plugin: HivemindPlugin, file: TFile, suggestedTypes?: string[]) {
+  constructor(app: App, plugin: HivemindPlugin, file: TFile, suggestedTypes?: string[], onTypeSelected?: (type: string) => void) {
     super(app);
     this.plugin = plugin;
     this.file = file;
     this.suggestedTypes = suggestedTypes;
+    this.onTypeSelected = onTypeSelected;
   }
 
   onOpen() {
@@ -1492,6 +1718,13 @@ class TypeSelectionModal extends Modal {
   }
 
   async applyType(entityType: string) {
+    // If callback provided, call it instead of directly applying
+    if (this.onTypeSelected) {
+      this.onTypeSelected(entityType);
+      return;
+    }
+
+    // Default behavior: directly apply frontmatter
     try {
       const template = FRONTMATTER_TEMPLATES[entityType];
       if (!template) {
