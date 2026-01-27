@@ -594,9 +594,33 @@ export default class HivemindPlugin extends Plugin {
         const result = await this.folderMapper.resolveType(file.path);
 
         if (result.confidence === 'exact') {
-          // Single type - open AddFrontmatterModal with that type
-          new AddFrontmatterModal(this.app, this, file, result.types[0], existingFrontmatter).open();
-          return;
+          // Single type - check autoMergeFrontmatter setting
+          if (this.settings.autoMergeFrontmatter) {
+            // Auto-merge: apply frontmatter immediately
+            const template = FRONTMATTER_TEMPLATES[result.types[0]];
+            if (template) {
+              const fileName = file.basename;
+              const id = this.generateId(fileName, result.types[0]);
+              const autoFilledTemplate = {
+                ...template,
+                id: id,
+                name: fileName,
+                title: fileName
+              };
+              const newFields = this.computeNewFieldsForBulk(existingFrontmatter, autoFilledTemplate);
+
+              if (Object.keys(newFields).length > 0) {
+                await this.insertMissingFrontmatter(file, existingFrontmatter, newFields);
+              } else {
+                new Notice('All frontmatter fields already present');
+              }
+            }
+            return;
+          } else {
+            // Show preview modal
+            new AddFrontmatterModal(this.app, this, file, result.types[0], existingFrontmatter).open();
+            return;
+          }
         } else if (result.confidence === 'ambiguous') {
           // Multiple types - show selection modal with callback to open AddFrontmatterModal
           new TypeSelectionModal(this.app, this, file, result.types, (selectedType: string) => {
@@ -1405,13 +1429,14 @@ class ValidationSidebarView extends ItemView {
               });
             }
 
-            // Check folder mismatch
+            // Check folder mismatch (based on severity setting)
             if (this.plugin.folderMapper && issues.length === 0) {
               try {
                 const resolved = await this.plugin.folderMapper.resolveType(file.path);
                 if (resolved.confidence === 'exact' && resolved.types[0] !== frontmatter.type) {
+                  const severity = this.plugin.settings.validationSeverity || 'warning';
                   issues.push({
-                    type: 'folder_mismatch',
+                    type: severity === 'error' ? 'folder_mismatch_error' : 'folder_mismatch',
                     detail: `Type '${frontmatter.type}' doesn't match folder (expected '${resolved.types[0]}')`
                   });
                 }
@@ -2999,6 +3024,70 @@ class HivemindSettingTab extends PluginSettingTab {
         .onChange(async (value) => {
           this.plugin.settings.autoStartMCP = value;
           await this.plugin.saveSettings();
+        }));
+
+    containerEl.createEl('h3', { text: 'Frontmatter Commands' });
+
+    const frontmatterInfoEl = containerEl.createEl('p', { cls: 'setting-item-description' });
+    frontmatterInfoEl.style.marginTop = '10px';
+    frontmatterInfoEl.style.marginBottom = '10px';
+    frontmatterInfoEl.setText('Configure how frontmatter commands behave in your vault.');
+
+    new Setting(containerEl)
+      .setName('Default entity type')
+      .setDesc('Default type when adding frontmatter (leave empty for folder-based inference)')
+      .addDropdown(dropdown => {
+        dropdown.addOption('', '(Auto-detect from folder)');
+        dropdown.addOption('character', 'Character');
+        dropdown.addOption('location', 'Location');
+        dropdown.addOption('event', 'Event');
+        dropdown.addOption('faction', 'Faction');
+        dropdown.addOption('lore', 'Lore');
+        dropdown.addOption('asset', 'Asset');
+        dropdown.addOption('reference', 'Reference');
+
+        dropdown.setValue(this.plugin.settings.defaultEntityType);
+        dropdown.onChange(async (value) => {
+          this.plugin.settings.defaultEntityType = value;
+          await this.plugin.saveSettings();
+        });
+      });
+
+    new Setting(containerEl)
+      .setName('Auto-merge frontmatter')
+      .setDesc('Skip preview modal when type is exact match (applies frontmatter immediately)')
+      .addToggle(toggle => toggle
+        .setValue(this.plugin.settings.autoMergeFrontmatter)
+        .onChange(async (value) => {
+          this.plugin.settings.autoMergeFrontmatter = value;
+          await this.plugin.saveSettings();
+        }));
+
+    new Setting(containerEl)
+      .setName('Validation severity')
+      .setDesc('How to handle folder mismatches during validation')
+      .addDropdown(dropdown => {
+        dropdown.addOption('warning', 'Warning (show but continue)');
+        dropdown.addOption('error', 'Error (block operations)');
+
+        dropdown.setValue(this.plugin.settings.validationSeverity);
+        dropdown.onChange(async (value: 'error' | 'warning') => {
+          this.plugin.settings.validationSeverity = value;
+          await this.plugin.saveSettings();
+        });
+      });
+
+    new Setting(containerEl)
+      .setName('Show validation notices')
+      .setDesc('Automatically validate frontmatter when opening files')
+      .addToggle(toggle => toggle
+        .setValue(this.plugin.settings.showValidationNotices)
+        .onChange(async (value) => {
+          this.plugin.settings.showValidationNotices = value;
+          await this.plugin.saveSettings();
+
+          // Reload plugin to apply event handler changes
+          new Notice('Please reload Obsidian for this setting to take effect');
         }));
 
     containerEl.createEl('h3', { text: 'ComfyUI Integration' });
