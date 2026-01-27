@@ -1,6 +1,6 @@
 {
   "name": "@hiveforge/hivemind-mcp",
-  "version": "2.7.0",
+  "version": "2.7.1",
   "description": "MCP server for Obsidian worldbuilding vaults - provides AI tools with consistent canonical context",
   "main": "dist/index.js",
   "type": "module",

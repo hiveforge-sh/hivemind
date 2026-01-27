@@ -1,3 +1,10 @@
+## [2.7.1](https://github.com/hiveforge-sh/hivemind/compare/v2.7.0...v2.7.1) (2026-01-27)
+
+
+### Bug Fixes
+
+* resolve CI failures on Windows and Obsidian plugin build ([0b89711](https://github.com/hiveforge-sh/hivemind/commit/0b89711a451d8b01d7c5eae1ceec57f43d3052c1))
+
 # [2.7.0](https://github.com/hiveforge-sh/hivemind/compare/v2.6.1...v2.7.0) (2026-01-27)
 
 
