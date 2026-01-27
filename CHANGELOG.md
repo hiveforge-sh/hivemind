@@ -4,6 +4,23 @@
 * feat!: bump to v3.0.0 ([8eb1d5e](https://github.com/hiveforge-sh/hivemind/commit/8eb1d5e207bb53271bdc00d029b2da457044689c))
 
 
+### Bug Fixes
+
+* update authorUrl to point to org profile instead of repo ([e9a89c2](https://github.com/hiveforge-sh/hivemind/commit/e9a89c2009e17c8e9cd290c1806457c1d1388c22))
+
+
+### BREAKING CHANGES
+
+* Major version bump to v3.0.0
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+
+# [3.0.0](https://github.com/hiveforge-sh/hivemind/compare/v2.7.2...v3.0.0) (2026-01-27)
+
+
+* feat!: bump to v3.0.0 ([8eb1d5e](https://github.com/hiveforge-sh/hivemind/commit/8eb1d5e207bb53271bdc00d029b2da457044689c))
+
+
 ### BREAKING CHANGES
 
 * Major version bump to v3.0.0
