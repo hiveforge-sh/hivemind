@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import type { VaultNote, GraphNode, GraphEdge } from '../types/index.js';
+import type { VaultNote, GraphNode, GraphEdge, NoteType, NoteStatus } from '../types/index.js';
 import { dirname } from 'path';
 import { mkdirSync } from 'fs';
 
@@ -8,13 +8,43 @@ export interface DatabaseConfig {
   readonly?: boolean;
 }
 
+// SQLite row interfaces
+interface NodeRow {
+  id: string;
+  type: string;
+  status: string;
+  title: string;
+  content: string;
+  frontmatter: string;  // JSON string
+  file_path: string;
+  created_at: number;
+  updated_at: number;
+}
+
+interface RelationshipRow {
+  id: number;
+  source_id: string;
+  target_id: string;
+  rel_type: string | null;
+  properties: string | null;  // JSON string or NULL
+}
+
+interface SearchResultRow {
+  id: string;
+  rank: number;
+}
+
+interface CountRow {
+  count: number;
+}
+
 export class HivemindDatabase {
   public db: Database.Database;
 
   constructor(config: DatabaseConfig) {
     // Ensure directory exists
     this.ensureDirectory(config.path);
-    
+
     this.db = new Database(config.path, {
       readonly: config.readonly || false,
       fileMustExist: false,
@@ -22,7 +52,7 @@ export class HivemindDatabase {
 
     // Enable WAL mode for better concurrency
     this.db.pragma('journal_mode = WAL');
-    
+
     this.initializeSchema();
   }
 
@@ -102,7 +132,7 @@ export class HivemindDatabase {
       END;
 
       CREATE TRIGGER IF NOT EXISTS nodes_au AFTER UPDATE ON nodes BEGIN
-        UPDATE nodes_fts 
+        UPDATE nodes_fts
         SET title = new.title, content = new.content
         WHERE rowid = new.rowid;
       END;
@@ -120,7 +150,7 @@ export class HivemindDatabase {
         created TEXT NOT NULL,
         updated TEXT NOT NULL
       );
-      
+
       CREATE INDEX IF NOT EXISTS idx_workflows_updated ON workflows(updated);
     `);
 
@@ -138,7 +168,7 @@ export class HivemindDatabase {
         status TEXT NOT NULL DEFAULT 'draft',
         FOREIGN KEY (workflow_id) REFERENCES workflows(id) ON DELETE SET NULL
       );
-      
+
       CREATE INDEX IF NOT EXISTS idx_assets_workflow ON assets(workflow_id);
       CREATE INDEX IF NOT EXISTS idx_assets_status ON assets(status);
     `);
@@ -179,7 +209,7 @@ export class HivemindDatabase {
   /**
    * Insert a relationship
    */
-  insertRelationship(sourceId: string, targetId: string, relType?: string, properties?: Record<string, any>): void {
+  insertRelationship(sourceId: string, targetId: string, relType?: string, properties?: Record<string, unknown>): void {
     const stmt = this.db.prepare(`
       INSERT OR IGNORE INTO relationships (source_id, target_id, rel_type, properties)
       VALUES (?, ?, ?, ?)
@@ -201,13 +231,13 @@ export class HivemindDatabase {
       SELECT * FROM nodes WHERE id = ?
     `);
 
-    const row = stmt.get(id) as any;
+    const row = stmt.get(id) as NodeRow | undefined;
     if (!row) return undefined;
 
     return {
       id: row.id,
-      type: row.type,
-      status: row.status,
+      type: row.type as NoteType,
+      status: row.status as NoteStatus,
       title: row.title,
       content: row.content,
       properties: JSON.parse(row.frontmatter),
@@ -222,12 +252,12 @@ export class HivemindDatabase {
    */
   getAllNodes(): GraphNode[] {
     const stmt = this.db.prepare('SELECT * FROM nodes ORDER BY updated_at DESC');
-    const rows = stmt.all() as any[];
+    const rows = stmt.all() as NodeRow[];
 
     return rows.map(row => ({
       id: row.id,
-      type: row.type,
-      status: row.status,
+      type: row.type as NoteType,
+      status: row.status as NoteStatus,
       title: row.title,
       content: row.content,
       properties: JSON.parse(row.frontmatter),
@@ -242,12 +272,12 @@ export class HivemindDatabase {
    */
   getNodesByType(type: string): GraphNode[] {
     const stmt = this.db.prepare('SELECT * FROM nodes WHERE type = ? ORDER BY title');
-    const rows = stmt.all(type) as any[];
+    const rows = stmt.all(type) as NodeRow[];
 
     return rows.map(row => ({
       id: row.id,
-      type: row.type,
-      status: row.status,
+      type: row.type as NoteType,
+      status: row.status as NoteStatus,
       title: row.title,
       content: row.content,
       properties: JSON.parse(row.frontmatter),
@@ -262,17 +292,17 @@ export class HivemindDatabase {
    */
   getRelationships(nodeId: string): GraphEdge[] {
     const stmt = this.db.prepare(`
-      SELECT * FROM relationships 
+      SELECT * FROM relationships
       WHERE source_id = ? OR target_id = ?
     `);
 
-    const rows = stmt.all(nodeId, nodeId) as any[];
+    const rows = stmt.all(nodeId, nodeId) as RelationshipRow[];
 
     return rows.map(row => ({
       id: row.id.toString(),
       sourceId: row.source_id,
       targetId: row.target_id,
-      relationType: row.rel_type,
+      relationType: row.rel_type || undefined,
       properties: row.properties ? JSON.parse(row.properties) : undefined,
       bidirectional: false, // Will be determined by graph builder
     }));
@@ -290,7 +320,7 @@ export class HivemindDatabase {
       LIMIT ?
     `);
 
-    const rows = stmt.all(query, limit) as any[];
+    const rows = stmt.all(query, limit) as SearchResultRow[];
     return rows.map(row => ({
       id: row.id,
       rank: row.rank,
@@ -317,12 +347,12 @@ export class HivemindDatabase {
    * Get database statistics
    */
   getStats() {
-    const nodeCount = this.db.prepare('SELECT COUNT(*) as count FROM nodes').get() as { count: number };
-    const relCount = this.db.prepare('SELECT COUNT(*) as count FROM relationships').get() as { count: number };
-    
+    const nodeCount = this.db.prepare('SELECT COUNT(*) as count FROM nodes').get() as CountRow;
+    const relCount = this.db.prepare('SELECT COUNT(*) as count FROM relationships').get() as CountRow;
+
     const typeStats = this.db.prepare(`
-      SELECT type, COUNT(*) as count 
-      FROM nodes 
+      SELECT type, COUNT(*) as count
+      FROM nodes
       GROUP BY type
     `).all() as Array<{ type: string; count: number }>;
 
@@ -345,7 +375,7 @@ export class HivemindDatabase {
    * Check if database has any nodes
    */
   hasNodes(): boolean {
-    const result = this.db.prepare('SELECT COUNT(*) as count FROM nodes').get() as { count: number };
+    const result = this.db.prepare('SELECT COUNT(*) as count FROM nodes').get() as CountRow;
     return result.count > 0;
   }
 
