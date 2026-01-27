@@ -10,9 +10,9 @@
 
 **Milestone**: 3.0 (Developer Experience)
 **Phase**: 15 of 16 (Fix CLI) - COMPLETE
-**Plan**: 3 of 3 in current phase
+**Plan**: 4 of 4 in current phase
 **Status**: Phase complete
-**Last activity**: 2026-01-27 - Completed 15-03-PLAN.md
+**Last activity**: 2026-01-27 - Completed 15-04-PLAN.md
 
 ## Progress
 
@@ -30,9 +30,9 @@ Milestone 3.0: Developer Experience [#########.] 90%
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 14 (v3.0)
-- Average duration: 5.2min
-- Total execution time: 73min
+- Total plans completed: 15 (v3.0)
+- Average duration: 5.1min
+- Total execution time: 76min
 
 **By Phase:**
 
@@ -41,7 +41,7 @@ Milestone 3.0: Developer Experience [#########.] 90%
 | 12 | 4 | 20min | 5min |
 | 13 | 4 | 15min | 3.8min |
 | 14 | 3 | 22min | 7.3min |
-| 15 | 3 | 16min | 5.3min |
+| 15 | 4 | 19min | 4.8min |
 | 16 | 0 | - | - |
 
 *Updated after each plan completion*
@@ -100,6 +100,9 @@ Recent decisions affecting current work:
 - [15-03]: TTY check before interactive mode - exit code 2 for config errors
 - [15-03]: Old fix() function replaced with validation-based approach
 - [15-03]: Interactive prompting deferred - FileFixer handles type resolution internally
+- [15-04]: Pending resolution pattern - analyze() stores ambiguous files, CLI prompts, then processes
+- [15-04]: Folder grouping for prompts - one prompt per folder, applies to all files in folder
+- [15-04]: typeResolutions Map tracks user's folder→type selections
 
 ### Research Highlights
 
@@ -121,9 +124,9 @@ None currently blocking.
 ## Session Continuity
 
 Last session: 2026-01-27
-Stopped at: Completed 15-03-PLAN.md (Phase 15 complete)
+Stopped at: Completed 15-04-PLAN.md (Phase 15 complete)
 Resume file: None
 Next action: Continue to Phase 16 (Obsidian Commands)
 
 ---
-*Updated: 2026-01-27 - Phase 15 complete (3/3 plans)*
+*Updated: 2026-01-27 - Phase 15 complete (4/4 plans)*
