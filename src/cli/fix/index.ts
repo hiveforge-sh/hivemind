@@ -236,9 +236,9 @@ export async function fixCommand(): Promise<void> {
 
     // Output
     if (options.json) {
-      console.warn(formatJsonOutputWithResults(result, writeResults));
+      console.log(formatJsonOutputWithResults(result, writeResults));
     } else {
-      console.warn(formatApplyOutput(summary, writeResults));
+      console.log(formatApplyOutput(summary, writeResults));
     }
 
     // Exit code: 0 success, 1 failures
@@ -256,9 +256,9 @@ export async function fixCommand(): Promise<void> {
 
     // Output
     if (options.json) {
-      console.warn(formatJsonOutput(result));
+      console.log(formatJsonOutput(result));
     } else {
-      console.warn(formatDryRunOutput(operations, options.verbose));
+      console.log(formatDryRunOutput(operations, options.verbose));
     }
 
     // Exit code: 0 (dry-run is always success)

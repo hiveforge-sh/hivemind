@@ -50,39 +50,39 @@ export async function runInteractiveWizard(): Promise<WizardResult> {
   }
 
   try {
-    console.warn('\n' + bold('Hivemind Setup Wizard'));
-    console.warn('='.repeat(40) + '\n');
+    console.log('\n' + bold('Hivemind Setup Wizard'));
+    console.log('='.repeat(40) + '\n');
 
     // Step 1: Check for existing config
     const cwd = process.cwd();
     if (configExists(cwd)) {
       const overwrite = await promptOverwriteConfig();
       if (!overwrite) {
-        console.warn('\nSetup cancelled.');
+        console.log('\nSetup cancelled.');
         return { vaultPath: '', templateId: '', cancelled: true };
       }
     }
 
     // Step 2: Vault path
-    console.warn('\n' + renderBreadcrumb(0));
+    console.log('\n' + renderBreadcrumb(0));
     const vaultPath = await promptVaultPath();
-    console.warn(success(`Using vault: ${vaultPath}`));
+    console.log(success(`Using vault: ${vaultPath}`));
 
     // Step 3: Template selection (with auto-detection)
-    console.warn('\n' + renderBreadcrumb(1));
+    console.log('\n' + renderBreadcrumb(1));
     let templateId = await detectAndConfirmTemplate(vaultPath);
 
     // Handle custom template selection
     if (templateId === 'custom') {
-      console.warn('\n' + dim('Custom template creation will be available after initial setup.'));
-      console.warn(dim('For now, starting with worldbuilding template. Run create-template later.'));
+      console.log('\n' + dim('Custom template creation will be available after initial setup.'));
+      console.log(dim('For now, starting with worldbuilding template. Run create-template later.'));
       templateId = 'worldbuilding';
     }
 
-    console.warn(success(`Using template: ${templateId}`));
+    console.log(success(`Using template: ${templateId}`));
 
     // Step 4: Complete
-    console.warn('\n' + renderBreadcrumb(3));
+    console.log('\n' + renderBreadcrumb(3));
 
     return {
       vaultPath,
@@ -93,7 +93,7 @@ export async function runInteractiveWizard(): Promise<WizardResult> {
   } catch (err) {
     // Handle Ctrl+C gracefully
     if (err instanceof ExitPromptError) {
-      console.warn('\n\nSetup cancelled.');
+      console.log('\n\nSetup cancelled.');
       return { vaultPath: '', templateId: '', cancelled: true };
     }
     throw err;

@@ -47,7 +47,7 @@ async function start() {
     }
   }
 
-  console.warn('🚀 Starting Hivemind MCP Server...\n');
+  console.log('🚀 Starting Hivemind MCP Server...\n');
 
   // Import and start the server (index.js handles --vault flag parsing)
   const { startServer } = await import('./index.js');
@@ -178,21 +178,21 @@ function writeMcpConfig(configPath: string, newConfig: { mcpServers: { hivemind:
 async function setupMcp() {
   const rl = readline.createInterface({ input, output });
 
-  console.warn('\nHivemind MCP Client Setup');
-  console.warn('=========================\n');
+  console.log('\nHivemind MCP Client Setup');
+  console.log('=========================\n');
 
   try {
     // 1. Select MCP client
-    console.warn('Which MCP client are you using?');
-    console.warn('  1. Claude Desktop');
-    console.warn('  2. GitHub Copilot');
-    console.warn('  3. Other (show generic config)');
+    console.log('Which MCP client are you using?');
+    console.log('  1. Claude Desktop');
+    console.log('  2. GitHub Copilot');
+    console.log('  3. Other (show generic config)');
 
     const clientChoice = await rl.question('\nEnter choice (1-3): ');
 
     // 2. Get vault path
     const currentVault = getVaultPath();
-    console.warn(`\nCurrent configured vault: ${currentVault || '(none)'}`);
+    console.log(`\nCurrent configured vault: ${currentVault || '(none)'}`);
     const vaultInput = await rl.question('Vault path (press Enter to use current, or enter new path): ');
     const resolvedVault = vaultInput.trim()
       ? resolve(vaultInput.trim())
@@ -204,26 +204,26 @@ async function setupMcp() {
     // 4. Show config file location
     const configPath = getMcpConfigPath(clientChoice);
 
-    console.warn(`\n📁 Config file location:`);
-    console.warn(`   ${configPath}\n`);
+    console.log(`\n📁 Config file location:`);
+    console.log(`   ${configPath}\n`);
 
-    console.warn('📋 Add this to your MCP config:\n');
-    console.warn(JSON.stringify(config, null, 2));
+    console.log('📋 Add this to your MCP config:\n');
+    console.log(JSON.stringify(config, null, 2));
 
     // 5. Offer to write config (only for known clients)
     if (clientChoice === '1' || clientChoice === '2') {
       const writeChoice = await rl.question('\nWrite to config file? (y/N): ');
       if (writeChoice.toLowerCase() === 'y') {
         writeMcpConfig(configPath, config as { mcpServers: { hivemind: object } });
-        console.warn(`\n✅ Config written to ${configPath}`);
-        console.warn('   Restart your MCP client to apply changes.');
+        console.log(`\n✅ Config written to ${configPath}`);
+        console.log('   Restart your MCP client to apply changes.');
       }
     }
 
-    console.warn('\n📝 Next steps:');
-    console.warn('  1. If you didn\'t write the config, copy the JSON above to your MCP client config');
-    console.warn('  2. Restart your MCP client (Claude Desktop, VS Code, etc.)');
-    console.warn('  3. Start using Hivemind tools in your AI conversations\n');
+    console.log('\n📝 Next steps:');
+    console.log('  1. If you didn\'t write the config, copy the JSON above to your MCP client config');
+    console.log('  2. Restart your MCP client (Claude Desktop, VS Code, etc.)');
+    console.log('  3. Start using Hivemind tools in your AI conversations\n');
 
   } finally {
     rl.close();
@@ -236,7 +236,7 @@ async function setupMcp() {
 async function validateTemplate() {
   const filePath = process.argv[3] || './template.json';
 
-  console.warn(`🔍 Validating template file: ${filePath}\n`);
+  console.log(`🔍 Validating template file: ${filePath}\n`);
 
   if (!existsSync(filePath)) {
     console.error(`❌ Template file not found: ${filePath}`);
@@ -245,30 +245,30 @@ async function validateTemplate() {
 
   try {
     const template = loadTemplateFile(filePath);
-    console.warn('✓ Template is valid!\n');
-    console.warn(`ID: ${template.id}`);
-    console.warn(`Name: ${template.name}`);
-    console.warn(`Version: ${template.version}`);
+    console.log('✓ Template is valid!\n');
+    console.log(`ID: ${template.id}`);
+    console.log(`Name: ${template.name}`);
+    console.log(`Version: ${template.version}`);
     if (template.description) {
-      console.warn(`Description: ${template.description}`);
+      console.log(`Description: ${template.description}`);
     }
 
-    console.warn(`\nEntity Types (${template.entityTypes.length}):`);
+    console.log(`\nEntity Types (${template.entityTypes.length}):`);
     for (const et of template.entityTypes) {
       const requiredFields = et.fields.filter(f => f.required).length;
-      console.warn(`  - ${et.name} (${et.fields.length} fields, ${requiredFields} required)`);
+      console.log(`  - ${et.name} (${et.fields.length} fields, ${requiredFields} required)`);
     }
 
     if (template.relationshipTypes?.length) {
-      console.warn(`\nRelationship Types (${template.relationshipTypes.length}):`);
+      console.log(`\nRelationship Types (${template.relationshipTypes.length}):`);
       for (const rt of template.relationshipTypes) {
         const sourceStr = Array.isArray(rt.sourceTypes) ? rt.sourceTypes.join(', ') : rt.sourceTypes;
         const targetStr = Array.isArray(rt.targetTypes) ? rt.targetTypes.join(', ') : rt.targetTypes;
-        console.warn(`  - ${rt.id}: ${sourceStr} → ${targetStr}${rt.bidirectional ? ' (bidirectional)' : ''}`);
+        console.log(`  - ${rt.id}: ${sourceStr} → ${targetStr}${rt.bidirectional ? ' (bidirectional)' : ''}`);
       }
     }
 
-    console.warn('\n✅ Template validation complete!');
+    console.log('\n✅ Template validation complete!');
   } catch (err) {
     if (err instanceof TemplateValidationError) {
       console.error(err.toUserMessage());
@@ -283,8 +283,8 @@ async function validateTemplate() {
  * Interactive template creation wizard
  */
 async function createTemplate() {
-  console.warn('🧠 Hivemind Template Creator\n');
-  console.warn('='.repeat(40) + '\n');
+  console.log('🧠 Hivemind Template Creator\n');
+  console.log('='.repeat(40) + '\n');
 
   const rl = readline.createInterface({ input, output });
 
@@ -308,7 +308,7 @@ async function createTemplate() {
     }
 
     // 2. Entity types
-    console.warn('\n=== Entity Types ===\n');
+    console.log('\n=== Entity Types ===\n');
 
     const entityTypes: EntityTypeConfig[] = [];
 
@@ -316,14 +316,14 @@ async function createTemplate() {
       const entityName = (await rl.question("Entity name (lowercase, or 'done'): ")).trim().toLowerCase();
       if (entityName === 'done' || entityName === '') {
         if (entityTypes.length === 0) {
-          console.warn('⚠️  Template must have at least one entity type.');
+          console.log('⚠️  Template must have at least one entity type.');
           continue;
         }
         break;
       }
 
       if (!/^[a-z][a-z0-9_]*$/.test(entityName)) {
-        console.warn('❌ Entity name must be lowercase alphanumeric with underscores');
+        console.log('❌ Entity name must be lowercase alphanumeric with underscores');
         continue;
       }
 
@@ -332,7 +332,7 @@ async function createTemplate() {
 
       // Fields
       const fields: FieldConfig[] = [];
-      console.warn('');
+      console.log('');
 
       while (true) {
         const fieldName = (await rl.question("  Field name (or 'done'): ")).trim();
@@ -341,14 +341,14 @@ async function createTemplate() {
         }
 
         if (!/^[a-z][a-zA-Z0-9_]*$/.test(fieldName)) {
-          console.warn('  ❌ Field name must be camelCase or snake_case');
+          console.log('  ❌ Field name must be camelCase or snake_case');
           continue;
         }
 
         const fieldTypeInput = (await rl.question('  Field type [string/number/boolean/enum/array/date/record]: ')).trim().toLowerCase();
         const validTypes = ['string', 'number', 'boolean', 'enum', 'array', 'date', 'record'];
         if (!validTypes.includes(fieldTypeInput)) {
-          console.warn('  ❌ Invalid field type');
+          console.log('  ❌ Invalid field type');
           continue;
         }
 
@@ -362,7 +362,7 @@ async function createTemplate() {
           const enumValuesStr = await promptRequired(rl, '  Enum values (comma-separated)');
           field.enumValues = enumValuesStr.split(',').map(v => v.trim()).filter(v => v);
           if (field.enumValues.length === 0) {
-            console.warn('  ❌ Enum must have at least one value');
+            console.log('  ❌ Enum must have at least one value');
             continue;
           }
         }
@@ -385,7 +385,7 @@ async function createTemplate() {
         }
 
         fields.push(field);
-        console.warn(`  ✓ Added field: ${fieldName}\n`);
+        console.log(`  ✓ Added field: ${fieldName}\n`);
       }
 
       entityTypes.push({
@@ -395,11 +395,11 @@ async function createTemplate() {
         fields,
       });
 
-      console.warn(`✓ Added entity type: ${entityName}\n`);
+      console.log(`✓ Added entity type: ${entityName}\n`);
     }
 
     // 3. Relationship types (optional)
-    console.warn('\n=== Relationship Types (optional) ===\n');
+    console.log('\n=== Relationship Types (optional) ===\n');
     const addRelationships = (await rl.question('Add relationship types? (y/n): ')).trim().toLowerCase();
 
     const relationshipTypes: TemplateDefinition['relationshipTypes'] = [];
@@ -412,7 +412,7 @@ async function createTemplate() {
         }
 
         if (!/^[a-z][a-z0-9_]*$/.test(relId)) {
-          console.warn('❌ Relationship ID must be snake_case');
+          console.log('❌ Relationship ID must be snake_case');
           continue;
         }
 
@@ -445,7 +445,7 @@ async function createTemplate() {
           reverseId,
         });
 
-        console.warn(`✓ Added relationship type: ${relId}`);
+        console.log(`✓ Added relationship type: ${relId}`);
       }
     }
 
@@ -484,14 +484,14 @@ async function createTemplate() {
     const outputPath = resolve(process.cwd(), 'template.json');
     writeFileSync(outputPath, JSON.stringify(template, null, 2));
 
-    console.warn('\n' + '='.repeat(40));
-    console.warn(`\n✓ Template created: ${outputPath}\n`);
-    console.warn('Next steps:');
-    console.warn('  1. Review and edit template.json as needed');
-    console.warn('  2. Validate: npx @hiveforge/hivemind-mcp validate-template');
-    console.warn('  3. Add to config.json or use standalone template.json');
-    console.warn('  4. Consider contributing: https://github.com/hiveforge-sh/hivemind/blob/master/CONTRIBUTING.md');
-    console.warn('');
+    console.log('\n' + '='.repeat(40));
+    console.log(`\n✓ Template created: ${outputPath}\n`);
+    console.log('Next steps:');
+    console.log('  1. Review and edit template.json as needed');
+    console.log('  2. Validate: npx @hiveforge/hivemind-mcp validate-template');
+    console.log('  3. Add to config.json or use standalone template.json');
+    console.log('  4. Consider contributing: https://github.com/hiveforge-sh/hivemind/blob/master/CONTRIBUTING.md');
+    console.log('');
 
     rl.close();
   } catch (error) {
@@ -508,7 +508,7 @@ async function promptRequired(rl: readline.Interface, prompt: string): Promise<s
   while (true) {
     const value = (await rl.question(`${prompt}: `)).trim();
     if (value) return value;
-    console.warn('  ⚠️  This field is required.');
+    console.log('  ⚠️  This field is required.');
   }
 }
 
@@ -518,29 +518,29 @@ async function promptRequired(rl: readline.Interface, prompt: string): Promise<s
 async function addTemplate() {
   const templateArg = process.argv[3];
 
-  console.warn('🧠 Hivemind - Add Template\n');
+  console.log('🧠 Hivemind - Add Template\n');
 
   // Show available templates if no argument
   if (!templateArg) {
-    console.warn('Available templates:\n');
-    console.warn('Built-in:');
-    console.warn('  - worldbuilding     Characters, locations, events, factions, lore');
-    console.warn('  - research          Papers, citations, concepts, notes');
-    console.warn('  - people-management People, goals, teams, 1:1 meetings');
-    console.warn('\nCommunity:');
+    console.log('Available templates:\n');
+    console.log('Built-in:');
+    console.log('  - worldbuilding     Characters, locations, events, factions, lore');
+    console.log('  - research          Papers, citations, concepts, notes');
+    console.log('  - people-management People, goals, teams, 1:1 meetings');
+    console.log('\nCommunity:');
     const communityIds = listCommunityTemplateIds();
     if (communityIds.length === 0) {
-      console.warn('  (no community templates available)');
+      console.log('  (no community templates available)');
     } else {
       for (const id of communityIds) {
         const template = getCommunityTemplate(id);
-        console.warn(`  - ${id.padEnd(20)} ${template?.description || template?.name || ''}`);
+        console.log(`  - ${id.padEnd(20)} ${template?.description || template?.name || ''}`);
       }
     }
-    console.warn('\nUsage:');
-    console.warn('  npx @hiveforge/hivemind-mcp add-template <name>       - Add from registry');
-    console.warn('  npx @hiveforge/hivemind-mcp add-template <url>        - Add from URL');
-    console.warn('  npx @hiveforge/hivemind-mcp add-template <file.json>  - Add from local file');
+    console.log('\nUsage:');
+    console.log('  npx @hiveforge/hivemind-mcp add-template <name>       - Add from registry');
+    console.log('  npx @hiveforge/hivemind-mcp add-template <url>        - Add from URL');
+    console.log('  npx @hiveforge/hivemind-mcp add-template <file.json>  - Add from local file');
     return;
   }
 
@@ -548,7 +548,7 @@ async function addTemplate() {
 
   // Check if it's a URL
   if (templateArg.startsWith('http://') || templateArg.startsWith('https://')) {
-    console.warn(`📥 Fetching template from: ${templateArg}\n`);
+    console.log(`📥 Fetching template from: ${templateArg}\n`);
     try {
       const response = await fetch(templateArg);
       if (!response.ok) {
@@ -572,7 +572,7 @@ async function addTemplate() {
   }
   // Check if it's a local file
   else if (templateArg.endsWith('.json') || existsSync(templateArg)) {
-    console.warn(`📂 Loading template from: ${templateArg}\n`);
+    console.log(`📂 Loading template from: ${templateArg}\n`);
     try {
       template = loadTemplateFile(templateArg);
     } catch (err) {
@@ -589,31 +589,31 @@ async function addTemplate() {
     const registeredTemplate = AVAILABLE_TEMPLATES[templateArg];
     if (!registeredTemplate) {
       console.error(`❌ Template not found: ${templateArg}`);
-      console.warn('\nAvailable templates:');
+      console.log('\nAvailable templates:');
       for (const id of Object.keys(AVAILABLE_TEMPLATES)) {
-        console.warn(`  - ${id}`);
+        console.log(`  - ${id}`);
       }
       process.exit(1);
     }
     template = registeredTemplate;
-    console.warn(`📦 Using template from registry: ${templateArg}\n`);
+    console.log(`📦 Using template from registry: ${templateArg}\n`);
   }
 
   // Show template info
-  console.warn(`Template: ${template.name}`);
-  console.warn(`ID: ${template.id}`);
-  console.warn(`Version: ${template.version}`);
+  console.log(`Template: ${template.name}`);
+  console.log(`ID: ${template.id}`);
+  console.log(`Version: ${template.version}`);
   if (template.description) {
-    console.warn(`Description: ${template.description}`);
+    console.log(`Description: ${template.description}`);
   }
-  console.warn(`\nEntity Types (${template.entityTypes.length}):`);
+  console.log(`\nEntity Types (${template.entityTypes.length}):`);
   for (const et of template.entityTypes) {
-    console.warn(`  - ${et.displayName} (${et.name})`);
+    console.log(`  - ${et.displayName} (${et.name})`);
   }
   if (template.relationshipTypes?.length) {
-    console.warn(`\nRelationship Types (${template.relationshipTypes.length}):`);
+    console.log(`\nRelationship Types (${template.relationshipTypes.length}):`);
     for (const rt of template.relationshipTypes) {
-      console.warn(`  - ${rt.displayName} (${rt.id})`);
+      console.log(`  - ${rt.displayName} (${rt.id})`);
     }
   }
 
@@ -621,10 +621,10 @@ async function addTemplate() {
   const rl = readline.createInterface({ input, output });
 
   try {
-    console.warn('\nHow do you want to add this template?\n');
-    console.warn('  1. Save as standalone template.json (recommended for custom templates)');
-    console.warn('  2. Add to config.json (inline definition)');
-    console.warn('  3. Just set as active template (for built-in/community templates)\n');
+    console.log('\nHow do you want to add this template?\n');
+    console.log('  1. Save as standalone template.json (recommended for custom templates)');
+    console.log('  2. Add to config.json (inline definition)');
+    console.log('  3. Just set as active template (for built-in/community templates)\n');
 
     const choice = await rl.question('Enter choice (1/2/3): ');
 
@@ -635,14 +635,14 @@ async function addTemplate() {
         if (existsSync(outputPath)) {
           const overwrite = await rl.question('template.json already exists. Overwrite? (y/N): ');
           if (overwrite.toLowerCase() !== 'y') {
-            console.warn('Cancelled.');
+            console.log('Cancelled.');
             rl.close();
             return;
           }
         }
         writeFileSync(outputPath, JSON.stringify(template, null, 2));
-        console.warn(`\n✅ Template saved to: ${outputPath}`);
-        console.warn('\nThe template will be automatically loaded when Hivemind starts.');
+        console.log(`\n✅ Template saved to: ${outputPath}`);
+        console.log('\nThe template will be automatically loaded when Hivemind starts.');
         break;
       }
 
@@ -677,7 +677,7 @@ async function addTemplate() {
             `Template "${template.id}" already exists in config. Overwrite? (y/N): `
           );
           if (overwrite.toLowerCase() !== 'y') {
-            console.warn('Cancelled.');
+            console.log('Cancelled.');
             rl.close();
             return;
           }
@@ -690,8 +690,8 @@ async function addTemplate() {
         config.template.activeTemplate = template.id;
 
         writeFileSync(configPath, JSON.stringify(config, null, 2));
-        console.warn(`\n✅ Template added to: ${configPath}`);
-        console.warn(`   Active template set to: ${template.id}`);
+        console.log(`\n✅ Template added to: ${configPath}`);
+        console.log(`   Active template set to: ${template.id}`);
         break;
       }
 
@@ -716,19 +716,19 @@ async function addTemplate() {
         }
 
         writeFileSync(configPath, JSON.stringify(config, null, 2));
-        console.warn(`\n✅ Active template set to: ${template.id}`);
-        console.warn(`   Updated: ${configPath}`);
+        console.log(`\n✅ Active template set to: ${template.id}`);
+        console.log(`   Updated: ${configPath}`);
         break;
       }
 
       default:
-        console.warn('Cancelled.');
+        console.log('Cancelled.');
     }
 
-    console.warn('\nNext steps:');
-    console.warn('  1. Start Hivemind: npx @hiveforge/hivemind-mcp start');
-    console.warn('  2. Create notes with the new entity types');
-    console.warn(`  3. Use MCP tools like query_${template.entityTypes[0]?.name || 'entity'}`);
+    console.log('\nNext steps:');
+    console.log('  1. Start Hivemind: npx @hiveforge/hivemind-mcp start');
+    console.log('  2. Create notes with the new entity types');
+    console.log(`  3. Use MCP tools like query_${template.entityTypes[0]?.name || 'entity'}`);
 
   } finally {
     rl.close();
@@ -739,54 +739,54 @@ async function addTemplate() {
  * List available templates
  */
 async function listTemplates() {
-  console.warn('🧠 Hivemind - Available Templates\n');
+  console.log('🧠 Hivemind - Available Templates\n');
 
-  console.warn('Built-in Templates:');
-  console.warn('─'.repeat(60));
+  console.log('Built-in Templates:');
+  console.log('─'.repeat(60));
 
   const builtinIds = ['worldbuilding', 'research', 'people-management'];
   for (const id of builtinIds) {
     const template = AVAILABLE_TEMPLATES[id];
-    console.warn(`\n  ${template.name} (${template.id})`);
+    console.log(`\n  ${template.name} (${template.id})`);
     if (template.description) {
-      console.warn(`  ${template.description}`);
+      console.log(`  ${template.description}`);
     }
-    console.warn(`  Entity types: ${template.entityTypes.map(e => e.name).join(', ')}`);
+    console.log(`  Entity types: ${template.entityTypes.map(e => e.name).join(', ')}`);
     if (template.category) {
-      console.warn(`  Category: ${template.category}`);
+      console.log(`  Category: ${template.category}`);
     }
     if (template.tags?.length) {
-      console.warn(`  Tags: ${template.tags.join(', ')}`);
+      console.log(`  Tags: ${template.tags.join(', ')}`);
     }
   }
 
-  console.warn('\n\nCommunity Templates:');
-  console.warn('─'.repeat(60));
+  console.log('\n\nCommunity Templates:');
+  console.log('─'.repeat(60));
 
   const communityIds = listCommunityTemplateIds();
   if (communityIds.length === 0) {
-    console.warn('\n  (no community templates available)');
+    console.log('\n  (no community templates available)');
   } else {
     for (const id of communityIds) {
       const template = getCommunityTemplate(id);
       if (template) {
-        console.warn(`\n  ${template.name} (${template.id})`);
+        console.log(`\n  ${template.name} (${template.id})`);
         if (template.description) {
-          console.warn(`  ${template.description}`);
+          console.log(`  ${template.description}`);
         }
-        console.warn(`  Entity types: ${template.entityTypes.map(e => e.name).join(', ')}`);
+        console.log(`  Entity types: ${template.entityTypes.map(e => e.name).join(', ')}`);
         if (template.category) {
-          console.warn(`  Category: ${template.category}`);
+          console.log(`  Category: ${template.category}`);
         }
         if (template.tags?.length) {
-          console.warn(`  Tags: ${template.tags.join(', ')}`);
+          console.log(`  Tags: ${template.tags.join(', ')}`);
         }
       }
     }
   }
 
-  console.warn('\n\nTo add a template:');
-  console.warn('  npx @hiveforge/hivemind-mcp add-template <template-id>');
+  console.log('\n\nTo add a template:');
+  console.log('  npx @hiveforge/hivemind-mcp add-template <template-id>');
 }
 
 /**
@@ -824,7 +824,7 @@ async function generateCatalog() {
   const outputArg = process.argv[3];
   const outputPath = outputArg || './template-catalog.json';
 
-  console.warn('🧠 Hivemind - Generating Template Catalog\n');
+  console.log('🧠 Hivemind - Generating Template Catalog\n');
 
   const catalog: {
     version: string;
@@ -851,15 +851,15 @@ async function generateCatalog() {
   // Write catalog
   writeFileSync(outputPath, JSON.stringify(catalog, null, 2));
 
-  console.warn(`✅ Template catalog generated: ${outputPath}`);
-  console.warn(`   Total templates: ${catalog.templates.length}`);
-  console.warn(`   Built-in: ${builtinIds.length}`);
-  console.warn(`   Community: ${communityTemplates.length}`);
+  console.log(`✅ Template catalog generated: ${outputPath}`);
+  console.log(`   Total templates: ${catalog.templates.length}`);
+  console.log(`   Built-in: ${builtinIds.length}`);
+  console.log(`   Community: ${communityTemplates.length}`);
 
   // Show summary
-  console.warn('\nTemplates included:');
+  console.log('\nTemplates included:');
   for (const entry of catalog.templates) {
-    console.warn(`  - ${entry.name} (${entry.id}) [${entry.source}]`);
+    console.log(`  - ${entry.name} (${entry.id}) [${entry.source}]`);
   }
 }
 
@@ -902,31 +902,31 @@ function templateToCatalogEntry(
 async function checkCompatibility() {
   const templateArg = process.argv[3];
 
-  console.warn('🧠 Hivemind - Template Compatibility Check\n');
+  console.log('🧠 Hivemind - Template Compatibility Check\n');
 
   const hivemindVersion = getHivemindVersion();
-  console.warn(`Hivemind version: ${hivemindVersion}\n`);
+  console.log(`Hivemind version: ${hivemindVersion}\n`);
 
   // If no argument, check all registered templates
   if (!templateArg) {
-    console.warn('Checking all templates:\n');
+    console.log('Checking all templates:\n');
 
     let allCompatible = true;
     for (const [id, template] of Object.entries(AVAILABLE_TEMPLATES)) {
       const result = checkTemplateCompatibility(template.minHivemindVersion, template.version);
       const icon = result.compatible ? '✓' : '✗';
-      console.warn(`  ${icon} ${id} (v${template.version})`);
+      console.log(`  ${icon} ${id} (v${template.version})`);
       if (!result.compatible) {
-        console.warn(`    ${result.message}`);
+        console.log(`    ${result.message}`);
         allCompatible = false;
       }
     }
 
-    console.warn('');
+    console.log('');
     if (allCompatible) {
-      console.warn('✅ All templates are compatible');
+      console.log('✅ All templates are compatible');
     } else {
-      console.warn('⚠️  Some templates have compatibility issues');
+      console.log('⚠️  Some templates have compatibility issues');
     }
     return;
   }
@@ -952,26 +952,26 @@ async function checkCompatibility() {
     }
   } else {
     console.error(`❌ Template not found: ${templateArg}`);
-    console.warn('\nUse "list-templates" to see available templates, or provide a file path.');
+    console.log('\nUse "list-templates" to see available templates, or provide a file path.');
     process.exit(1);
   }
 
   // Check compatibility
   const result = checkTemplateCompatibility(template.minHivemindVersion, template.version);
 
-  console.warn(`Template: ${template.name} (${template.id})`);
-  console.warn(`Template version: ${template.version}`);
+  console.log(`Template: ${template.name} (${template.id})`);
+  console.log(`Template version: ${template.version}`);
   if (template.minHivemindVersion) {
-    console.warn(`Requires Hivemind: >= ${template.minHivemindVersion}`);
+    console.log(`Requires Hivemind: >= ${template.minHivemindVersion}`);
   } else {
-    console.warn('Requires Hivemind: (not specified)');
+    console.log('Requires Hivemind: (not specified)');
   }
-  console.warn('');
+  console.log('');
 
   if (result.compatible) {
-    console.warn(`✅ ${result.message}`);
+    console.log(`✅ ${result.message}`);
   } else {
-    console.warn(`❌ ${result.message}`);
+    console.log(`❌ ${result.message}`);
     process.exit(1);
   }
 }
@@ -1018,35 +1018,35 @@ if (command === '--vault') {
       checkCompatibility();
       break;
     default:
-      console.warn('Hivemind MCP Server\n');
-      console.warn('Usage:');
-      console.warn('  npx @hiveforge/hivemind-mcp init                       - Interactive setup wizard');
-      console.warn('  npx @hiveforge/hivemind-mcp validate [path]            - Validate vault frontmatter');
-      console.warn('    --json           Output machine-readable JSON');
-      console.warn('    --quiet          Suppress output, only set exit code');
-      console.warn('    --skip-missing   Skip files without frontmatter');
-      console.warn('    --ignore <glob>  Exclude files matching pattern');
-      console.warn('  npx @hiveforge/hivemind-mcp start                      - Start the MCP server');
-      console.warn('  npx @hiveforge/hivemind-mcp setup-mcp                  - Generate MCP client config');
-      console.warn('  npx @hiveforge/hivemind-mcp fix [path]                 - Add frontmatter to files (dry-run)');
-      console.warn('    --apply          Apply changes (default: dry-run)');
-      console.warn('    --yes            Skip prompts, use defaults');
-      console.warn('    --json           Output machine-readable JSON');
-      console.warn('    --verbose        Show all files in dry-run');
-      console.warn('    --type <type>    Override folder mapping');
-      console.warn('    --ignore <glob>  Exclude files matching pattern');
-      console.warn('');
-      console.warn('Template commands:');
-      console.warn('  npx @hiveforge/hivemind-mcp list-templates             - List available templates');
-      console.warn('  npx @hiveforge/hivemind-mcp add-template <name|url>    - Add a template');
-      console.warn('  npx @hiveforge/hivemind-mcp create-template            - Create a new template interactively');
-      console.warn('  npx @hiveforge/hivemind-mcp validate-template [file]   - Validate a template file');
-      console.warn('  npx @hiveforge/hivemind-mcp generate-catalog [file]    - Generate template catalog JSON');
-      console.warn('  npx @hiveforge/hivemind-mcp check-compatibility [name] - Check template compatibility');
-      console.warn('');
-      console.warn('Advanced:');
-      console.warn('  npx @hiveforge/hivemind-mcp --vault <path>             - Start with specified vault path');
-      console.warn('  npx @hiveforge/hivemind-mcp --vault .                  - Start with current directory as vault');
+      console.log('Hivemind MCP Server\n');
+      console.log('Usage:');
+      console.log('  npx @hiveforge/hivemind-mcp init                       - Interactive setup wizard');
+      console.log('  npx @hiveforge/hivemind-mcp validate [path]            - Validate vault frontmatter');
+      console.log('    --json           Output machine-readable JSON');
+      console.log('    --quiet          Suppress output, only set exit code');
+      console.log('    --skip-missing   Skip files without frontmatter');
+      console.log('    --ignore <glob>  Exclude files matching pattern');
+      console.log('  npx @hiveforge/hivemind-mcp start                      - Start the MCP server');
+      console.log('  npx @hiveforge/hivemind-mcp setup-mcp                  - Generate MCP client config');
+      console.log('  npx @hiveforge/hivemind-mcp fix [path]                 - Add frontmatter to files (dry-run)');
+      console.log('    --apply          Apply changes (default: dry-run)');
+      console.log('    --yes            Skip prompts, use defaults');
+      console.log('    --json           Output machine-readable JSON');
+      console.log('    --verbose        Show all files in dry-run');
+      console.log('    --type <type>    Override folder mapping');
+      console.log('    --ignore <glob>  Exclude files matching pattern');
+      console.log('');
+      console.log('Template commands:');
+      console.log('  npx @hiveforge/hivemind-mcp list-templates             - List available templates');
+      console.log('  npx @hiveforge/hivemind-mcp add-template <name|url>    - Add a template');
+      console.log('  npx @hiveforge/hivemind-mcp create-template            - Create a new template interactively');
+      console.log('  npx @hiveforge/hivemind-mcp validate-template [file]   - Validate a template file');
+      console.log('  npx @hiveforge/hivemind-mcp generate-catalog [file]    - Generate template catalog JSON');
+      console.log('  npx @hiveforge/hivemind-mcp check-compatibility [name] - Check template compatibility');
+      console.log('');
+      console.log('Advanced:');
+      console.log('  npx @hiveforge/hivemind-mcp --vault <path>             - Start with specified vault path');
+      console.log('  npx @hiveforge/hivemind-mcp --vault .                  - Start with current directory as vault');
       process.exit(command ? 1 : 0);
   }
 }
