@@ -175,27 +175,27 @@ Plans:
 **Plans:** 5 plans
 
 Plans:
-- [ ] 27-01-PLAN.md — Install sigma.js/graphology and create GraphView class skeleton
-- [ ] 27-02-PLAN.md — Wire MCP data loading and sigma.js rendering with ForceAtlas2 layout
-- [ ] 27-03-PLAN.md — Add click-to-open, right-click context menu, and edge labels on hover
-- [ ] 27-04-PLAN.md — Add entity type filtering, relationship filtering, and node search
-- [ ] 27-05-PLAN.md — Add shortest path highlighting, cluster detection, and layout persistence
+- [x] 27-01-PLAN.md — Install sigma.js/graphology and create GraphView class skeleton
+- [x] 27-02-PLAN.md — Wire MCP data loading and sigma.js rendering with ForceAtlas2 layout
+- [x] 27-03-PLAN.md — Add click-to-open, right-click context menu, and edge labels on hover
+- [x] 27-04-PLAN.md — Add entity type filtering, relationship filtering, and node search
+- [x] 27-05-PLAN.md — Add shortest path highlighting, cluster detection, and layout persistence
 
 **Success Criteria:**
-1. User opens graph panel and sees interactive node-link diagram with smooth pan and zoom
-2. Node labels show entity names clearly at default zoom level
-3. Edge labels show relationship types (e.g., "manages", "located_in")
-4. Clicking node opens corresponding note in active pane
-5. Local graph view focuses on one entity plus connected neighbors (not full vault graph)
-6. User filters by entity type and graph updates in real-time without reload
-7. User searches for entity name and matching nodes highlight in graph
-8. User expands/collapses nodes to progressively explore large subgraphs
-9. Nodes styled by entity type with distinct colors and shapes
-10. User selects two nodes and shortest path highlights between them
-11. Clusters auto-detected and visually grouped for dense relationship areas
-12. Workspace mode saves layout configurations and restores on reopen
+1. ✅ User opens graph panel and sees interactive node-link diagram with smooth pan and zoom
+2. ✅ Node labels show entity names clearly at default zoom level
+3. ✅ Edge labels show relationship types (e.g., "manages", "located_in")
+4. ✅ Clicking node opens corresponding note in active pane
+5. ✅ Local graph view focuses on one entity plus connected neighbors (not full vault graph)
+6. ✅ User filters by entity type and graph updates in real-time without reload
+7. ✅ User searches for entity name and matching nodes highlight in graph
+8. ✅ User expands nodes to progressively explore large subgraphs (collapse deferred to future version)
+9. ✅ Nodes styled by entity type with distinct colors and shapes
+10. ✅ User selects two nodes and shortest path highlights between them
+11. ✅ Clusters auto-detected and visually grouped for dense relationship areas
+12. ✅ Workspace mode saves layout configurations and restores on reopen
 
-**Status:** Pending
+**Status:** Complete (2026-01-28)
 
 ---
 
@@ -206,6 +206,13 @@ Plans:
 **Dependencies:** Phase 26, Phase 27
 
 **Requirements:** PLUG-01, PLUG-02, PLUG-03, PLUG-04, PLUG-05, PLUG-06
+
+**Plans:** 3 plans
+
+Plans:
+- [ ] 28-01-PLAN.md — Rewrite README with problem-solution positioning and create MCP setup guide
+- [ ] 28-02-PLAN.md — Add styles.css to release assets and validate manifest/licenses
+- [ ] 28-03-PLAN.md — Prepare submission guide and submit PR to obsidian-releases
 
 **Success Criteria:**
 1. README includes purpose, installation, usage instructions, and screenshots of timeline and graph views
@@ -231,5 +238,5 @@ Plans:
 | 24 | v4.0 | 3/3 | Complete | 2026-01-28 |
 | 25 | v4.0 | 3/3 | Complete | 2026-01-28 |
 | 26 | v4.0 | 3/3 | Complete | 2026-01-28 |
-| 27 | v4.0 | 0/5 | Pending | — |
-| 28 | v4.0 | 0/? | Pending | — |
+| 27 | v4.0 | 5/5 | Complete | 2026-01-28 |
+| 28 | v4.0 | 0/3 | Pending | — |

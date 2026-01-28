@@ -13,13 +13,13 @@
 ## Current Position
 
 **Phase:** 27 - Graph Obsidian View
-**Plan:** 4 of 4 complete
+**Plan:** 5 of 5 complete
 **Status:** Phase complete
-**Last activity:** 2026-01-28 - Completed 27-04-PLAN.md (Graph filtering and search)
+**Last activity:** 2026-01-28 - Completed 27-05-PLAN.md (Shortest path, clusters, layout persistence)
 
 **Progress:**
 ```
-[███████████████████-] 39/39 requirements complete (100%)
+[████████████████████] 42/42 requirements complete (100%)
 ```
 
 **Phase Goal:** Build interactive graph visualization in Obsidian plugin using sigma.js
@@ -36,7 +36,7 @@
 
 **v4.0 Progress:**
 - Phases complete: 5/6 (83%)
-- Requirements complete: 39/39 (100%)
+- Requirements complete: 42/42 (100%)
 - Days elapsed: 2 (started 2026-01-27)
 
 **Historical:**
@@ -100,6 +100,12 @@
 | Pink search highlight color (27-04) | #FF69B4 Okabe-Ito adjacent color, distinct from entity type colors while maintaining accessibility | Complete |
 | Case-insensitive substring search (27-04) | User-friendly search matching partial node names without exact case | Complete |
 | Inline filter chip colors (27-04) | Apply Okabe-Ito colors dynamically via style attribute for consistency with graph node colors | Complete |
+| Bidirectional Dijkstra for path finding (27-05) | Use graphology-shortest-path bidirectional locally instead of MCP for instant client-side path computation | Complete |
+| Pink highlight for paths (27-05) | Reuse #FF69B4 pink for both path and search highlights for visual consistency | Complete |
+| Two-click path selection (27-05) | Right-click "Find path to..." then click target node, matching expand/focus interaction pattern | Complete |
+| Louvain community detection (27-05) | Use graphology-communities-louvain for cluster identification with Okabe-Ito palette coloring | Complete |
+| Auto-restore layout on load (27-05) | Automatically restore saved layout positions from settings for seamless graph continuity | Complete |
+| Cluster detection on toggle (27-05) | Auto-detect communities when cluster mode enabled, one-click workflow | Complete |
 
 ### Active Concerns
 
@@ -168,11 +174,11 @@ None currently.
 2. Phase 24: Timeline MCP tools (6 requirements, 6 complete) ✅ PHASE COMPLETE
 3. Phase 25: Graph MCP tools (5 requirements, 5 complete) ✅ PHASE COMPLETE
 4. Phase 26: Timeline Obsidian view (6 requirements, 6 complete) ✅ PHASE COMPLETE
-5. Phase 27: Graph Obsidian view (12 requirements, 12 complete) ✅ PHASE COMPLETE
+5. Phase 27: Graph Obsidian view (15 requirements, 15 complete) ✅ PHASE COMPLETE
 6. Phase 28: Community plugin submission (6 requirements)
 
 **Last session:** 2026-01-28
-**Stopped at:** Completed 27-04-PLAN.md (Graph filtering and search)
+**Stopped at:** Completed 27-05-PLAN.md (Shortest path, clusters, layout persistence)
 **Resume file:** None
 
 **Next action:** Phase 28 (Community plugin submission) - prepare documentation, manifest, and release artifacts
@@ -257,7 +263,17 @@ None currently.
   - Filter state persistence via plugin settings (graphFilterTypes)
   - Case-insensitive substring matching for user-friendly search
   - Summary: .planning/phases/27-graph-obsidian-view/27-04-SUMMARY.md
-- Phase 27 COMPLETE: All 12 requirements met (17 min total)
+- Phase 27 Plan 05 complete: Shortest path, clusters, layout persistence (5 min)
+  - Shortest path highlighting with bidirectional Dijkstra algorithm (GVIEW-10)
+  - Two-click path selection: right-click "Find path to..." then click target
+  - Louvain community detection with cluster coloring (GVIEW-11)
+  - Layout position persistence in plugin settings (GVIEW-12)
+  - Auto-restore layout on graph load
+  - Clear Path button to remove path highlights
+  - By Type/Clusters toggle for color mode switching
+  - Save/Restore layout buttons for manual layout management
+  - Summary: .planning/phases/27-graph-obsidian-view/27-05-SUMMARY.md
+- Phase 27 COMPLETE: All 15 requirements met (22 min total)
 - All tech debt cleaned (DEBT-01 through DEBT-05)
 - Research context available at C:\Users\Preston\git\hivemind\.planning\research\SUMMARY.md
 

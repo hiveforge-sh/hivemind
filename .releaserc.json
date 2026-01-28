@@ -29,6 +29,10 @@
           {
             "path": "obsidian-plugin/manifest.json",
             "label": "Obsidian Plugin - Manifest"
+          },
+          {
+            "path": "obsidian-plugin/styles.css",
+            "label": "Obsidian Plugin - Styles"
           }
         ]
       }
