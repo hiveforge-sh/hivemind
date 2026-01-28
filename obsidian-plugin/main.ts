@@ -25,6 +25,9 @@ import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Set
 import { spawn, ChildProcess } from 'child_process';
 import { Timeline, DataSet } from 'vis-timeline/standalone';
 import 'vis-timeline/styles/vis-timeline-graph2d.min.css';
+import Graph from 'graphology';
+import Sigma from 'sigma';
+import forceAtlas2 from 'graphology-layout-forceatlas2';
 import { FolderMapper } from '../src/templates/folder-mapper.js';
 import { templateRegistry } from '../src/templates/registry.js';
 import { worldbuildingTemplate } from '../src/templates/builtin/worldbuilding.js';
@@ -108,6 +111,12 @@ export default class HivemindPlugin extends Plugin {
     this.registerView(
       VIEW_TYPE_TIMELINE,
       (leaf) => new TimelineView(leaf, this)
+    );
+
+    // Register graph view
+    this.registerView(
+      VIEW_TYPE_GRAPH,
+      (leaf) => new GraphView(leaf, this)
     );
 
     // Add status bar item
@@ -211,6 +220,14 @@ export default class HivemindPlugin extends Plugin {
       name: 'Open timeline view',
       callback: () => {
         void this.activateTimelineView();
+      }
+    });
+
+    this.addCommand({
+      id: 'open-graph-view',
+      name: 'Open graph view',
+      callback: () => {
+        void this.activateGraphView();
       }
     });
 
@@ -1274,10 +1291,25 @@ export default class HivemindPlugin extends Plugin {
       void this.app.workspace.revealLeaf(leaves[0]);
     }
   }
+
+  activateGraphView() {
+    this.app.workspace.detachLeavesOfType(VIEW_TYPE_GRAPH);
+
+    void this.app.workspace.getRightLeaf(false)?.setViewState({
+      type: VIEW_TYPE_GRAPH,
+      active: true,
+    });
+
+    const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_GRAPH);
+    if (leaves[0]) {
+      void this.app.workspace.revealLeaf(leaves[0]);
+    }
+  }
 }
 
 const VIEW_TYPE_VALIDATION = 'hivemind-validation-sidebar';
 const VIEW_TYPE_TIMELINE = 'hivemind-timeline';
+const VIEW_TYPE_GRAPH = 'hivemind-graph-view';
 
 class ValidationSidebarView extends ItemView {
   plugin: HivemindPlugin;
@@ -1751,6 +1783,51 @@ class TimelineView extends ItemView {
     if (this.timeline) {
       this.timeline.destroy();
       this.timeline = null;
+    }
+  }
+}
+
+class GraphView extends ItemView {
+  plugin: HivemindPlugin;
+  private renderer: Sigma | null = null;
+  private graph: Graph | null = null;
+
+  constructor(leaf: WorkspaceLeaf, plugin: HivemindPlugin) {
+    super(leaf);
+    this.plugin = plugin;
+  }
+
+  getViewType(): string {
+    return VIEW_TYPE_GRAPH;
+  }
+
+  getDisplayText(): string {
+    return 'Hivemind Graph';
+  }
+
+  getIcon(): string {
+    return 'git-branch';
+  }
+
+  async onOpen() {
+    const container = this.containerEl.children[1] as HTMLElement;
+    container.empty();
+    container.addClass('hivemind-graph-view');
+
+    // Placeholder content for now - data loading in 27-02
+    const placeholderEl = container.createDiv({ cls: 'hvmd-graph-placeholder' });
+    placeholderEl.setText('Graph view loading...');
+  }
+
+  async onClose() {
+    // Cleanup renderer to prevent memory leak (per research pitfall #5)
+    if (this.renderer) {
+      this.renderer.kill();
+      this.renderer = null;
+    }
+    if (this.graph) {
+      this.graph.clear();
+      this.graph = null;
     }
   }
 }
