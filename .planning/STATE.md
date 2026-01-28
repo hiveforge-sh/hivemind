@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-01-27)
 
 **Core value:** Consistent AI output. Give any AI tool context from your canon, get results that belong in your world — every time, across every tool.
-**Current focus:** Planning next milestone
+**Current focus:** Defining requirements for v4.0
 
 ## Current Position
 
-**Milestone**: v3.1 (Type Safety & Quality) — SHIPPED
-**Phase**: 22 of 22 (CI Quality Gates) — complete
-**Status**: All milestones complete, ready for next milestone
-**Last activity**: 2026-01-27 — v3.1 milestone archived
+**Milestone**: v4.0 (Temporal & Graph)
+**Phase**: Not started (defining requirements)
+**Status**: Defining requirements
+**Last activity**: 2026-01-27 — Milestone v4.0 started
 
 ## Progress
 
@@ -44,8 +44,8 @@ None currently blocking.
 ## Session Continuity
 
 Last session: 2026-01-27
-Stopped at: v3.1 milestone archived
-Next action: Start next milestone with `/gsd:new-milestone`
+Stopped at: v4.0 milestone started, defining requirements
+Next action: Complete research → requirements → roadmap
 
 ---
-*Updated: 2026-01-27 — v3.1 milestone complete*
+*Updated: 2026-01-27 — v4.0 milestone started*

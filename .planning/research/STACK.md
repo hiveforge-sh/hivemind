@@ -1,1152 +1,518 @@
-# Hivemind Technology Stack Research
+# Stack Research: Hivemind v4.0
 
-**Project**: Hivemind - An MCP Server + Obsidian Vault System for Worldbuilding  
-**Status**: Research & Planning (Updated January 2026)  
-**Scope**: Production-ready technology recommendations for canonical worldbuilding system with AI context integration
+**Project:** Hivemind MCP Server
+**Focus:** Timeline queries, graph visualization, Obsidian community plugin submission
+**Researched:** 2026-01-27
+**Overall Confidence:** HIGH
 
----
+## Executive Summary
 
-## Table of Contents
-
-1. [MCP Server Implementation](#1-mcp-server-implementation-options)
-2. [Obsidian Integration](#2-obsidian-integration)
-3. [Knowledge Graph / RAG Options](#3-knowledge-graph--rag-options)
-4. [Asset Management](#4-asset-management)
-5. [Recommended Stack](#5-recommended-stack)
-6. [Compatibility Matrix](#6-compatibility-matrix)
-7. [Resources & References](#7-resources--references)
+Research focused on stack additions for three new capabilities: timeline/date-range queries, relationship graph visualization, and Obsidian community plugin submission. Key finding: **avoid heavyweight visualization libraries** in the Obsidian plugin to stay under the 5MB Obsidian Sync limit. Recommend lightweight, purpose-built solutions over feature-rich but bloated alternatives.
 
 ---
 
-## 1. MCP Server Implementation Options
+## Recommended Stack Additions
 
-### Overview
+### Timeline Visualization (Obsidian Plugin)
 
-The Model Context Protocol (MCP) is an open standard allowing AI applications to connect to external systems with a structured interface. MCP enables Hivemind's vault to serve as a canonical context source for AI tools, ensuring consistent worldbuilding across generation tools.
+**DO NOT ADD: vis-timeline**
+- Version: 8.5.0
+- License: Apache-2.0 / MIT (dual-licensed) ✓
+- Bundle size: ~300-500KB minified
+- **WHY NOT:** Heavyweight library with features beyond our needs. Contributes to bundle bloat when combined with graph visualization. Risk of exceeding 5MB Obsidian Sync limit.
 
-**Key Insight**: Both TypeScript and Python are production-ready with robust official SDKs. Choice depends on integration preferences and team expertise.
+**RECOMMENDED: Custom Timeline Implementation**
+- **Approach:** Use native DOM + CSS for timeline rendering
+- **Why:**
+  - Zero bundle size impact
+  - Timeline UI is simple: horizontal axis with date markers, vertical items
+  - Full control over styling to match Obsidian's UI
+  - No dependency management
+- **Complexity:** LOW - timelines for knowledge graphs are simpler than project management tools
+- **Integration:** Query MCP server for entities in date range, render in Obsidian view
 
-### 1.1 TypeScript/JavaScript
+**Alternative if custom is inadequate: Timeliner**
+- Version: Latest (lightweight, no npm package)
+- License: MIT-compatible ✓
+- Bundle size: <10KB (entire library embedded in single JS file)
+- Why: Designed for embedding, minimal dependencies, easy styling
+- Source: [GitHub - zz85/timeliner](https://github.com/zz85/timeliner)
 
-**Official SDK**: `@modelcontextprotocol/sdk` (npm)
+### Graph Visualization (Obsidian Plugin)
 
-**Strengths**:
-- **Production-Ready**: Mature TypeScript SDK with strong type safety via Zod schema validation
-- **Web Integration**: Ideal for web-based AI clients and browser environments
-- **Developer Experience**: Strong TypeScript ecosystem, excellent tooling
-- **Transport Flexibility**: Built-in support for stdio and HTTP/SSE transports
-- **Real-time Capabilities**: Natural async/await patterns for long-running operations
-- **Ecosystem**: Broader MCP server examples and community resources (2024-2026)
+**RECOMMENDED: sigma.js + graphology**
 
-**Weaknesses**:
-- Runtime overhead compared to native languages
-- Requires Node.js runtime
-- Less ideal for long-running data processing
+#### sigma.js
+- **Version:** 3.0.2 (latest stable, published March 2024)
+- **License:** MIT ✓
+- **Bundle size:** ~50KB minified + gzipped (estimated, not explicitly documented)
+- **Why needed:**
+  - WebGL-based rendering = handles large graphs (1000+ nodes) performantly
+  - Designed specifically for network visualization (not general charting)
+  - Modern TypeScript codebase with active maintenance (updated Jan 2026)
+  - Significantly faster than Canvas-based alternatives (Cytoscape.js)
+- **Integration:** Render knowledge graph relationships in interactive Obsidian panel
+- **Installation:** `npm install sigma`
+- **Sources:**
+  - [Sigma.js official site](https://www.sigmajs.org/)
+  - [sigma - npm](https://www.npmjs.com/package/sigma)
+  - [Performance comparison](https://weber-stephen.medium.com/the-best-libraries-and-methods-to-render-large-network-graphs-on-the-web-d122ece2f4dc)
 
-**Key Dependencies**:
-```json
+#### graphology
+- **Version:** Latest stable (actively maintained)
+- **License:** MIT ✓
+- **Bundle size:** 11.5KB minified + gzipped
+- **Why needed:**
+  - Required dependency for sigma.js (graph data structure library)
+  - Provides graph manipulation APIs (add/remove nodes, traverse, query)
+  - sigma.js uses graphology as its data backend
+- **Integration:** Build graph structure from MCP relationship data, pass to sigma.js for rendering
+- **Installation:** `npm install graphology`
+- **Sources:**
+  - [Graphology official site](https://graphology.github.io/)
+  - [Bundle size reference](https://bestofjs.org/projects/graphology)
+
+**Combined bundle impact:** ~60-70KB minified + gzipped - acceptable for Obsidian plugin
+
+**Why NOT Cytoscape.js:**
+- Version: 3.33.1
+- License: MIT ✓
+- **Performance issues:** Users report ~1000 nodes + ~5000 edges causes browser overload
+- **Architecture:** Canvas-based, no WebGL, no multithreading support
+- **Documentation:** Better than sigma.js, but not worth performance cost
+- **Use case mismatch:** Designed for biological/scientific graphs, overkill for knowledge graphs
+- **Source:** [Cytoscape.js vs sigma.js comparison](https://javascriptio.com/view/1032021/cytoscape-js-large-data-performance-vs-sigma-js)
+
+**Why NOT D3.js:**
+- Requires custom graph layout implementation
+- Steeper learning curve for network visualization
+- Larger bundle size when including necessary modules
+- Sigma.js is purpose-built for exactly our use case
+
+**Why NOT vis-network:**
+- Version: 10.0.2
+- License: Apache-2.0 ✓
+- Paired with vis-timeline creates excessive bundle size
+- Sigma.js has superior performance for large graphs
+- Adds ~400-600KB to bundle (estimated)
+
+### MCP Server: Timeline Query Support
+
+**NO NEW DEPENDENCIES REQUIRED**
+
+Existing stack handles this:
+- **SQLite + better-sqlite3:** Already supports date range queries via WHERE clauses
+- **Zod:** Already validates date fields in schemas
+- **TypeScript:** Type-safe date handling
+
+**Implementation approach:**
+- Add MCP tool: `query_entities_by_date_range(entity_type, start_date, end_date, date_field)`
+- SQL: `SELECT * FROM entities WHERE date_field BETWEEN ? AND ? ORDER BY date_field`
+- Return structured JSON for Obsidian plugin to render
+
+### MCP Server: Graph Traversal Support
+
+**NO NEW DEPENDENCIES REQUIRED**
+
+Existing stack handles this:
+- **SQLite:** Already stores relationships table
+- **Recursive CTEs:** SQLite supports graph traversal queries
+- **better-sqlite3:** Handles complex queries efficiently
+
+**Implementation approach:**
+- Add MCP tool: `get_relationship_graph(entity_id, depth, relationship_types?)`
+- Use recursive CTE to traverse relationships up to N levels
+- Return nodes + edges in format compatible with graphology
+
+**Example SQL:**
+```sql
+WITH RECURSIVE graph(id, depth) AS (
+  SELECT entity_id, 0 FROM relationships WHERE entity_id = ?
+  UNION ALL
+  SELECT r.related_id, g.depth + 1
+  FROM relationships r JOIN graph g ON r.entity_id = g.id
+  WHERE g.depth < ?
+)
+SELECT * FROM graph;
+```
+
+---
+
+## Obsidian Community Plugin Submission Requirements
+
+### Build & Bundle Configuration
+
+**Current setup (GOOD):**
+- esbuild for bundling ✓
+- TypeScript compilation ✓
+- External dependencies properly declared ✓
+- Production build creates minified main.js ✓
+
+**Required files for submission:**
+1. **manifest.json** - Must include: id, name, version, minAppVersion, description, author
+2. **main.js** - Bundled plugin code (keep under 5MB for Obsidian Sync compatibility)
+3. **styles.css** - Optional styling
+4. **LICENSE** - Required for new plugins (MIT recommended, already in project)
+5. **README.md** - Must describe plugin purpose and usage
+
+**Version management:**
+- Git tag must exactly match manifest.json version (e.g., `1.0.0` not `v1.0.0`)
+- Use semantic versioning
+- Update versions.json for backward compatibility tracking
+
+**Sources:**
+- [Submit your plugin - Obsidian Developer Docs](https://docs.obsidian.md/Plugins/Releasing/Submit+your+plugin)
+- [Submission requirements](https://docs.obsidian.md/Plugins/Releasing/Submission+requirements+for+plugins)
+- [GitHub - obsidian-releases](https://github.com/obsidianmd/obsidian-releases)
+
+### Submission Process
+
+1. **Prepare repository:**
+   - Ensure LICENSE file exists (MIT ✓ - already in project)
+   - Create GitHub release with exact version tag matching manifest.json
+   - Release must include: manifest.json, main.js, styles.css (if used)
+
+2. **Submit to obsidian-releases:**
+   - Fork https://github.com/obsidianmd/obsidian-releases
+   - Edit community-plugins.json, add entry at end:
+     ```json
+     {
+       "id": "hivemind-obsidian",
+       "name": "Hivemind MCP",
+       "author": "HiveForge",
+       "description": "MCP integration for knowledge management with timeline and graph visualization",
+       "repo": "hiveforge-sh/hivemind"
+     }
+     ```
+   - Open pull request using submission checklist template
+   - Wait for automated validation (checks manifest match, release files, etc.)
+
+3. **Review process:**
+   - Review may take several weeks due to high volume
+   - Reviewers check for: code quality, security, proper externals, no "Obsidian" in name
+   - May request changes or improvements
+   - Once approved, plugin appears in community list
+
+**Key validation rules:**
+- id, name, description must match between community-plugins.json and manifest.json
+- No "Obsidian" in plugin name (redundant)
+- GitHub release tag must exactly match version in manifest.json
+- main.js must be present in release
+
+**Source:** [Plugin submission process](https://github.com/obsidianmd/obsidian-releases/pulls)
+
+### Bundle Size Constraints
+
+**CRITICAL: 5MB Obsidian Sync Limit**
+- Obsidian Sync has a 5MB per-file limit
+- Plugin main.js files exceeding 5MB cannot sync for paying users
+- Example: Excalidraw plugin (~8MB) fails to sync for Obsidian Sync users
+- **Best practice:** Keep main.js under 2MB for headroom
+- **Production builds:** Must minify (esbuild with `--minify` in production mode ✓)
+
+**Current Obsidian plugin main.js size:** Unknown (need to measure after sigma.js addition)
+
+**Estimated impact of additions:**
+- sigma.js: ~50KB
+- graphology: ~11.5KB
+- Custom timeline (no library): 0KB
+- **Total new dependencies:** ~60-70KB (well within budget)
+
+**Mitigation if size becomes issue:**
+- Use esbuild's tree-shaking (already enabled ✓)
+- Ensure production builds exclude sourcemaps (already configured ✓)
+- Consider code-splitting if main.js exceeds 3MB (unlikely with current plan)
+
+**Sources:**
+- [Excalidraw 5MB issue](https://github.com/zsviczian/obsidian-excalidraw-plugin/issues/2349)
+- [Obsidian Sync file size limits](https://help.obsidian.md/Plans+and+storage+limits)
+- [Plugin minification discussion](https://forum.obsidian.md/t/plugin-js-minification/82011)
+
+---
+
+## What NOT to Add
+
+### vis-timeline (for timeline visualization)
+**Why avoid:**
+- Bundle size: ~300-500KB minified
+- Features overkill: Designed for complex project timelines with zoom, pan, drag-drop editing
+- Our use case: Simple chronological view of entities with dates
+- **Verdict:** Custom implementation with native DOM is 0KB and sufficient
+
+### vis-network (for graph visualization)
+**Why avoid:**
+- Bundle size: ~400-600KB minified (estimated)
+- Performance: Canvas-based, slower than WebGL alternatives
+- Pairing with vis-timeline creates ~1MB bundle overhead
+- sigma.js is faster, lighter, better for knowledge graphs
+- **Verdict:** sigma.js + graphology is superior choice
+
+### Cytoscape.js (for graph visualization)
+**Why avoid:**
+- Performance issues: Struggles with 1000+ nodes
+- Architecture limitations: No WebGL, no multithreading
+- Use case mismatch: Designed for biological/chemical networks
+- sigma.js is demonstrably faster for large graphs
+- **Verdict:** Performance cost not justified despite better documentation
+
+### D3.js (for either timeline or graph)
+**Why avoid:**
+- Massive bundle size if including necessary modules
+- Requires significant custom implementation
+- Steeper learning curve
+- Purpose-built alternatives (sigma.js, custom timeline) are simpler
+- **Verdict:** Overkill for our specific needs
+
+### Chart.js / ECharts / Highcharts (general charting libraries)
+**Why avoid:**
+- Designed for statistical charts (bar, line, pie), not network graphs
+- No built-in graph layout algorithms
+- Would require custom graph rendering implementation
+- **Verdict:** Wrong tool for the job
+
+### React/Vue/Svelte frameworks (for Obsidian plugin UI)
+**Why avoid:**
+- Obsidian uses its own component system
+- Adding framework adds 50-100KB+ to bundle
+- Framework overhead unnecessary for plugin views
+- **Verdict:** Use Obsidian's native APIs (already in place ✓)
+
+### moment.js (for date handling)
+**Why avoid:**
+- Massive bundle size (~70KB minified)
+- Native JavaScript Date + Intl APIs are sufficient
+- Modern browsers support date formatting natively
+- **Verdict:** No date library needed
+
+### axios (for HTTP in MCP server)
+**Why avoid:**
+- Project already uses native fetch ✓
+- No HTTP client needed for plugin (uses MCP protocol over stdio)
+- **Verdict:** Already avoided correctly
+
+### gray-matter (for frontmatter parsing in plugin)
+**Why avoid:**
+- Project milestone context says "native frontmatter parsing (no gray-matter)"
+- Obsidian provides native APIs for reading frontmatter
+- Adding external parser adds bundle size unnecessarily
+- **Verdict:** Use Obsidian's built-in APIs
+
+---
+
+## Integration Notes
+
+### Obsidian Plugin Architecture
+
+**Current external dependencies (from esbuild.config.mjs):**
+- obsidian (core API)
+- electron
+- @codemirror/* (editor integration)
+- @lezer/* (syntax parsing)
+- builtin Node modules
+
+**New additions integrate as:**
+1. **sigma.js + graphology:** Bundled into main.js (not external)
+   - Import in graph view component
+   - Initialize sigma renderer with canvas element
+   - Populate graphology graph from MCP data
+   - Attach to Obsidian ItemView for panel display
+
+2. **Custom timeline:** Native code (no imports)
+   - Implement in timeline view component
+   - Use DOM manipulation (document.createElement, etc.)
+   - Style with CSS (bundled into styles.css)
+   - Query MCP for date range data
+
+### MCP Server Architecture
+
+**No dependencies added** - use existing stack:
+- SQLite: Add new query patterns (date ranges, graph traversal)
+- better-sqlite3: Execute complex queries efficiently
+- Zod: Validate date inputs for new MCP tools
+- @modelcontextprotocol/sdk: Register new tools (query_by_date_range, get_relationship_graph)
+
+**New MCP tools:**
+```typescript
+// Add to tool generator
 {
-  "@modelcontextprotocol/sdk": "^1.x",
-  "zod": "^3.x",
-  "typescript": "^5.x"
+  name: "query_entities_by_date_range",
+  inputSchema: {
+    entity_type: z.string(),
+    start_date: z.string().datetime(),
+    end_date: z.string().datetime(),
+    date_field: z.string()
+  }
 }
-```
 
-**Installation**:
-```bash
-npm install @modelcontextprotocol/sdk zod
-```
-
-**Documentation**:
-- Official Docs: https://modelcontextprotocol.io/docs/sdk
-- TypeScript SDK Repo: https://github.com/modelcontextprotocol/typescript-sdk
-- FreeCodeCamp Guide: https://www.freecodecamp.org/news/how-to-build-a-custom-mcp-server-with-typescript-a-handbook-for-developers/
-
-### 1.2 Python
-
-**Official SDK**: `modelcontextprotocol` (PyPI)
-
-**Strengths**:
-- **Data-Centric Design**: Excellent for processing vault data, embeddings, and complex transformations
-- **ML Integration**: Native support for vector operations, RAG pipelines, Neo4j queries
-- **Rapid Development**: Quick prototyping and iteration
-- **Maturity**: Stable Python SDK with full MCP spec compliance
-- **System Integration**: Better for shell commands, file processing, native library integration
-
-**Weaknesses**:
-- Less optimized for real-time HTTP serving
-- Heavier memory footprint for long-running processes
-- Dependency management complexity in production
-
-**Key Dependencies**:
-```txt
-modelcontextprotocol>=0.4.0
-pydantic>=2.0
-aiohttp>=3.9
-```
-
-**Installation**:
-```bash
-pip install modelcontextprotocol pydantic aiohttp
-```
-
-**Documentation**:
-- Official Docs: https://modelcontextprotocol.io/docs/sdk
-- Python SDK Repo: https://github.com/modelcontextprotocol/python-sdk
-- MCP Tutorials: https://modelcontextprotocol.info/docs/tutorials/
-
-### 1.3 Framework Recommendations
-
-#### For Hivemind (TypeScript Preferred)
-
-**Primary**: **Express.js** or **Hono** (lightweight framework)
-- Reason: Simple HTTP routing for MCP resources and tools
-- Plays well with TypeScript and async operations
-- Lightweight for containerization
-
-**Alternative**: **Fastify**
-- Better performance benchmarks than Express
-- Built-in TypeScript support
-
-**Code Structure**:
-```
-mcp-server/
-├── src/
-│   ├── server.ts           # MCP server initialization
-│   ├── resources/          # Resource handlers (vault data)
-│   ├── tools/              # Tool handlers (queries, generation)
-│   ├── prompts/            # Prompt templates
-│   └── types/              # Shared TypeScript types
-├── tsconfig.json
-├── package.json
-└── dist/                   # Compiled output
-```
-
-#### For Hivemind (Python Alternative)
-
-**Primary**: **FastAPI** with `httpx` for HTTP transport
-- Modern, async-first design
-- Excellent TypedDict/Pydantic integration
-- Better for embedding vector databases
-
-**Alternative**: **Starlette** (FastAPI's foundation)
-- Minimal overhead
-- Full async support
-
-### 1.4 Transport Layers
-
-**For Hivemind Use Cases**:
-
-| Transport | Best For | Implementation |
-|-----------|----------|-----------------|
-| **stdio** | Local development, Claude Desktop | Native subprocess |
-| **HTTP + SSE** | Remote AI clients, cloud deployment | Express/FastAPI endpoint |
-| **HTTP Polling** | Firewalled environments | Simple HTTP POST/GET |
-
-**Recommendation**: Start with stdio for development, add HTTP/SSE for cloud/remote scenarios.
-
-### 1.5 Performance Considerations
-
-- **Typical Latency**: <100ms for MCP resource queries
-- **Concurrent Users**: Single MCP server can handle 10-100 concurrent AI clients
-- **Memory**: ~50-100MB base, +10-20MB per active context
-- **Scalability**: Consider multiple server instances behind load balancer if >100 concurrent users
-
----
-
-## 2. Obsidian Integration
-
-### Overview
-
-Obsidian serves as the canonical vault—a sophisticated markdown-based knowledge base with rich metadata capabilities. The vault structure directly influences how the MCP server queries and returns canonical data.
-
-### 2.1 Vault Structure & Organization
-
-**Recommended Hierarchy** (for worldbuilding):
-
-```
-vault/
-├── 00-INDEX/              # Table of contents, starting points
-│   └── README.md
-├── Worlds/                # Multiple world support
-│   ├── GreatWorld/
-│   │   ├── 01-Overview.md
-│   │   ├── 02-Geography/
-│   │   │   ├── Continents/
-│   │   │   ├── Regions/
-│   │   │   └── Locations/
-│   │   ├── 03-Cultures/
-│   │   ├── 04-Characters/
-│   │   ├── 05-History/
-│   │   │   ├── Timeline.md
-│   │   │   └── Events/
-│   │   ├── 06-Systems/
-│   │   │   ├── Magic/
-│   │   │   ├── Technology/
-│   │   │   └── Politics/
-│   │   └── 07-Assets/     # Related images, workflows
-├── Templates/             # Consistent note structure
-│   ├── character.md
-│   ├── location.md
-│   ├── event.md
-│   └── faction.md
-├── Assets/                # Generated images, ComfyUI workflows
-│   ├── images/
-│   ├── comfyui-workflows/
-│   └── generation-logs/
-└── Meta/                  # Configuration, research, drafts
-    ├── vault-config.yaml
-    └── research/
-```
-
-**Key Principles**:
-1. **Canonical Folder**: Use `/Worlds/{WorldName}/` as the primary domain for each fictional world
-2. **Numbered Sections**: 01-, 02- prefixes for sequential discovery
-3. **Wiki-links**: Use `[[Link Format]]` abundantly for cross-references
-4. **Relative Assets**: Keep images and workflows near their source notes
-
-### 2.2 Metadata & Frontmatter Standards
-
-**YAML Frontmatter Format** (top of every note):
-
-```yaml
----
-title: Character Name or Location Title
-type: character|location|event|faction|system|artifact
-world: GreatWorld
-created: 2026-01-24
-updated: 2026-01-24
-tags: [magic, nobility, warrior, main-character]
-status: canon|draft|wip|archived
-canon_authority: high|medium|low
-relationships:
-  - [[RelatedCharacter]]
-  - [[RelatedLocation]]
-aliases:
-  - Alternative Name 1
-  - Alternative Name 2
----
-```
-
-**Field Definitions**:
-
-| Field | Type | Purpose | MCP Use |
-|-------|------|---------|---------|
-| `title` | string | Display name | Primary identifier |
-| `type` | enum | Entity classification | Filtering & retrieval |
-| `world` | string | World namespace | Multi-world support |
-| `created` | ISO 8601 | Creation timestamp | Versioning |
-| `updated` | ISO 8601 | Last modification | Cache invalidation |
-| `tags` | list | Free-form categorization | Cross-cutting concerns |
-| `status` | enum | Canonicity level | Content filtering |
-| `canon_authority` | enum | Authority ranking | Conflict resolution |
-| `relationships` | list | Wiki-links | Graph traversal |
-| `aliases` | list | Alternative names | Query expansion |
-
-**Canonical Status Definitions**:
-- **canon**: Fully established, immutable
-- **draft**: Under development, subject to change
-- **wip**: Work in progress, experimental
-- **archived**: Superseded or deprecated
-
-**Canon Authority Levels** (for conflict resolution):
-- **high**: Core established canon (cannot be changed by AI)
-- **medium**: Established but can be extended
-- **low**: Provisional, subject to revision
-
-### 2.3 Dataview Plugin Integration
-
-**Installation**: Built into modern Obsidian (>v1.4) or install from Community Plugins
-
-**Purpose**: Dynamic querying of vault frontmatter, enabling canonical context generation
-
-**Essential Queries** (for MCP):
-
-1. **List all characters in a location**:
-```dataview
-table title, status, aliases
-from "Worlds/GreatWorld/04-Characters"
-where contains(relationships, "[[Current Location]]")
-```
-
-2. **Timeline of events**:
-```dataview
-table title, date, description
-from "Worlds/GreatWorld/05-History/Events"
-sort date asc
-```
-
-3. **Canon completeness report**:
-```dataview
-table type, status, canon_authority
-from "Worlds/GreatWorld"
-where status != "archived"
-group by type
-```
-
-4. **Entity index**:
-```dataview
-list rows.title
-from "Worlds/GreatWorld"
-where type != null
-group by type
-```
-
-### 2.4 Plugin Ecosystem
-
-**Recommended Plugins** (for Hivemind):
-
-| Plugin | Purpose | MCP Relevance |
-|--------|---------|---------------|
-| **Dataview** | YAML querying, dynamic lists | Core—enables structured queries |
-| **Templater** | Auto-populate new notes | Consistency enforcement |
-| **Canvas** | Visual relationship mapping | Knowledge graph visualization |
-| **Admonitions** | Rich callout formatting | Better frontmatter presentation |
-| **Obsidian Git** | Version control integration | Audit trail & collaboration |
-| **Folder Note** | Create index notes for folders | Navigation & discovery |
-| **Tag Wrangler** | Tag management & renaming | Metadata cleanup |
-| **Breadcrumbs** | Hierarchical navigation | Explicit parent-child relationships |
-
-**Optional for AI Integration**:
-- **Copilot**: Local AI suggestions (complements MCP)
-- **Smart Typography**: Consistent formatting
-
-### 2.5 Markdown Conventions
-
-**Document Structure** (recommended):
-
-```markdown
----
-[YAML frontmatter as above]
----
-
-# Title
-
-> [!info]
-> **Type**: Character | Location | Event
-> **World**: GreatWorld
-> **Canon Authority**: High
-> **Status**: Canon
-
-## Overview
-Brief summary (1-2 sentences)
-
-## Details
-Main content organized by sections
-
-### Subsection
-Detailed information
-
-### Relationships
-- [[RelatedEntity1]]: relationship type
-- [[RelatedEntity2]]: relationship type
-
-### Timeline
-- Date: Event description
-- Date: Event description
-
-### Assets
-- ![Image Caption](../Assets/images/filename.png)
-- Workflow: [[ComfyUI Workflow Name]]
-
----
-Last updated: 2026-01-24
-```
-
-**Best Practices**:
-1. Use H2 (##) for major sections, H3 (###) for subsections
-2. Embedded images with relative paths for portability
-3. Ample wiki-links to create knowledge graph
-4. Consistent section naming across similar entities
-5. Never use complex nested YAML (Dataview limitation)
-
-### 2.6 Compatibility Requirements
-
-**Minimum Obsidian Version**: v1.4.0+
-- Required for Dataview performance
-- Canvas support for visual mapping
-
-**Required APIs**:
-- Vault API (file reading)
-- Metadata API (frontmatter access)
-- DataviewAPI (query execution)
-
-**Obsidian Sync Considerations**:
-- Vault should be Git-backed for version control
-- Assets should be included in Git (or use Git LFS for large files)
-- `.obsidian/` folder can be excluded from sync
-
----
-
-## 3. Knowledge Graph / RAG Options
-
-### Overview
-
-The knowledge graph serves two purposes:
-1. **Query Engine**: Fast retrieval of canonical facts during AI context generation
-2. **Context Augmentation**: Multi-hop relationships to provide comprehensive context
-
-Hivemind uses a **hybrid approach**: explicit relationships from Obsidian + graph traversal for inference.
-
-### 3.1 Neo4j GraphRAG (Recommended)
-
-**What It Is**: Neo4j database + vector embeddings + LangChain integration
-
-**Architecture**:
-```
-Obsidian Vault (markdown)
-        ↓
-   MCP Server (Python)
-        ↓
-  Python GraphRAG SDK
-        ↓
-   Neo4j Database
-     (graph nodes)
-        ↓
-  Vector Index (embeddings)
-        ↓
-AI Client (receives augmented context)
-```
-
-**Strengths**:
-- **Hybrid Retrieval**: Combines structural queries (relationships) + semantic search (vectors)
-- **Explainability**: Trace exactly which facts were retrieved
-- **Relationship Inference**: Discover multi-hop connections (e.g., "characters in locations affected by events")
-- **Performance**: Fast traversal of 10K-100K nodes/relationships
-- **Production-Ready**: Widely used in enterprise RAG systems (2024-2026)
-- **Managed Option**: Neo4j Aura (cloud) or self-hosted
-
-**Weaknesses**:
-- Operational overhead (requires running Neo4j instance)
-- Learning curve (Cypher query language)
-- Requires embedding pipeline (extract entities, generate vectors)
-
-**Setup**:
-
-```python
-from neo4j_graphrag_python import GraphRAG
-from neo4j import GraphDatabase
-
-driver = GraphDatabase.driver(
-    "bolt://localhost:7687",
-    auth=("neo4j", "password")
-)
-
-rag = GraphRAG(
-    driver=driver,
-    embedding_provider="openai",  # or your preferred provider
-)
-
-# Retrieve context for a character
-context = rag.retrieve(
-    query="What are the political alliances of House Stark?",
-    top_k=5
-)
-```
-
-**Key Resources**:
-- GitHub: https://github.com/neo4j/neo4j-graphrag-python
-- Docs: https://neo4j.com/docs/neo4j-graphrag-python/current/
-- Tutorial: https://neo4j.com/blog/developer/rag-tutorial/
-- Neo4j + AWS: https://docs.aws.amazon.com/architecture-diagrams/latest/knowledge-graphs-and-graphrag-with-neo4j/
-
-**Deployment Options**:
-
-| Option | Cost | Operations | Scale |
-|--------|------|-----------|-------|
-| **Neo4j Community (self-hosted)** | Free | DIY | <100K nodes |
-| **Neo4j AuraDB (managed)** | $100-500/mo | Minimal | 1M+ nodes |
-| **Docker Container** | Free | Moderate | <500K nodes |
-
-**Recommended Setup for Hivemind**: Docker container initially, AuraDB for production scale.
-
-### 3.2 Lightweight Alternatives
-
-#### Memgraph
-
-**Best For**: Real-time analysis, lighter deployment footprint
-
-**Strengths**:
-- Neo4j-compatible Cypher queries
-- In-memory performance (low latency)
-- Embeddable C++ core
-- Open-source
-
-**Weaknesses**:
-- Smaller community than Neo4j
-- Less mature vector integration
-
-**Use Case**: If you need <5ms query latency and can fit graph in RAM.
-
-#### ArangoDB
-
-**Best For**: Multi-model needs (graph + document + key-value)
-
-**Strengths**:
-- Native graph + document storage
-- ACID transactions
-- Embeddable version available
-- Simpler schema flexibility
-
-**Weaknesses**:
-- AQL is less standard than Cypher
-- Smaller RAG ecosystem
-
-**Use Case**: If you need flexible schema evolution and mixed data models.
-
-#### Embedded SQLite + Custom Graph Layer
-
-**Best For**: Single-user, development-stage vaults
-
-**Strengths**:
-- Zero operational overhead
-- No external dependencies
-- Portable (single file)
-
-**Weaknesses**:
-- Manual relationship traversal
-- Limited query optimization
-- Doesn't scale beyond 10K nodes
-
-**Use Case**: Prototype/MVP validation only.
-
-### 3.3 Vector Database (If Standalone Needed)
-
-**Decision**: Only use if NOT using GraphRAG hybrid approach.
-
-**Recommended Options**:
-- **Pinecone**: Managed, simple API
-- **Weaviate**: Open-source, semantic search
-- **Milvus**: Self-hosted, high-performance
-- **Chroma**: Lightweight, local-first
-
-**For Hivemind**: Skip pure vector DB. Use Neo4j GraphRAG instead (superior for worldbuilding context).
-
-### 3.4 Embedding Models
-
-**For WorldBuilding Context** (specialized):
-
-| Model | Provider | Context Length | Specialization |
-|-------|----------|-----------------|-----------------|
-| **text-embedding-3-large** | OpenAI | 8192 tokens | General (good baseline) |
-| **UAE-Large-V1** | OpenAI | 256 tokens | High-quality, efficient |
-| **Llama 2 Embeddings** | Meta | 4096 tokens | Open-source alternative |
-| **bge-large-en-v1.5** | BAAI | 512 tokens | Domain-focused, efficient |
-
-**Recommendation for Hivemind**: Start with **text-embedding-3-large** (OpenAI), migrate to **bge-large-en-v1.5** (open-source) if cost/privacy becomes concern.
-
-**Pipeline**:
-```python
-from openai import OpenAI
-
-client = OpenAI()
-
-# Chunk Obsidian notes into embeddings
-chunks = split_markdown_into_chunks(vault_notes)
-
-for chunk in chunks:
-    embedding = client.embeddings.create(
-        model="text-embedding-3-large",
-        input=chunk["content"]
-    )
-    # Store in Neo4j
-    store_embedding_in_neo4j(
-        chunk_id=chunk["id"],
-        embedding=embedding.data[0].embedding,
-        metadata=chunk["metadata"]
-    )
-```
-
-### 3.5 Hybrid Search Implementation
-
-**Query Flow** (recommended):
-
-```python
-def retrieve_context(query: str, world: str = "GreatWorld"):
-    """Retrieve canonical context for AI augmentation."""
-    
-    # Step 1: Structural query (exact matches)
-    structural_results = neo4j_query(
-        f"""
-        MATCH (n:Entity)-[r:RELATED_TO]-(m:Entity)
-        WHERE n.world = $world AND n.name CONTAINS $query
-        RETURN n, r, m LIMIT 10
-        """,
-        {"world": world, "query": query}
-    )
-    
-    # Step 2: Semantic query (vector similarity)
-    query_embedding = embed(query)
-    semantic_results = neo4j_vector_search(
-        embedding=query_embedding,
-        world=world,
-        top_k=5
-    )
-    
-    # Step 3: Merge and rank
-    combined = deduplicate_and_rank(
-        structural_results,
-        semantic_results,
-        boost_structural=1.2
-    )
-    
-    return combined[:10]
-```
-
----
-
-## 4. Asset Management
-
-### Overview
-
-Assets include:
-1. **Generated Images** (from ComfyUI or similar)
-2. **ComfyUI Workflows** (JSON configurations)
-3. **Reference Images** (inspiration, reference photos)
-4. **Generation Logs** (metadata, provenance)
-
-### 4.1 File Organization
-
-**Recommended Structure**:
-
-```
-vault/
-├── Worlds/
-│   └── GreatWorld/
-│       ├── 07-Assets/
-│       │   ├── characters/
-│       │   │   ├── stark-lord.png
-│       │   │   ├── stark-lady.png
-│       │   │   └── stark-heir.png
-│       │   ├── locations/
-│       │   │   ├── winterfell-main-gate.png
-│       │   │   ├── winterfell-throne-room.png
-│       │   │   └── winterfell-landscape.png
-│       │   └── references/
-│       │       ├── medieval-castles/
-│       │       └── winter-imagery/
-│       │
-│       └── 08-Generation/
-│           ├── workflows/
-│           │   ├── character-portrait-v1.json
-│           │   ├── location-panorama-v2.json
-│           │   └── assets-index.md
-│           └── logs/
-│               ├── 2026-01-24-stark-lord-portrait.json
-│               └── 2026-01-24-winterfell-exterior.json
-└── Assets/
-    └── shared-reference-images/
-```
-
-**Key Principles**:
-1. **Generated Images**: Paired with reference metadata
-2. **Workflows**: Separate from generated outputs
-3. **Logs**: Track generation parameters and timestamps
-4. **Relative Paths**: All image links use relative paths (`../Assets/images/filename.png`)
-
-### 4.2 Image Storage Patterns
-
-**For Each Generated Image**:
-
-Create a companion metadata note:
-
-```yaml
----
-title: Character Portrait - Lord Stark
-type: asset
-asset_type: character-portrait
-character: [[Lord Stark]]
-location: [[Winterfell]]
-created: 2026-01-24T14:32:00Z
-generation_model: ComfyUI-flux-1-dev
-workflow_version: character-portrait-v1
-generation_log: ../Generation/logs/2026-01-24-stark-lord-portrait.json
-tags: [character, portrait, canon-reference]
-status: canon
----
-
-![Lord Stark Portrait](../Assets/characters/stark-lord.png)
-
-## Generation Details
-Generated using workflow `character-portrait-v1.json`
-
-## References
-- [[Lord Stark]] character page
-- Referenced from medieval nobility paintings
-```
-
-**Storage Limits**:
-- Keep individual images <5MB (PNG compression)
-- Use Git LFS for image files if vault > 500MB
-- Archive old generations annually
-
-### 4.3 ComfyUI Workflow Storage
-
-**Workflow File Format**:
-
-```json
 {
-  "meta": {
-    "title": "Character Portrait Generator",
-    "description": "Generates realistic character portraits with consistent style",
-    "version": "1.0",
-    "comfyui_version": "0.1.3",
-    "created": "2026-01-24",
-    "updated": "2026-01-24",
-    "author": "Hivemind",
-    "tags": ["character", "portrait", "flux"]
-  },
-  "workflow": {
-    // Standard ComfyUI node graph
-    // See: https://docs.comfy.org/specs/workflow_json
-  },
-  "generation_settings": {
-    "model": "flux-1-dev",
-    "sampler": "euler",
-    "steps": 30,
-    "cfg_scale": 7.5,
-    "seed": -1,
-    "recommended_prompts": [
-      "Portrait of a noble warrior, detailed, fantasy art"
-    ]
+  name: "get_relationship_graph",
+  inputSchema: {
+    entity_id: z.string(),
+    depth: z.number().min(1).max(5),
+    relationship_types: z.array(z.string()).optional()
   }
 }
 ```
 
-**Storage Location**: `Worlds/{World}/08-Generation/workflows/{workflow-name}.json`
-
-**Versioning**: Use semantic versioning (`v1.0`, `v1.1`, etc.)
-
-**Documentation**: Each workflow should have a companion markdown file:
-
-```markdown
-# Character Portrait Workflow v1.0
-
-## Overview
-Generates realistic character portraits using Flux-1-dev model.
-
-## Usage
-1. Load workflow in ComfyUI
-2. Set character description in prompt
-3. Adjust CFG scale (7-9 for consistency, 5-7 for variation)
-4. Run generation
-
-## Parameters
-- **Model**: Flux-1-dev
-- **Sampler**: Euler (or dpmpp_2m_sde)
-- **Steps**: 30-50 (recommended 35)
-- **CFG Scale**: 7.5 (adjustable)
-
-## Output
-Generates 1024x1024 PNG images
-
-## Requirements
-- ComfyUI with Flux nodes installed
-- CUDA or Metal support for GPU acceleration
-
----
-Last Updated: 2026-01-24
-```
-
-### 4.4 Generation Settings Provenance
-
-**MCP Tool Output** (include with every generation):
-
-```python
-@server.call_tool()
-async def generate_character_portrait(arguments: dict):
-    """Generate character portrait with full provenance."""
-    
-    character_name = arguments["character_name"]
-    world = arguments["world"]
-    
-    # Load character canonical data
-    character = vault.get_entity(character_name, world)
-    
-    # Generate image via ComfyUI
-    result = await comfyui_client.generate(
-        workflow_file=f"workflows/character-portrait-v1.json",
-        prompt_params={
-            "character_description": character["description"],
-            "setting": character.get("location", "generic"),
-            "style": "realistic, fantasy, detailed"
-        }
-    )
-    
-    # Record provenance
-    provenance = {
-        "timestamp": datetime.now().isoformat(),
-        "character": character_name,
-        "world": world,
-        "workflow_version": "1.0",
-        "comfyui_version": comfyui_client.version,
-        "workflow_file": "workflows/character-portrait-v1.json",
-        "prompt_used": result.prompt,
-        "seed": result.seed,
-        "image_path": f"Assets/characters/{character_name.lower()}.png",
-        "canonical_reference": f"[[{character_name}]]"
-    }
-    
-    # Store provenance log
-    vault.save_generation_log(provenance)
-    
-    return {
-        "image_url": result.image_path,
-        "provenance": provenance
-    }
-```
-
-**Log File Storage**:
+### Data Flow
 
 ```
-Worlds/GreatWorld/08-Generation/logs/
-├── 2026-01-24-stark-lord-portrait.json
-├── 2026-01-24-stark-lady-portrait.json
-└── 2026-01-24-winterfell-exterior.json
+Timeline Query Flow:
+User (Obsidian)
+  → Obsidian plugin timeline view
+  → MCP request (query_entities_by_date_range)
+  → MCP server SQLite query
+  → JSON response (entities with dates)
+  → Obsidian plugin renders custom timeline
+
+Graph Query Flow:
+User (Obsidian)
+  → Obsidian plugin graph view
+  → MCP request (get_relationship_graph)
+  → MCP server recursive CTE query
+  → JSON response (nodes + edges)
+  → Plugin builds graphology graph
+  → sigma.js renders in WebGL canvas
 ```
 
-**Log Format**:
+### Build Process Integration
 
-```json
-{
-  "timestamp": "2026-01-24T14:32:00Z",
-  "character": "Lord Stark",
-  "world": "GreatWorld",
-  "workflow_version": "character-portrait-v1",
-  "comfyui_version": "0.1.3",
-  "prompt_used": "Portrait of a noble warrior...",
-  "seed": 12345,
-  "image_path": "../Assets/characters/stark-lord.png",
-  "canonical_reference": "[[Lord Stark]]",
-  "model": "flux-1-dev",
-  "generation_time_seconds": 45,
-  "parameters": {
-    "steps": 35,
-    "cfg_scale": 7.5,
-    "sampler": "euler"
-  }
-}
-```
+**No changes needed to MCP server build:**
+- Uses existing TypeScript → dist/ pipeline
+- No new dependencies to compile
 
-### 4.5 File Organization Best Practices
+**Obsidian plugin build modifications:**
+1. Add sigma + graphology to package.json dependencies
+2. esbuild automatically bundles them into main.js
+3. Keep existing externals (obsidian, electron, codemirror)
+4. Production build minifies automatically ✓
 
-**Image Naming Convention**:
-```
-{entity-type}-{entity-name}-{variant}-{version}.{ext}
-character-stark-lord-portrait-v1.png
-location-winterfell-exterior-v2.png
-event-battle-of-trident-concept-v1.png
-```
+**Bundle size monitoring:**
+- Run `npm run build` in production mode
+- Check main.js file size: `ls -lh obsidian-plugin/main.js`
+- **Target:** Keep under 2MB (currently unknown, measure after implementation)
+- **Hard limit:** Stay under 5MB for Obsidian Sync compatibility
 
-**Cleanup Procedures**:
-1. **Monthly**: Archive workflow iterations >6 months old
-2. **Quarterly**: Review generation logs for failed attempts
-3. **Yearly**: Consolidate similar assets, delete duplicates
-4. **Version Control**: Use Git commits for asset metadata changes
+### Testing Strategy
 
-**Backup Strategy**:
-- Daily: Automatic via Git commits (including assets)
-- Weekly: Full vault backup to cloud storage (AWS S3, Backblaze)
-- Monthly: Offline backup on external drive
+**MCP Server:**
+- Add Vitest tests for date range queries
+- Test recursive CTE graph traversal with mock data
+- Validate JSON output format for graphology compatibility
+
+**Obsidian Plugin:**
+- Manual testing in development vault
+- Test with large graphs (1000+ nodes) to verify sigma.js performance
+- Test timeline with various date ranges and formats
+- Verify bundle size stays under limits
+
+### License Compatibility
+
+**All recommendations are MIT or Apache-2.0 licensed:**
+- sigma.js: MIT ✓
+- graphology: MIT ✓
+- Project license: MIT ✓
+- **CI gate:** No GPL/AGPL dependencies ✓
+
+**No license compliance issues expected.**
 
 ---
 
-## 5. Recommended Stack
+## Version Matrix
 
-### 5.1 Primary Recommendation (Hivemind Canonical)
+| Dependency | Version | License | Bundle Impact | Purpose |
+|------------|---------|---------|---------------|---------|
+| sigma | 3.0.2 | MIT | ~50KB | Graph rendering (WebGL) |
+| graphology | latest | MIT | ~11.5KB | Graph data structure |
+| **Total new** | - | - | **~60-70KB** | Graph visualization |
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Hivemind Architecture                     │
-├─────────────────────────────────────────────────────────────┤
-│                                                               │
-│  ┌──────────────────┐                                        │
-│  │  Obsidian Vault  │  Source of Truth                       │
-│  │  (Markdown +     │  ├─ World canonical data               │
-│  │   Frontmatter)   │  ├─ Character/Location details         │
-│  │                  │  ├─ History & Events                   │
-│  │                  │  └─ Asset metadata                     │
-│  └────────┬─────────┘                                        │
-│           │                                                   │
-│           │ Git + Local Sync                                 │
-│           │                                                   │
-│  ┌────────▼──────────────────────────────────────────┐       │
-│  │     MCP Server (TypeScript/Node.js)               │       │
-│  ├────────────────────────────────────────────────────┤       │
-│  │ Core Modules:                                      │       │
-│  │ ├─ Vault Indexer (watches markdown changes)       │       │
-│  │ ├─ MCP Resources (vault entities)                 │       │
-│  │ ├─ MCP Tools (query, generate, validate)          │       │
-│  │ ├─ Neo4j Sync (graph updates from markdown)       │       │
-│  │ └─ Asset Manager (image/workflow handling)        │       │
-│  │                                                    │       │
-│  │ Transport: stdio (local) + HTTP/SSE (cloud)      │       │
-│  └────────┬────────────┬────────────┬────────────────┘       │
-│           │            │            │                        │
-│           │            │            └──────────────┐         │
-│           │            │                           │         │
-│  ┌────────▼────┐  ┌───▼──────┐  ┌──────────────┐ │         │
-│  │ Neo4j Graph │  │  Dataview │  │  ComfyUI API │ │         │
-│  │   Database  │  │  Queries  │  │  Integration │ │         │
-│  │             │  │           │  │              │ │         │
-│  │ • Entities  │  │ • Index   │  │ • Generate   │ │         │
-│  │ • Relations │  │ • Report  │  │ • Validate   │ │         │
-│  │ • Vectors   │  │           │  │ • Log        │ │         │
-│  └─────────────┘  └───────────┘  └──────────────┘ │         │
-│                                                    │         │
-│  ┌────────────────────────────────────────────────▼─┐       │
-│  │        AI Client Integration Layer                │       │
-│  ├──────────────────────────────────────────────────┤       │
-│  │ Claude API │ ChatGPT API │ Local LLM │ Custom   │       │
-│  └──────────────────────────────────────────────────┘       │
-│                                                               │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### 5.2 Stack Components
-
-| Layer | Component | Technology | Version | Rationale |
-|-------|-----------|-----------|---------|-----------|
-| **Vault** | Source of Truth | Obsidian | 1.4.0+ | Rich metadata, community support |
-| **Server** | MCP Runtime | TypeScript/Node | 20+ | Type safety, performance, MCP support |
-| **Framework** | HTTP Server | Express.js | 4.18+ | Simplicity, maturity, middleware ecosystem |
-| **Graph DB** | Knowledge Graph | Neo4j | 5.10+ | GraphRAG, Cypher, proven at scale |
-| **Embedding** | Vector Store | Neo4j Vector Index | 5.17+ | Integrated with Neo4j, no separate DB |
-| **Query Engine** | Dataview | Dataview Plugin | Latest | Dynamic vault queries, metadata |
-| **Asset Gen** | Image Generation | ComfyUI | 0.1.3+ | Workflow-based, reproducible, community nodes |
-| **Storage** | Version Control | Git + GitHub | - | Audit trail, collaboration, backups |
-| **Monitoring** | Observability | Winston Logger | 3.x | Structured logging for MCP events |
-
-### 5.3 Full Technology Details
-
-**Server Dependencies (package.json)**:
-
-```json
-{
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0",
-    "express": "^4.18.2",
-    "zod": "^3.22.4",
-    "pydantic": "^2.5.0",
-    "neo4j": "^5.16.0",
-    "axios": "^1.6.2",
-    "winston": "^3.11.0",
-    "dotenv": "^16.3.1",
-    "yaml": "^2.3.4"
-  },
-  "devDependencies": {
-    "typescript": "^5.3.3",
-    "@types/node": "^20.10.6",
-    "tsx": "^4.7.0"
-  }
-}
-```
-
-**Environment Configuration (.env)**:
-
-```env
-# Obsidian Vault
-VAULT_PATH=/path/to/obsidian/vault
-VAULT_WORLD=GreatWorld
-
-# Neo4j
-NEO4J_URI=bolt://localhost:7687
-NEO4J_USER=neo4j
-NEO4J_PASSWORD=<secure-password>
-
-# MCP Server
-MCP_PORT=3000
-MCP_TRANSPORT=stdio|http
-
-# OpenAI (for embeddings)
-OPENAI_API_KEY=<api-key>
-
-# ComfyUI
-COMFYUI_API_URL=http://localhost:8188
-COMFYUI_WORKFLOW_PATH=/path/to/workflows
-
-# Logging
-LOG_LEVEL=info
-LOG_FILE=./logs/hivemind.log
-```
-
-**Database Schema (Neo4j Cypher)**:
-
-```cypher
-// Create indexes for performance
-CREATE INDEX entity_world FOR (e:Entity) ON (e.world, e.name);
-CREATE INDEX entity_type FOR (e:Entity) ON (e.type);
-CREATE TEXT INDEX entity_text FOR (e:Entity) ON (e.description);
-CREATE VECTOR INDEX entity_embedding 
-  FOR (e:Entity) ON (e.embedding) 
-  OPTIONS {indexConfig: {
-    `vector.dimensions`: 1536,
-    `vector.similarity_function`: 'cosine'
-  }};
-
-// Define node labels and properties
-CALL apoc.schema.assert({Entity: ['world', 'name', 'type', 'status']}, {}, true)
-```
-
-### 5.4 Deployment Topology
-
-**Development**:
-- Obsidian: Local file sync
-- MCP Server: stdio on developer machine
-- Neo4j: Docker container (local)
-- ComfyUI: Optional local instance
-
-**Production**:
-- Obsidian: GitHub-backed vault (private repo)
-- MCP Server: Docker container on VPS/K8s
-- Neo4j: AuraDB (managed cloud)
-- ComfyUI: Serverless API (RunComfy or similar)
-- Assets: S3 + CloudFront CDN
+**Existing dependencies (unchanged):**
+- better-sqlite3: 12.6.2 (MIT)
+- zod: 4.3.6 (MIT)
+- @modelcontextprotocol/sdk: 1.0.4 (MIT)
+- obsidian: latest (Obsidian API)
+- esbuild: 0.27.2 (MIT)
+- TypeScript: 5.3.3 (Apache-2.0)
 
 ---
 
-## 6. Compatibility Matrix
+## Next Steps for Implementation
 
-### Version Support Timeline
+1. **Add dependencies to Obsidian plugin:**
+   ```bash
+   cd obsidian-plugin
+   npm install sigma graphology
+   ```
 
-| Component | Current | Tested With | Support Until |
-|-----------|---------|-------------|---------------|
-| Obsidian | 1.5.x | MCP 0.4.x | 2027-01 |
-| MCP SDK (TS) | 1.0.x | Node 20 LTS | 2025-06 |
-| Neo4j | 5.17.x | GraphRAG 0.2.x | 2026-10 |
-| TypeScript | 5.3.x | Node 20 | 2026-01 |
-| ComfyUI | 0.1.3+ | API stable | Ongoing |
+2. **Verify bundle size:**
+   ```bash
+   npm run build
+   ls -lh main.js
+   ```
+   - If over 2MB, investigate tree-shaking or code-splitting
+   - If over 5MB, reconsider library choices
 
-### Breaking Changes (Known)
+3. **Implement MCP tools in server:**
+   - Add date range query tool
+   - Add graph traversal tool
+   - Update tool generator to register new tools
 
-1. **Dataview Plugin**: May require syntax updates in Obsidian 1.6+ (monitor GitHub)
-2. **Neo4j 5.x → 6.x** (2026): Will require code updates for new query API
-3. **MCP 1.0 → 2.0** (2026): Expected, backward compatibility likely
+4. **Implement Obsidian views:**
+   - Create TimelineView component (custom implementation)
+   - Create GraphView component (sigma.js + graphology)
+   - Register views in plugin main.ts
 
-### Migration Path
+5. **Test integration:**
+   - Query MCP from Obsidian plugin
+   - Render timeline with real data
+   - Render graph with real relationships
 
-```
-Current (2026-01)
-    ↓ [v1.0 Release]
-Stable (2026-06)
-    ↓ [Neo4j 5.17 LTS]
-Long-term Support (2026-2027)
-    ↓ [MCP 2.0 Preview]
-Next Generation (2027)
-```
-
----
-
-## 7. Resources & References
-
-### Official Documentation
-
-**MCP (Model Context Protocol)**:
-- Main Docs: https://modelcontextprotocol.io/docs
-- TypeScript SDK: https://github.com/modelcontextprotocol/typescript-sdk
-- Python SDK: https://github.com/modelcontextprotocol/python-sdk
-- SDK Reference: https://modelcontextprotocol.io/docs/sdk
-
-**Obsidian**:
-- Help Vault: https://help.obsidian.md
-- Markdown Guide: https://www.markdownguide.org/tools/obsidian/
-- Developer API: https://docs.obsidian.md/Home
-- Community Plugins: https://obsidian.md/plugins
-
-**Dataview**:
-- GitHub: https://github.com/blacksmithgu/obsidian-dataview
-- Query Language: https://blacksmithgu.github.io/obsidian-dataview/
-- Example Vault: https://s-blu.github.io/obsidian_dataview_example_vault/
-
-**Neo4j GraphRAG**:
-- Python Package: https://github.com/neo4j/neo4j-graphrag-python
-- Documentation: https://neo4j.com/docs/neo4j-graphrag-python/current/
-- Tutorial: https://neo4j.com/blog/developer/rag-tutorial/
-- With AWS: https://docs.aws.amazon.com/architecture-diagrams/latest/knowledge-graphs-and-graphrag-with-neo4j/
-
-**ComfyUI**:
-- Official Repo: https://github.com/comfyanonymous/ComfyUI
-- Workflow Specs: https://docs.comfy.org/specs/workflow_json
-- Manager: https://github.com/ltdrdata/ComfyUI-Manager
-- Workflows: https://comfyworkflows.com
-
-### Community Resources
-
-**Worldbuilding with Obsidian**:
-- witchka's Templates: https://github.com/witchka/Obsidian-Worldbuilding-Templates
-- Uluscri's Templates: https://uluscri.itch.io/uluscris-worldbuilding-templates
-- YouTube Guides: Search "Obsidian worldbuilding tutorial"
-
-**MCP Ecosystem**:
-- MCP Hub: https://www.mcphub.ai
-- Community Servers: https://github.com/modelcontextprotocol
-- Tutorials: https://modelcontextprotocol.info/docs/tutorials/
-
-**Articles & Guides** (2024-2026):
-- "How to Build an MCP Server with TypeScript" - FreeCodeCamp
-- "Setting Up GraphRAG with Neo4j" - Analytics Vidhya
-- "YAML Frontmatter Best Practices in Obsidian" - Various community guides
-- "ComfyUI Production Playbook" - Cohorte Projects
+6. **Prepare for submission:**
+   - Ensure manifest.json is correct
+   - Create GitHub release with exact version tag
+   - Submit PR to obsidian-releases repository
 
 ---
 
-## Appendix: Quick Start Configuration
+## Risk Assessment
 
-### Minimal Setup (Development)
-
-**Prerequisites**:
-- Node.js 20+
-- Obsidian 1.4.0+
-- Docker (for Neo4j)
-- Git
-
-**Steps**:
-
-```bash
-# 1. Clone Hivemind repository
-git clone https://github.com/yourusername/hivemind.git
-cd hivemind
-
-# 2. Install dependencies
-npm install
-
-# 3. Start Neo4j (Docker)
-docker run -d \
-  --name neo4j \
-  -p 7687:7687 \
-  -e NEO4J_AUTH=neo4j/password \
-  neo4j:5.17
-
-# 4. Configure .env
-cp .env.example .env
-# Edit .env with your paths and Neo4j credentials
-
-# 5. Build TypeScript
-npm run build
-
-# 6. Start MCP server
-npm run dev
-
-# 7. Open Obsidian, point vault to your world
-# Configure MCP client to connect to stdio://./dist/server.js
-```
-
-### Production Checklist
-
-- [ ] Neo4j AuraDB instance created
-- [ ] Obsidian vault on GitHub (private)
-- [ ] MCP server containerized (Docker)
-- [ ] Asset storage configured (S3)
-- [ ] Logging to CloudWatch/ELK
-- [ ] Monitoring alerts set up
-- [ ] Backup strategy documented
-- [ ] CI/CD pipeline configured
-- [ ] Load testing completed
-- [ ] Security audit passed
+| Risk | Likelihood | Impact | Mitigation |
+|------|------------|--------|------------|
+| Bundle size exceeds 5MB | LOW | HIGH | Monitor size, already under budget with current plan |
+| sigma.js documentation gaps | MEDIUM | LOW | Active community, TypeScript types available, examples exist |
+| Graph performance with 10K+ nodes | LOW | MEDIUM | sigma.js designed for this scale, fallback: pagination or filtering |
+| Obsidian plugin rejection | LOW | MEDIUM | Follow submission checklist, existing plugin structure is solid |
+| Date query performance on large vaults | LOW | LOW | SQLite indexed queries are fast, existing FTS5 proves performance |
 
 ---
 
-**Document Status**: ✅ Complete - January 24, 2026  
-**Last Updated**: 2026-01-24  
-**Maintainer**: Hivemind Team  
-**Version**: 1.0.0
+## Sources
+
+**Timeline Libraries:**
+- [vis-timeline npm](https://www.npmjs.com/package/vis-timeline)
+- [Lightweight timeline alternatives](https://themeselection.com/javascript-timeline-library/)
+- [Timeliner GitHub](https://github.com/zz85/timeliner)
+
+**Graph Libraries:**
+- [sigma.js official](https://www.sigmajs.org/)
+- [graphology official](https://graphology.github.io/)
+- [Performance comparison: sigma.js vs Cytoscape.js](https://weber-stephen.medium.com/the-best-libraries-and-methods-to-render-large-network-graphs-on-the-web-d122ece2f4dc)
+- [Cytoscape.js npm](https://www.npmjs.com/package/cytoscape)
+- [Graph library comparison](https://memgraph.com/blog/you-want-a-fast-easy-to-use-and-popular-graph-visualization-tool)
+
+**Obsidian Plugin Submission:**
+- [Submit your plugin - Obsidian Docs](https://docs.obsidian.md/Plugins/Releasing/Submit+your+plugin)
+- [Submission requirements](https://docs.obsidian.md/Plugins/Releasing/Submission+requirements+for+plugins)
+- [obsidian-releases GitHub](https://github.com/obsidianmd/obsidian-releases)
+- [Plugin guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines)
+
+**Bundle Size & Performance:**
+- [Excalidraw 5MB issue](https://github.com/zsviczian/obsidian-excalidraw-plugin/issues/2349)
+- [Obsidian Sync limits](https://help.obsidian.md/Plans+and+storage+limits)
+- [Bundle size monitoring](https://bundlephobia.com/)
+- [Graphology bundle size](https://bestofjs.org/projects/graphology)
+
+**Build Configuration:**
+- [Obsidian sample plugin](https://github.com/obsidianmd/obsidian-sample-plugin)
+- [esbuild plugin for Obsidian](https://github.com/eth-p/esbuild-plugin-obsidian)
+- [Plugin development workflow](https://medium.com/@lukasbach/a-more-streamlined-development-workflow-for-obsidian-plugins-2a74b0c57c0f)

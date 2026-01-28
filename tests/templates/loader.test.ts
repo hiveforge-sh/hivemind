@@ -68,30 +68,9 @@ describe('Template Loader', () => {
       expect(found).toBeNull();
     });
 
-    it('should return null when no config file exists', () => {
-      const originalCwd = process.cwd();
-      process.chdir(tempDir);
-      try {
-        const found = findConfigFile();
-        // May find module config in development, but shouldn't crash
-        expect(found === null || typeof found === 'string').toBe(true);
-      } finally {
-        process.chdir(originalCwd);
-      }
-    });
-
-    it('should find config.json in current working directory', () => {
-      const configPath = writeConfig({ template: { activeTemplate: 'worldbuilding' } });
-      const originalCwd = process.cwd();
-      process.chdir(tempDir);
-      try {
-        const found = findConfigFile();
-        // Use realpathSync to handle macOS symlinks (/var -> /private/var)
-        expect(realpathSync(found!)).toBe(realpathSync(configPath));
-      } finally {
-        process.chdir(originalCwd);
-      }
-    });
+    // Note: Tests for cwd-based discovery removed - use explicit paths in tests
+    // to avoid process.chdir() which causes issues with Stryker parallel workers.
+    // The function still supports cwd-based discovery in production usage.
   });
 
   describe('loadTemplateConfig', () => {

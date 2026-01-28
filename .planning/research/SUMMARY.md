@@ -1,183 +1,311 @@
 # Project Research Summary
 
-**Project:** Hivemind v3.0 Developer Experience Milestone
-**Domain:** CLI tooling, frontmatter management, Obsidian plugin commands
-**Researched:** 2026-01-26
+**Project:** Hivemind v4.0 - Timeline Queries, Graph Visualization, Obsidian Community Plugin Submission
+**Domain:** Knowledge management MCP server with temporal and relational query capabilities
+**Researched:** 2026-01-27
 **Confidence:** HIGH
 
 ## Executive Summary
 
-The Hivemind v3.0 Developer Experience milestone focuses on improving setup, validation, and frontmatter management across CLI and Obsidian plugin interfaces. The existing codebase is well-positioned with foundational CLI commands (`init`, `validate`, `fix`) and Obsidian plugin infrastructure already in place. The research reveals that this is primarily a refinement effort: adding safety features (dry-run, non-interactive flags), unifying duplicated code between CLI and plugin, and enhancing discoverability of existing capabilities.
+Hivemind v4.0 adds three complementary capabilities to an existing MCP server + Obsidian plugin system: timeline queries for temporal exploration, graph visualization for relationship discovery, and community plugin submission for distribution. The recommended approach prioritizes **lightweight, purpose-built solutions** over feature-rich libraries to maintain the sub-5MB bundle size required for Obsidian Sync compatibility.
 
-The recommended approach is to add two small dependencies (@inquirer/prompts for interactive wizards, picocolors for terminal styling), extract shared frontmatter logic into common modules, and enhance existing commands with safety and automation features. The existing architecture is sound; no structural changes are needed.
+The critical insight: **avoid heavyweight visualization libraries**. Use sigma.js + graphology (~60KB) for graph visualization with WebGL rendering to handle 1000+ node vaults. Build custom timeline visualization with native DOM/CSS (0KB overhead) rather than vis-timeline (~500KB). This keeps the plugin lean while delivering performant visualizations. For the MCP server, no new dependencies are needed—existing SQLite with recursive CTEs handles timeline queries and graph traversal efficiently.
 
-The primary risks are destructive operations without confirmation (users running `fix --all` and modifying hundreds of files unexpectedly), silent failures in validation (users trusting output that masked errors), and Obsidian MetadataCache race conditions (reading stale data after writes). These are all preventable with dry-run defaults, explicit outcome reporting, and careful async handling.
-
----
+Key risks center on **date timezone handling** (ambiguous YAML dates cause cross-timezone query inconsistencies), **SQLite date query performance** (requires dedicated indexed columns, not JSON extraction), and **Obsidian plugin review requirements** (manifest version mismatches, child_process usage needs justification, bundle size limits). All are mitigatable with proper indexing, ISO8601 UTC standardization, and disciplined dependency management backed by existing v3.1 CI gates for license compliance.
 
 ## Key Findings
 
 ### Recommended Stack
 
-The existing stack requires only two additions. The core technologies (gray-matter for frontmatter parsing, Zod for validation, Node.js readline for prompts) are adequate but could benefit from targeted enhancements.
+The research strongly recommends **sigma.js + graphology** for graph visualization and **custom timeline implementation** for temporal views, both integrated into the existing Obsidian plugin. The MCP server requires no new dependencies—existing SQLite handles temporal and graph queries.
 
-**Stack additions:**
-- **@inquirer/prompts** (v8.2.0): Interactive CLI wizard prompts with validation, select menus, and TypeScript support. Replaces verbose readline/promises usage. 3.7M+ weekly downloads, ESM-native.
-- **picocolors** (v1.1.1): Terminal output styling. 7KB vs chalk's 101KB. Zero dependencies. Used by PostCSS and other popular tools.
+**Core stack additions:**
+- **sigma.js (v3.0.2)**: WebGL-based graph rendering for 1000+ node performance — MIT licensed, ~50KB minified, significantly faster than Canvas-based alternatives (Cytoscape.js, vis-network)
+- **graphology (latest)**: Graph data structure required by sigma.js — MIT licensed, ~11.5KB minified, provides manipulation APIs for building graphs from MCP relationship data
+- **Custom timeline (native DOM + CSS)**: Zero bundle impact timeline rendering — Avoids vis-timeline's 300-500KB overhead, timelines for knowledge graphs are simple enough for native implementation
 
-**What NOT to add:**
-- commander.js: Current custom CLI is sufficient for scope
-- ora (spinners): Init wizard is synchronous, no spinners needed
-- Additional YAML libraries: gray-matter handles YAML internally
-- Obsidian plugin dependencies: Existing API fully supports required commands
+**Critical constraint:** Obsidian Sync has a 5MB per-file limit. The Excalidraw plugin (~8MB) fails to sync for paying users. Current Obsidian plugin main.js is ~150KB. Adding sigma.js + graphology adds ~60-70KB (well within budget), while vis-timeline + vis-network would add ~1-1.5MB (dangerous territory).
+
+**Rejected alternatives:**
+- vis-timeline/vis-network: Too heavy (~1MB combined), features beyond needs
+- Cytoscape.js: Performance issues at 1000+ nodes, Canvas-based (no WebGL)
+- D3.js: Requires custom implementation, steeper learning curve, larger bundle
+- React/Vue/Svelte: Obsidian uses native APIs, framework overhead unnecessary
 
 ### Expected Features
 
-**Table stakes (users expect these):**
-- Interactive prompts with sensible defaults
-- Non-interactive mode via flags (`--yes`, `--config`)
-- Detect and warn before overwriting existing config
-- Validate config and report errors clearly
-- Dry-run mode for batch operations
-- Progress feedback during operations
-- Clear error messages with recovery hints
-- Obsidian command palette access (Ctrl+P)
+Based on analysis of existing Obsidian timeline/graph plugins and knowledge management tools, features fall into three clear tiers.
 
-**Differentiators (competitive advantage):**
-- Preview diff before write ("Will add 47 frontmatter blocks to Characters/")
-- Template-aware frontmatter generation (correct fields per entity type)
-- Smart defaults inferred from content (name from H1, tags from text)
-- Folder mapping configuration (user-defined folder-to-type mappings)
-- MCP client config auto-detection (Claude Desktop, Cursor)
-- Obsidian modal for entity type selection (GUI over numbered list)
+**Must have (table stakes):**
+- Date range filtering (MCP tool) — Standard query pattern for temporal data, low complexity
+- Graph node-link diagram with pan/zoom — Standard graph representation, libraries provide this
+- Local graph view (focus on one entity) — Users expect to explore connections incrementally
+- ISO date format support (YYYY-MM-DD) — Dataview/Obsidian compatibility requirement
+- Click navigation (graph/timeline → note) — Core UX expectation in Obsidian ecosystem
+- Filter by entity type — Basic organization for multi-template vaults
 
-**Defer to v4+:**
-- Batch CSV import for metadata
-- Real-time validation feedback (as user types)
-- Schema autocomplete (language server integration)
-- Undo/rollback support with backup history
+**Should have (differentiators):**
+- Typed relationship edges — Hivemind's unique value: show "manages" vs "allies_with" vs "located_in" semantically
+- MCP graph traversal tools — AI can query "who is connected to X?" programmatically
+- Visual timeline view in Obsidian — See temporal relationships at a glance (not just raw query results)
+- Expand/collapse graph nodes — Progressive disclosure for large vaults
+- Custom node styling by type — Different colors/shapes for characters vs locations vs events
+
+**Defer to v2+ (anti-features for MVP):**
+- Timeline editing/dragging — Introduces data mutation complexity, vault is source of truth
+- Custom calendar systems — Scope creep (D&D 13-month years), use ISO dates only
+- 3D graph visualization — Gimmick with poor UX, 2D with good layout is superior
+- Graph editing (drag edges, create nodes) — Source of truth conflicts with markdown
+- Real-time collaborative editing — Complex CRDT/OT, out of scope for single-user vault model
 
 ### Architecture Approach
 
-The architecture research confirms clear component boundaries supporting DX features. The critical insight is significant code duplication between CLI and Obsidian plugin that should be consolidated.
+The architecture follows a **hybrid search strategy** combining vector RAG (semantic relevance) with GraphRAG (structured relationships), both served via MCP tools and visualized in the Obsidian plugin. Timeline and graph capabilities layer on top of existing vault-to-SQLite infrastructure without breaking current functionality.
 
 **Major components:**
-1. **CLI (src/cli.ts)** - Command entry points for init, validate, fix, setup-mcp
-2. **Template Registry (src/templates/registry.ts)** - Entity type definitions and field schemas
-3. **Folder Mapper (src/templates/folder-mapper.ts)** - Path-to-type inference logic
-4. **Obsidian Plugin (obsidian-plugin/main.ts)** - Standalone plugin with duplicated folder/frontmatter logic
+1. **MCP Timeline Tools** — New tools (query_entities_by_date_range) built on existing SQLite schema with dedicated date columns for indexing performance, returns JSON for visualization
+2. **MCP Graph Traversal** — New tools (get_relationship_graph) using SQLite recursive CTEs to traverse relationships up to N levels, outputs graphology-compatible format
+3. **Obsidian Timeline View** — Custom ItemView component using native DOM rendering, queries MCP for date-range data, renders chronological items with filtering
+4. **Obsidian Graph View** — ItemView with sigma.js renderer, queries MCP for subgraphs, renders in WebGL canvas with expand/collapse and type-based styling
+5. **Incremental Indexing** — Extend existing file watcher to extract date fields into dedicated SQLite columns (not JSON blobs) for query performance
 
-**Recommended new modules:**
-- `src/frontmatter/generator.ts` - Generate frontmatter from templates (deduplicated)
-- `src/frontmatter/validator.ts` - Validate frontmatter against template schemas
+**Data flow:**
+```
+User (Obsidian) → Timeline/Graph View → MCP request → SQLite query → JSON response → Visualization
+```
 
-**Key architecture decision:** Plugin remains intentionally standalone (no runtime dependency on main package) for offline functionality and faster load times. Share types and interfaces, not implementations.
+**Critical architectural decision:** Plugin reads relationship types from template registry (not hardcoded), avoiding the existing tech debt where FRONTMATTER_TEMPLATES are duplicated between plugin and server. This ensures graph visualization works correctly across all templates (worldbuilding, research, personal).
 
 ### Critical Pitfalls
 
-1. **Destructive operations without confirmation** - User runs `fix --all`, modifies 847 files unexpectedly. **Prevention:** Dry-run by default, require `--apply` to execute, show preview with file counts, backup before modify.
+Research identified 16 pitfalls across three categories (timeline, graph, submission), with 6 critical issues that could cause data corruption, review rejection, or system failure.
 
-2. **Silent failures erode trust** - Validation says "complete" but actually had 23 parse errors swallowed. **Prevention:** Explicit outcome reporting ("Valid: 42 | Errors: 8"), appropriate exit codes (0=success, 1=errors found), no empty catch blocks.
+1. **Date timezone ambiguity corrupts timeline queries** — YAML date-only values default to midnight UTC, causing "June 15" to appear as "June 14" in Los Angeles or "June 16" in Tokyo. **Prevention:** Store dates in ISO8601 UTC format (YYYY-MM-DDTHH:MM:SSZ), normalize to UTC before SQLite comparison, cross-timezone testing required.
 
-3. **Obsidian MetadataCache race conditions** - Reading cache immediately after `processFrontMatter()` returns stale data, causing duplicate frontmatter. **Prevention:** Wait for `metadataCache.on('changed')` event, don't read immediately after write.
+2. **SQLite date query performance without proper indexing** — Date fields stored in JSON blob require extraction per row, causing 8-second queries on 50K entities. **Prevention:** Dedicated date columns (date_created, date_modified) with CREATE INDEX, use BETWEEN not LIKE, run EXPLAIN QUERY PLAN to verify index usage.
 
-4. **Wizard asks too many questions** - 15 prompts causes 90% abandonment. **Prevention:** Budget to 4-5 questions maximum, sensible defaults for everything, progressive disclosure.
+3. **Graph visualization bundle size explosion** — vis-network alone is 1.2MB, pushing main.js toward 5MB Obsidian Sync limit. **Prevention:** Use sigma.js + graphology (~60KB total), lazy load graph view, tree-shake aggressively, monitor bundle size in CI.
 
-5. **TTY detection for interactive prompts** - CI/CD pipelines fail with "Prompts require TTY" errors. **Prevention:** Check `process.stdin.isTTY` before prompting, provide `--config` flag for automation.
+4. **Obsidian plugin review manifest version mismatch** — Git tag `v1.2.0` vs manifest.json `1.2.0` (no `v` prefix) causes automated rejection. **Prevention:** Automated version bumping script, CI validates package.json = manifest.json = git tag, release checklist.
 
----
+5. **GPL/AGPL dependency in transitive tree** — Graph library dependency chains can include GPL utilities, failing v3.1 license CI gate. **Prevention:** Pre-audit with `npx license-checker --failOn "GPL;AGPL"` before adding dependencies, maintain CI enforcement.
+
+6. **child_process import fails plugin review** — Current plugin uses child_process to spawn MCP server (flagged tech debt in PROJECT.md), requires security review justification. **Prevention:** Document necessity or redesign to connect to user-run server via network, communicate with review team early.
+
+**Moderate pitfalls** (7-11): Date range edge cases (inclusive vs exclusive), graph performance without virtualization, CORS with requestUrl vs fetch, timeline overcrowding, template relationship data mismatch.
+
+**Integration-specific pitfalls** (15-16): Timeline tools duplicating existing query_X tools, backward compatibility with vaults using non-standard date field names.
 
 ## Implications for Roadmap
 
-Based on research, suggested phase structure:
+Based on combined research, the recommended approach is **four sequential phases** that prioritize query capabilities (MCP tools) before visualizations (Obsidian UI), allowing testing of data layer independently before adding UI complexity.
 
-### Phase 1: Setup Wizard Enhancement
-**Rationale:** Foundation for all other DX features; entry point for new users
-**Delivers:** Interactive `npx hivemind init` with @inquirer/prompts, non-interactive `--config` mode
-**Addresses:** Table stakes (interactive prompts, non-interactive flags, config detection)
-**Avoids:** Wizard fatigue (keep to 4-5 questions), TTY detection issues
-**Stack:** @inquirer/prompts, picocolors
+### Phase 1: Timeline Query Foundation (MCP Tools)
 
-### Phase 2: Frontmatter Module Extraction
-**Rationale:** Removes duplication before enhancing CLI and plugin; single source of truth
-**Delivers:** `src/frontmatter/generator.ts`, `src/frontmatter/validator.ts`
-**Addresses:** Architecture consolidation, template-schema alignment
-**Avoids:** Template/frontmatter mismatch pitfall
-**Testing:** Fix then validate pipeline must pass
+**Rationale:** Build temporal query capabilities first without UI dependencies. This enables AI interaction via MCP immediately and validates date handling before visualization complexity.
 
-### Phase 3: Validate & Fix CLI Enhancement
-**Rationale:** Safety features must precede broader usage; builds on extracted modules
-**Delivers:** `--dry-run` for fix, detailed validation report with exit codes, `--all` flag
-**Addresses:** Dry-run mode, validation report, explicit outcome reporting
-**Avoids:** Destructive operations, silent failures
-**Stack:** Uses extracted frontmatter modules
+**Delivers:**
+- MCP tools: query_entities_by_date_range, query_by_date
+- SQLite schema migration: dedicated date columns with indexes
+- ISO8601 UTC date normalization
+- Date validation in `hivemind validate` command
 
-### Phase 4: Obsidian Commands
-**Rationale:** Plugin features depend on stable CLI patterns; follows same patterns
-**Delivers:** Add/Fix/Validate frontmatter commands, entity type selection modal
-**Addresses:** Command palette access, GUI type selection, discoverability
-**Avoids:** MetadataCache race conditions, schema mismatch
-**Note:** May need to update plugin to use extracted frontmatter modules or keep standalone copy
+**Addresses:**
+- Table stakes: Date range filtering, ISO date format support (FEATURES.md)
+- Architecture: MCP Timeline Tools component (ARCHITECTURE.md)
+- Stack: No new dependencies, existing SQLite + better-sqlite3 (STACK.md)
+
+**Avoids:**
+- Pitfall #1: Date timezone ambiguity (critical)
+- Pitfall #2: SQLite date query performance (critical)
+- Pitfall #7: Date range edge cases (moderate)
+
+**Research flag:** HIGH — Date timezone handling requires careful design, cross-timezone testing, migration strategy for existing vaults with varied date field names.
+
+---
+
+### Phase 2: Graph Traversal Foundation (MCP Tools)
+
+**Rationale:** Build graph query capabilities independent of visualization. Enables AI to query relationships programmatically before adding UI rendering complexity.
+
+**Delivers:**
+- MCP tools: get_relationship_graph, get_neighbors (with depth limiting)
+- SQLite recursive CTE queries for graph traversal
+- Graphology-compatible JSON output format
+- Relationship type filtering
+
+**Addresses:**
+- Differentiators: MCP graph traversal tools, typed relationship edges (FEATURES.md)
+- Architecture: MCP Graph Traversal component (ARCHITECTURE.md)
+- Stack: Existing SQLite with recursive CTEs (STACK.md)
+
+**Avoids:**
+- Pitfall #14: Graph tools returning too much data (minor)
+- Pitfall #15: Timeline/graph tools duplicating existing query_X tools (integration)
+
+**Research flag:** MEDIUM — Graph traversal patterns well-documented, but integration with existing relationship schema and template system needs careful testing.
+
+---
+
+### Phase 3: Visual Timeline & Graph Views (Obsidian Plugin)
+
+**Rationale:** Add visualization after query foundations are solid. This phase has highest risk (bundle size, performance, library integration) so it's isolated after data layer is proven.
+
+**Delivers:**
+- Obsidian Timeline View (custom DOM rendering)
+- Obsidian Graph View (sigma.js + graphology)
+- Bundle size monitoring in CI
+- Performance testing with 5,000+ node vaults
+- Template registry integration (remove FRONTMATTER_TEMPLATES duplication)
+
+**Addresses:**
+- Differentiators: Visual timeline view, expand/collapse graph nodes, custom node styling (FEATURES.md)
+- Must haves: Graph node-link diagram, local graph view, click navigation (FEATURES.md)
+- Architecture: Obsidian Timeline/Graph View components (ARCHITECTURE.md)
+- Stack: sigma.js v3.0.2, graphology, custom timeline (STACK.md)
+
+**Avoids:**
+- Pitfall #3: Bundle size explosion (critical)
+- Pitfall #5: GPL/AGPL dependency (critical)
+- Pitfall #8: Graph performance degradation (moderate)
+- Pitfall #9: CORS with requestUrl (moderate)
+- Pitfall #10: Timeline overcrowding (moderate)
+- Pitfall #11: Template relationship data mismatch (moderate)
+
+**Research flag:** HIGH — Complex integration with highest risk. Library selection, bundle optimization, performance testing with large vaults, license auditing all critical. Template registry deduplication touches both plugin and server.
+
+---
+
+### Phase 4: Community Plugin Submission
+
+**Rationale:** Submit after visual features are polished to make strong first impression. Allows addressing child_process tech debt and ensuring compliance before review.
+
+**Delivers:**
+- README polish (screenshots, usage examples)
+- Release automation (version consistency, git tagging)
+- child_process resolution (document or remove)
+- License compliance verification
+- Submission PR to obsidian-releases
+
+**Addresses:**
+- Procedural: Community plugin submission requirements (FEATURES.md)
+- Architecture: Distribution model (ARCHITECTURE.md)
+- Stack: Obsidian plugin submission requirements (STACK.md)
+
+**Avoids:**
+- Pitfall #4: Manifest version mismatch (critical)
+- Pitfall #6: child_process review rejection (critical)
+
+**Research flag:** MEDIUM — Well-documented submission process, but child_process exception requires review team communication. Unknown precedent for approval.
+
+---
 
 ### Phase Ordering Rationale
 
-- **Setup Wizard first:** New user entry point; if init fails, nothing else matters
-- **Module extraction second:** Technical debt cleanup enables cleaner CLI and plugin work
-- **CLI before Plugin:** CLI patterns inform plugin implementation; easier to test
-- **Validation before Fix:** Users need to understand vault state before modifying it
-- **Dry-run essential:** Must ship before any destructive batch operation
+- **Query tools before visualizations:** Validates data layer independently, enables testing with MCP clients before UI complexity. Follows FEATURES.md MVP recommendation.
+- **Timeline before graph:** Timeline queries are simpler (date range filtering), graph traversal is more complex (recursive CTEs, relationship types). Build confidence with simpler feature first.
+- **Visualization as single phase:** Timeline and graph views share common concerns (bundle size, performance, template integration). Combining allows unified approach to library selection, lazy loading, and CI monitoring.
+- **Submission last:** Polish UI first, then submit. Avoid review comments on incomplete features. Address child_process tech debt before scrutiny.
+
+**Dependency flow:**
+```
+Phase 1 (Timeline MCP) → Phase 3 (Timeline View) → Phase 4 (Submission)
+Phase 2 (Graph MCP)    → Phase 3 (Graph View)    ↗
+```
 
 ### Research Flags
 
-Phases with well-documented patterns (skip research-phase):
-- **Phase 1 (Setup Wizard):** @inquirer/prompts has excellent docs, CLI wizard patterns well-established
-- **Phase 3 (Validate/Fix CLI):** Standard CLI safety patterns, dry-run examples abundant
+**Phases needing deeper research during planning:**
 
-Phases needing attention during implementation:
-- **Phase 2 (Module Extraction):** Needs careful review of plugin standalone requirements
-- **Phase 4 (Obsidian Commands):** MetadataCache timing requires testing; API still evolving
+- **Phase 1 (Timeline MCP):** HIGH — Date timezone handling patterns require cross-timezone test design, migration strategy for existing vaults with varied date field names (date, created, timestamp, when), ISO8601 normalization approach.
 
----
+- **Phase 3 (Visualization):** HIGH — Library bundle size actual measurements (not just specs), performance profiling with 5K+ node vaults, lazy loading implementation strategy, template registry integration plan (affects both plugin and server).
+
+- **Phase 4 (Submission):** MEDIUM — child_process exception precedent research (contact review team or analyze approved plugins), release automation implementation.
+
+**Phases with standard patterns (skip deep research):**
+
+- **Phase 2 (Graph MCP):** MEDIUM — SQLite recursive CTEs well-documented, graphology output format straightforward, existing relationship schema provides foundation.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | @inquirer/prompts and picocolors are well-documented, widely used |
-| Features | HIGH | Based on CLI best practices, existing Obsidian patterns, FEATURES.md comprehensive |
-| Architecture | HIGH | Existing codebase analyzed, clear integration points identified |
-| Pitfalls | HIGH | Existing patterns documented, codebase-specific issues verified against actual code |
+| Stack | HIGH | Clear recommendations (sigma.js, custom timeline), library comparisons validated across multiple sources, bundle size measurements available |
+| Features | MEDIUM-HIGH | Table stakes verified with Obsidian plugin ecosystem analysis, differentiators informed by template system capabilities, MVP scoping clear |
+| Architecture | HIGH | Hybrid search pattern well-documented, component boundaries leverage existing system, integration points identified, data flow validated |
+| Pitfalls | MEDIUM-HIGH | Critical issues identified with concrete prevention strategies, but cross-timezone testing and child_process exception outcome uncertain |
 
 **Overall confidence:** HIGH
 
+Research is comprehensive with multiple source verification for critical decisions. Stack recommendations based on performance comparisons and bundle size analysis. Architecture leverages existing Hivemind components effectively. Pitfalls identified with concrete detection and prevention strategies.
+
 ### Gaps to Address
 
-- **Plugin/CLI module sharing strategy:** Decision needed on whether plugin imports shared modules or maintains standalone copies. Recommendation: Standalone copies for plugin portability, but generated from same source definitions.
+**During planning/implementation:**
 
-- **Windows CI testing:** Current CI likely Linux-only; need to verify path handling on Windows before release.
+1. **Obsidian plugin review specific requirements** — Official docs partially inaccessible during WebSearch. Action: Fetch complete submission guidelines directly, communicate with review team early about child_process usage.
 
-- **Real-world vault testing:** Need test suite with diverse, messy vaults including complex YAML, non-standard folders, and edge-case frontmatter.
+2. **child_process exception precedent** — Unknown how many plugins successfully use child_process with approval. Action: Research existing approved plugins (search GitHub for "obsidian plugin child_process"), contact review team for guidance before submission.
 
----
+3. **Graph library bundle size actual measurements** — Recommendations based on published specs. Action: Bundle sigma.js + graphology in test branch, measure actual main.js size, compare to alternatives if over budget.
+
+4. **SQLite date column migration strategy** — Adding date columns to existing production databases requires careful approach. Action: Test migration with various vault sizes (100, 1000, 10000 entities), validate backward compatibility with v1.0-v3.1 vaults.
+
+5. **Cross-timezone date handling validation** — Timezone handling patterns require real-world testing. Action: Build test suite with dates spanning UTC-12 to UTC+12, test query results across timezone contexts, validate with users in different regions.
+
+**During execution:**
+
+6. **Template registry integration impact** — Removing FRONTMATTER_TEMPLATES duplication touches both plugin and server. Action: Careful refactoring with integration tests, ensure all three templates (worldbuilding, research, personal) work correctly in graph view.
+
+7. **Performance thresholds for large vaults** — Need empirical data on graph rendering limits. Action: Profile with 1K, 5K, 10K node vaults, establish frame rate targets (30+ FPS), implement progressive rendering if needed.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- [@inquirer/prompts npm](https://www.npmjs.com/package/@inquirer/prompts) - v8.2.0 documentation
-- [picocolors GitHub](https://github.com/alexeyraspopov/picocolors) - Size comparison, benchmarks
-- [Command Line Interface Guidelines](https://clig.dev/) - CLI UX best practices
-- [Obsidian Developer Docs](https://docs.obsidian.md/) - Plugin API, MetadataCache, addCommand
-- [gray-matter GitHub](https://github.com/jonschlinkert/gray-matter) - YAML frontmatter handling
+
+**Stack Research:**
+- [sigma.js official site](https://www.sigmajs.org/) — Graph library capabilities, API documentation
+- [graphology official site](https://graphology.github.io/) — Graph data structure, bundle size (11.5KB)
+- [Obsidian Plugin Submission Requirements](https://docs.obsidian.md/Plugins/Releasing/Submission+requirements+for+plugins) — Official guidelines, manifest validation
+- [SQLite Date And Time Functions](https://sqlite.org/lang_datefunc.html) — Date query patterns, timezone handling
+- [Bundle size monitoring](https://bundlephobia.com/) — Dependency size verification
+
+**Architecture Research:**
+- [MCP Spec](https://modelcontextprotocol.io/) — Protocol patterns, transport layer
+- [GraphRAG vs Vector RAG](https://arxiv.org/html/2408.04948v1) — HybridRAG approach
+- [Local-First Software](https://www.inkandswitch.com/local-first/) — Architecture principles
+- [Obsidian sample plugin](https://github.com/obsidianmd/obsidian-sample-plugin) — Plugin structure, best practices
+
+**Features Research:**
+- [Obsidian Timeline Plugins](https://www.obsidianstats.com/tags/timeline) — Feature comparison (Timeline View, Chronos, Auto Timelines)
+- [Dataview Date Query Examples](https://forum.obsidian.md/t/dataview-query-frontmatter-date/53319) — User expectations, date format patterns
+- [Juggl Plugin](https://github.com/HEmile/juggl) — Graph visualization precedent in Obsidian
+
+**Pitfalls Research:**
+- [Common Date/Time Mistakes - Jon Skeet](https://codeblog.jonskeet.uk/2015/05/05/common-mistakes-in-datetime-formatting-and-parsing/) — Timezone handling best practices
+- [Graph visualization at scale - Cambridge Intelligence](https://cambridge-intelligence.com/visualize-large-networks/) — Performance patterns, virtualization strategies
+- [Excalidraw 5MB issue](https://github.com/zsviczian/obsidian-excalidraw-plugin/issues/2349) — Bundle size limits, Obsidian Sync constraints
 
 ### Secondary (MEDIUM confidence)
-- [Why 90% of Users Abandon Apps During Onboarding](https://thisisglance.com/blog/why-90-of-users-abandon-apps-during-onboarding-process) - Wizard fatigue research
-- [Obsidian Forum: Force Metacache Refresh](https://forum.obsidian.md/t/force-metacache-refresh-or-update-meta-for-specific-file/82415) - Cache timing issues
-- [Node.js CLI Best Practices](https://github.com/lirantal/nodejs-cli-apps-best-practices) - Error handling, TTY detection
 
-### Tertiary (contextual)
-- Existing codebase analysis (`src/cli.ts`, `obsidian-plugin/main.ts`) - Duplication identified
-- Local verification of obsidian.d.ts type definitions - Command/Modal API confirmed
+**Performance Comparisons:**
+- [sigma.js vs Cytoscape.js performance](https://weber-stephen.medium.com/the-best-libraries-and-methods-to-render-large-network-graphs-on-the-web-d122ece2f4dc) — Library benchmarks
+- [Comparison of JavaScript Graph Libraries](https://www.cylynx.io/blog/a-comparison-of-javascript-graph-network-visualisation-libraries/) — Feature matrix
+- [Force-Directed Graph - WebGL & Canvas with PIXI.js](https://observablehq.com/@dianaow/force-directed-graph-webgl-canvas-with-pixi-js) — WebGL rendering patterns
+
+**Community Forum Evidence:**
+- [Obsidian Graph View Performance](https://forum.obsidian.md/t/obsidian-with-very-large-vaults-performance-results/30635) — User reports on large vaults
+- [Using GitHub actions to release plugins](https://forum.obsidian.md/t/using-github-actions-to-release-plugins/7877) — Release automation patterns
+- [child_process Security Concerns](https://forum.obsidian.md/t/when-i-use-child-process-in-nodejs-i-get-the-following-error-and-i-dont-know-why/56211) — Review team stance
+
+### Tertiary (LOW confidence, needs validation)
+
+- [MCP: Dates are a Footgun](https://www.danielcorin.com/til/mcp/dates-are-a-footgun/) — AI agent date handling issues (community blog)
+- [Timeliner GitHub](https://github.com/zz85/timeliner) — Lightweight timeline alternative (unmaintained)
+- [Arbitrary Code Execution via child_process](https://github.com/blacksmithgu/obsidian-dataview/issues/615) — Security precedent (needs verification)
 
 ---
-*Research completed: 2026-01-26*
+
+*Research completed: 2026-01-27*
 *Ready for roadmap: yes*

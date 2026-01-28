@@ -8,7 +8,17 @@ A domain-agnostic MCP server for knowledge management with pluggable templates. 
 
 Consistent AI output. Give any AI tool context from your canon, get results that belong in your world — every time, across every tool.
 
-## Current State: v3.1 Shipped
+## Current Milestone: v4.0 Temporal & Graph
+
+**Goal:** Add timeline queries and graph visualization (both MCP tools and Obsidian UI), submit community plugin, and clean up accumulated tech debt.
+
+**Target features:**
+- Timeline system — MCP date range query tool + Obsidian visual timeline view
+- Graph visualization — Interactive relationship graph in Obsidian + MCP graph traversal tools
+- Community plugin submission — Meet Obsidian review requirements, submit PR to obsidian-releases
+- Tech debt cleanup — Duplicated templates, init test coverage, registry init patterns, Stryker exclusion, child_process import
+
+## Previous: v3.1 Type Safety & Quality
 
 **Shipped:** 2026-01-27
 **Tagged:** v3.1
@@ -83,15 +93,20 @@ Consistent AI output. Give any AI tool context from your canon, get results that
 
 ### Active
 
-<!-- Next milestone scope TBD -->
+<!-- v4.0 Temporal & Graph -->
+
+- [ ] Timeline queries with date range filtering (MCP tool + Obsidian view)
+- [ ] Relationship graph visualization (Obsidian panel + MCP traversal tools)
+- [ ] Obsidian community plugin submission
+- [ ] Tech debt: deduplicate FRONTMATTER_TEMPLATES from plugin
+- [ ] Tech debt: unify template registry initialization between CLI and plugin
+- [ ] Tech debt: cli/init test coverage
+- [ ] Tech debt: resolve process.chdir() Stryker exclusion
+- [ ] Tech debt: resolve Obsidian plugin child_process import
 
 ### Deferred
 
-<!-- Moved from Active, planned for future milestone -->
-
-- [ ] Obsidian community plugin submission
-- [ ] Timeline queries with date range filtering
-- [ ] Relationship graph visualization
+<!-- None currently -->
 
 ### Out of Scope
 
@@ -146,4 +161,4 @@ Consistent AI output. Give any AI tool context from your canon, get results that
 | Stryker mutation testing | Vitest runner, configurable thresholds | ✓ Good |
 
 ---
-*Last updated: 2026-01-27 after v3.1 milestone*
+*Last updated: 2026-01-27 after v4.0 milestone started*
