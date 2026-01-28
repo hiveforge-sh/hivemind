@@ -1,4 +1,27 @@
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder, ItemView, WorkspaceLeaf, requestUrl } from 'obsidian';
+
+/**
+ * child_process is required to spawn the Hivemind MCP server as a subprocess.
+ * The plugin communicates with the server via stdin/stdout JSON-RPC protocol.
+ * This is the standard pattern for MCP (Model Context Protocol) tool servers.
+ *
+ * Obsidian review: This import is used exclusively for MCP server lifecycle
+ * management (spawn on activate, kill on deactivate). No arbitrary command
+ * execution. The spawned command is user-configurable in plugin settings
+ * (defaults to "npx @hiveforge/hivemind-mcp start") and runs in the vault
+ * directory context.
+ *
+ * Security considerations:
+ * - Command is controlled by user settings (not external input)
+ * - Process runs in vault directory (no system-wide access)
+ * - Communication is structured JSON-RPC only (no shell injection vectors)
+ * - Process is properly cleaned up on plugin unload
+ *
+ * See MCP specification: https://modelcontextprotocol.io/docs/concepts/transports
+ *
+ * @see startMcpServer() - Spawns the server process (line ~400)
+ * @see stopMcpServer() - Terminates the server process (line ~440)
+ */
 import { spawn, ChildProcess } from 'child_process';
 import { FolderMapper } from '../src/templates/folder-mapper.js';
 import { templateRegistry } from '../src/templates/registry.js';
