@@ -1,4 +1,4 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder, ItemView, WorkspaceLeaf, requestUrl } from 'obsidian';
+import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder, ItemView, WorkspaceLeaf, requestUrl, Menu } from 'obsidian';
 
 /**
  * child_process is required to spawn the Hivemind MCP server as a subprocess.
@@ -1905,6 +1905,9 @@ class GraphView extends ItemView {
         edgeReducer: this.getEdgeReducer()
       });
 
+      // Bind interaction event handlers (GVIEW-04)
+      this.bindEvents();
+
     } catch (error) {
       container.empty();
       const errorEl = container.createDiv({ cls: 'hvmd-graph-error' });
@@ -2123,6 +2126,189 @@ class GraphView extends ItemView {
     }
 
     return { nodes, edges };
+  }
+
+  /**
+   * Bind interaction event handlers for graph navigation (GVIEW-04)
+   */
+  private bindEvents() {
+    if (!this.renderer || !this.graph) return;
+
+    // Click node to open corresponding note (GVIEW-04)
+    this.renderer.on('clickNode', (event) => {
+      const nodeId = event.node;
+      const nodeData = this.graph?.getNodeAttributes(nodeId);
+
+      if (nodeData && nodeData.path) {
+        // Open the file in Obsidian
+        const file = this.app.vault.getAbstractFileByPath(nodeData.path);
+        if (file instanceof TFile) {
+          const leaf = this.app.workspace.getLeaf(false);
+          void leaf.openFile(file);
+        }
+      }
+    });
+
+    // Right-click node to show context menu
+    this.renderer.on('rightClickNode', (event) => {
+      const nodeId = event.node;
+      const nodeData = this.graph?.getNodeAttributes(nodeId);
+
+      if (!nodeData) return;
+
+      const menu = new Menu();
+
+      // Expand neighbors option
+      menu.addItem((item) => {
+        item
+          .setTitle('Expand neighbors')
+          .setIcon('git-branch')
+          .onClick(() => {
+            void this.expandNode(nodeId);
+          });
+      });
+
+      // Focus on node option
+      menu.addItem((item) => {
+        item
+          .setTitle('Focus on node')
+          .setIcon('focus')
+          .onClick(() => {
+            void this.focusOnNode(nodeId);
+          });
+      });
+
+      // Find path option (placeholder for 27-05)
+      menu.addItem((item) => {
+        item
+          .setTitle('Find path to...')
+          .setIcon('git-compare')
+          .onClick(() => {
+            void this.startPathSelection(nodeId);
+          });
+      });
+
+      // Open in new tab option
+      menu.addItem((item) => {
+        item
+          .setTitle('Open in new tab')
+          .setIcon('file')
+          .onClick(() => {
+            if (nodeData.path) {
+              const file = this.app.vault.getAbstractFileByPath(nodeData.path);
+              if (file instanceof TFile) {
+                const leaf = this.app.workspace.getLeaf('tab');
+                void leaf.openFile(file);
+              }
+            }
+          });
+      });
+
+      menu.showAtMouseEvent(event.event as MouseEvent);
+    });
+  }
+
+  /**
+   * Expand a node by loading its neighbors and adding them to the graph
+   */
+  private async expandNode(nodeId: string) {
+    try {
+      if (!this.graph || !this.renderer) return;
+
+      // Call MCP to get neighbors
+      const response = await this.plugin.callMCPTool({
+        name: 'hvmd_graph_get_neighbors',
+        arguments: {
+          entity_id: nodeId,
+          depth: 1,
+          direction: 'both'
+        }
+      });
+
+      const responseText = response.content[0].text;
+      const data = JSON.parse(responseText);
+      const graphData = this.transformNeighborsResponse(data);
+
+      // Add new nodes and edges to existing graph
+      graphData.nodes.forEach(node => {
+        if (!this.graph!.hasNode(node.id)) {
+          this.graph!.addNode(node.id, {
+            label: node.title,
+            type: node.type,
+            path: node.path,
+            description: node.description,
+            size: 10,
+            x: Math.random() * 100,
+            y: Math.random() * 100
+          });
+        }
+      });
+
+      graphData.edges.forEach(edge => {
+        if (!this.graph!.hasEdge(edge.source, edge.target)) {
+          this.graph!.addEdge(edge.source, edge.target, {
+            relationshipType: edge.relationshipType
+          });
+        }
+      });
+
+      // Reapply layout for new nodes
+      const settings = forceAtlas2.inferSettings(this.graph);
+      forceAtlas2.assign(this.graph, { settings, iterations: 50 });
+
+      // Refresh renderer
+      this.renderer.refresh();
+
+      new Notice(`Expanded node: ${nodeId}`);
+
+    } catch (error) {
+      console.error('[Graph] Failed to expand node:', error);
+      new Notice('Failed to expand node');
+    }
+  }
+
+  /**
+   * Focus on a node by switching to local view centered on it
+   */
+  private async focusOnNode(nodeId: string) {
+    try {
+      const nodeData = this.graph?.getNodeAttributes(nodeId);
+      if (!nodeData || !nodeData.path) return;
+
+      // Open the file to make it the active file
+      const file = this.app.vault.getAbstractFileByPath(nodeData.path);
+      if (file instanceof TFile) {
+        const leaf = this.app.workspace.getLeaf(false);
+        await leaf.openFile(file);
+
+        // Switch to local mode and reload
+        this.plugin.settings.graphViewMode = 'local';
+        await this.plugin.saveSettings();
+        await this.onOpen();
+
+        new Notice(`Focused on: ${nodeData.label}`);
+      }
+    } catch (error) {
+      console.error('[Graph] Failed to focus on node:', error);
+      new Notice('Failed to focus on node');
+    }
+  }
+
+  /**
+   * Start path selection mode (placeholder for 27-05)
+   */
+  private async startPathSelection(sourceNodeId: string) {
+    new Notice('Path finding feature coming in phase 27-05');
+    // TODO: Implement in phase 27-05
+    // Will show modal to select target node, then call hvmd_graph_find_shortest_path
+  }
+
+  /**
+   * Find shortest path between two nodes (placeholder for 27-05)
+   */
+  private async findShortestPath(sourceId: string, targetId: string) {
+    // TODO: Implement in phase 27-05
+    // Will call hvmd_graph_find_shortest_path MCP tool
   }
 
   async onClose() {
