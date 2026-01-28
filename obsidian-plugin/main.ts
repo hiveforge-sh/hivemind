@@ -28,6 +28,8 @@ import 'vis-timeline/styles/vis-timeline-graph2d.min.css';
 import Graph from 'graphology';
 import Sigma from 'sigma';
 import forceAtlas2 from 'graphology-layout-forceatlas2';
+import { bidirectional } from 'graphology-shortest-path';
+import louvain from 'graphology-communities-louvain';
 import { FolderMapper } from '../src/templates/folder-mapper.js';
 import { templateRegistry } from '../src/templates/registry.js';
 import { worldbuildingTemplate } from '../src/templates/builtin/worldbuilding.js';
@@ -44,6 +46,8 @@ interface HivemindSettings {
   timelineFilterTypes: string[];  // Persisted filter state
   graphFilterTypes: string[];  // Persisted graph entity type filter state
   graphViewMode: 'local' | 'full';  // Local (active note) or full vault graph
+  graphLayoutPositions: Record<string, { x: number; y: number }>;  // Saved node positions
+  graphShowClusters: boolean;  // Cluster coloring vs entity type coloring
 }
 
 const DEFAULT_SETTINGS: HivemindSettings = {
@@ -58,6 +62,8 @@ const DEFAULT_SETTINGS: HivemindSettings = {
   timelineFilterTypes: [],  // Empty means "all types active"
   graphFilterTypes: [],
   graphViewMode: 'local',
+  graphLayoutPositions: {},
+  graphShowClusters: false,
 };
 
 interface MCPToolCall {
@@ -1820,6 +1826,11 @@ class GraphView extends ItemView {
   private allGraphData: GraphData = { nodes: [], edges: [] };
   private highlightedNodes: Set<string> = new Set();
   private searchQuery: string = '';
+  private pathNodes: Set<string> = new Set();
+  private pathEdges: Set<string> = new Set();
+  private pathSourceNode: string | null = null;
+  private communities: Map<string, number> = new Map();
+  private showClusters: boolean = false;
 
   constructor(leaf: WorkspaceLeaf, plugin: HivemindPlugin) {
     super(leaf);
@@ -2096,6 +2107,22 @@ class GraphView extends ItemView {
         this.renderer.refresh();
       }
     });
+
+    // Add "Clear Path" button for shortest path feature (GVIEW-10)
+    const clearPathBtn = toolbar.createEl('button', {
+      text: 'Clear Path',
+      cls: 'hvmd-graph-btn'
+    });
+    clearPathBtn.style.marginLeft = '16px';
+    clearPathBtn.addEventListener('click', () => {
+      this.pathNodes.clear();
+      this.pathEdges.clear();
+      this.pathSourceNode = null;
+      if (this.renderer) {
+        this.renderer.refresh();
+      }
+      new Notice('Path cleared');
+    });
   }
 
   /**
@@ -2112,8 +2139,9 @@ class GraphView extends ItemView {
   }
 
   /**
-   * Get node reducer for Okabe-Ito entity type coloring (GVIEW-09)
-   * and search result highlighting (GVIEW-07)
+   * Get node reducer for Okabe-Ito entity type coloring (GVIEW-09),
+   * search result highlighting (GVIEW-07),
+   * and shortest path highlighting (GVIEW-10)
    * Uses scientifically validated color-blind accessible palette
    */
   private getNodeReducer() {
@@ -2131,8 +2159,19 @@ class GraphView extends ItemView {
     return (node: string, data: any) => {
       const type = data.type || 'default';
       const isHighlighted = this.highlightedNodes.has(node);
+      const isInPath = this.pathNodes.has(node);
 
-      // If node is in search results, highlight in pink
+      // Priority 1: Shortest path highlighting (pink, larger)
+      if (isInPath) {
+        return {
+          ...data,
+          color: '#FF69B4', // Pink highlight color
+          size: 15, // Larger node size for visibility
+          label: data.label
+        };
+      }
+
+      // Priority 2: Search result highlighting (pink, larger)
       if (isHighlighted) {
         return {
           ...data,
@@ -2142,7 +2181,7 @@ class GraphView extends ItemView {
         };
       }
 
-      // Otherwise use standard entity type color
+      // Priority 3: Standard entity type color
       const color = colorMap[type] || '#999999'; // Gray fallback
       return {
         ...data,
@@ -2154,16 +2193,39 @@ class GraphView extends ItemView {
   }
 
   /**
-   * Get edge reducer for edge styling
+   * Get edge reducer for edge styling and path highlighting (GVIEW-10)
    */
   private getEdgeReducer() {
     return (edge: string, data: any) => {
       const isHovered = this.hoveredEdge === edge;
+      const isInPath = this.pathEdges.has(edge);
+
+      // Priority 1: Path edges (pink, thicker)
+      if (isInPath) {
+        return {
+          ...data,
+          color: '#FF69B4', // Pink highlight for path
+          size: 3, // Thicker edge for visibility
+          label: data.relationshipType || ''
+        };
+      }
+
+      // Priority 2: Hovered edges (dark gray, medium)
+      if (isHovered) {
+        return {
+          ...data,
+          color: '#666666',
+          size: 2,
+          label: data.relationshipType || ''
+        };
+      }
+
+      // Priority 3: Normal edges (light gray, thin)
       return {
         ...data,
-        color: isHovered ? '#666666' : '#cccccc',
-        size: isHovered ? 2 : 1,
-        label: isHovered ? (data.relationshipType || '') : ''
+        color: '#cccccc',
+        size: 1,
+        label: ''
       };
     };
   }
@@ -2594,20 +2656,70 @@ class GraphView extends ItemView {
   }
 
   /**
-   * Start path selection mode (placeholder for 27-05)
+   * Start path selection mode - stores source node and waits for target click
    */
   private async startPathSelection(sourceNodeId: string) {
-    new Notice('Path finding feature coming in phase 27-05');
-    // TODO: Implement in phase 27-05
-    // Will show modal to select target node, then call hvmd_graph_find_shortest_path
+    this.pathSourceNode = sourceNodeId;
+    new Notice(`Select target node to find path from ${this.graph?.getNodeAttributes(sourceNodeId).label || sourceNodeId}`);
+
+    // Set up one-time click listener for target selection
+    if (this.renderer) {
+      const clickHandler = (event: any) => {
+        const targetId = event.node;
+        if (targetId !== sourceNodeId) {
+          void this.findShortestPath(sourceNodeId, targetId);
+          this.pathSourceNode = null;
+          this.renderer?.off('clickNode', clickHandler);
+        }
+      };
+      this.renderer.on('clickNode', clickHandler);
+    }
   }
 
   /**
-   * Find shortest path between two nodes (placeholder for 27-05)
+   * Find shortest path between two nodes using bidirectional Dijkstra
    */
   private async findShortestPath(sourceId: string, targetId: string) {
-    // TODO: Implement in phase 27-05
-    // Will call hvmd_graph_find_shortest_path MCP tool
+    try {
+      if (!this.graph) return;
+
+      // Use graphology-shortest-path bidirectional algorithm
+      const path = bidirectional(this.graph, sourceId, targetId);
+
+      if (!path || path.length === 0) {
+        new Notice('No path found between selected nodes');
+        return;
+      }
+
+      // Clear previous path highlights
+      this.pathNodes.clear();
+      this.pathEdges.clear();
+
+      // Add nodes to path set
+      path.forEach(nodeId => this.pathNodes.add(nodeId));
+
+      // Add edges between consecutive nodes in path
+      for (let i = 0; i < path.length - 1; i++) {
+        const source = path[i];
+        const target = path[i + 1];
+
+        // Find edge between these nodes (could be in either direction)
+        this.graph.forEachEdge(source, target, (edgeId) => {
+          this.pathEdges.add(edgeId);
+        });
+      }
+
+      // Refresh renderer to show path highlighting
+      if (this.renderer) {
+        this.renderer.refresh();
+      }
+
+      new Notice(`Path found: ${path.length} nodes, ${this.pathEdges.size} edges`);
+
+    } catch (error) {
+      console.error('[Graph] Failed to find path:', error);
+      new Notice('Failed to find path between nodes');
+    }
   }
 
   async onClose() {
