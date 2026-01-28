@@ -1,3 +1,10 @@
+# [3.3.0](https://github.com/hiveforge-sh/hivemind/compare/3.2.0...3.3.0) (2026-01-28)
+
+
+### Features
+
+* **20:** eliminate all any types from comfyui and CLI files ([a283fd1](https://github.com/hiveforge-sh/hivemind/commit/a283fd1a6230d63dc2924f7f714cea4fbe5c85ef))
+
 # [3.2.0](https://github.com/hiveforge-sh/hivemind/compare/3.1.0...3.2.0) (2026-01-28)
 
 
