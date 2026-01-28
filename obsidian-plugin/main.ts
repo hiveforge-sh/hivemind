@@ -23,6 +23,8 @@ import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Set
  * @see stopMcpServer() - Terminates the server process (line ~440)
  */
 import { spawn, ChildProcess } from 'child_process';
+import { Timeline, DataSet } from 'vis-timeline/standalone';
+import 'vis-timeline/styles/vis-timeline-graph2d.min.css';
 import { FolderMapper } from '../src/templates/folder-mapper.js';
 import { templateRegistry } from '../src/templates/registry.js';
 import { worldbuildingTemplate } from '../src/templates/builtin/worldbuilding.js';
@@ -98,6 +100,12 @@ export default class HivemindPlugin extends Plugin {
     this.registerView(
       VIEW_TYPE_VALIDATION,
       (leaf) => new ValidationSidebarView(leaf, this)
+    );
+
+    // Register timeline view
+    this.registerView(
+      VIEW_TYPE_TIMELINE,
+      (leaf) => new TimelineView(leaf, this)
     );
 
     // Add status bar item
@@ -193,6 +201,14 @@ export default class HivemindPlugin extends Plugin {
       name: 'Open validation sidebar',
       callback: () => {
         void this.activateValidationSidebar();
+      }
+    });
+
+    this.addCommand({
+      id: 'open-timeline-view',
+      name: 'Open timeline view',
+      callback: () => {
+        void this.activateTimelineView();
       }
     });
 
@@ -1242,9 +1258,24 @@ export default class HivemindPlugin extends Plugin {
       void this.app.workspace.revealLeaf(leaves[0]);
     }
   }
+
+  activateTimelineView() {
+    this.app.workspace.detachLeavesOfType(VIEW_TYPE_TIMELINE);
+
+    void this.app.workspace.getRightLeaf(false)?.setViewState({
+      type: VIEW_TYPE_TIMELINE,
+      active: true,
+    });
+
+    const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_TIMELINE);
+    if (leaves[0]) {
+      void this.app.workspace.revealLeaf(leaves[0]);
+    }
+  }
 }
 
 const VIEW_TYPE_VALIDATION = 'hivemind-validation-sidebar';
+const VIEW_TYPE_TIMELINE = 'hivemind-timeline';
 
 class ValidationSidebarView extends ItemView {
   plugin: HivemindPlugin;
@@ -1425,6 +1456,47 @@ class ValidationSidebarView extends ItemView {
 
   async onClose() {
     // Cleanup
+  }
+}
+
+class TimelineView extends ItemView {
+  plugin: HivemindPlugin;
+  private timeline: Timeline | null = null;
+
+  constructor(leaf: WorkspaceLeaf, plugin: HivemindPlugin) {
+    super(leaf);
+    this.plugin = plugin;
+  }
+
+  getViewType(): string {
+    return VIEW_TYPE_TIMELINE;
+  }
+
+  getDisplayText(): string {
+    return 'Hivemind Timeline';
+  }
+
+  getIcon(): string {
+    return 'calendar-clock';
+  }
+
+  async onOpen() {
+    const container = this.containerEl.children[1] as HTMLElement;
+    container.empty();
+    container.addClass('hivemind-timeline-view');
+
+    // Placeholder until data loading is implemented
+    container.createDiv({
+      cls: 'hvmd-scanning',
+      text: 'Timeline view loading...'
+    });
+  }
+
+  async onClose() {
+    if (this.timeline) {
+      this.timeline.destroy();
+      this.timeline = null;
+    }
   }
 }
 
