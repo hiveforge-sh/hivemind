@@ -13,9 +13,9 @@
 ## Current Position
 
 **Phase:** 25 - Graph MCP Tools
-**Plan:** 1 of 3 in progress (plan 02 complete)
+**Plan:** 1 of 3 complete
 **Status:** In progress
-**Last activity:** 2026-01-28 - Completed 25-02-PLAN.md (Graph MCP tool definitions)
+**Last activity:** 2026-01-28 - Completed 25-01-PLAN.md (Graph traversal database methods)
 
 **Progress:**
 ```
@@ -25,11 +25,11 @@
 **Phase Goal:** Add graph traversal MCP tools for relationship queries and pathfinding
 
 **Phase Success Criteria:**
-1. ✅ Graph tools use Zod schemas for input validation (25-02 complete)
-2. ✅ Tool definitions match MCP spec format (25-02 complete)
-3. ✅ Tool descriptions include available relationship types (25-02 complete)
-4. ⬜ Four graph query tools working (neighbors, subgraph, path, list_types)
-5. ⬜ Graph queries use SQLite recursive CTEs for traversal
+1. ✅ Graph database layer with recursive CTE traversal methods (25-01 complete)
+2. ⬜ Graph tools use Zod schemas for input validation
+3. ⬜ Tool definitions match MCP spec format
+4. ⬜ Tool descriptions include available relationship types
+5. ⬜ Four graph query tools working (neighbors, subgraph, path, list_types)
 
 ## Performance Metrics
 
@@ -65,6 +65,10 @@
 | Timeline methods return relationships (24-03) | SearchEngine delegates to database then enriches with relationships, matching existing query patterns | Complete |
 | Conditional tool registration (24-03) | Timeline tools only appear when template has date-typed fields, avoiding confusion for templates without temporal data | Complete |
 | Server startup date column init (24-03) | Ensures indexes exist for performance before first timeline query, safe due to idempotency | Complete |
+| Bidirectional graph traversal default (25-01) | Default direction is 'both' for graph neighbor queries, matches user expectations and research spec | Complete |
+| Depth caps for graph queries (25-01) | Subgraph capped at 5 hops (default 2), shortest path at 10 to prevent runaway queries in dense graphs | Complete |
+| Cycle prevention via path tracking (25-01) | Use path NOT LIKE pattern for SQLite-native cycle detection without additional data structures | Complete |
+| Two-stage CTE for depth filtering (25-01) | Group by MIN(depth) first, then filter WHERE depth = N to ensure shortest path to each node | Complete |
 
 ### Active Concerns
 
@@ -102,8 +106,8 @@ None currently.
 - ✅ Plan 03: Timeline MCP server integration (24-03)
 
 **Phase 25 (In Progress):**
-- ⬜ Plan 01: Graph database traversal methods (25-01)
-- ✅ Plan 02: Graph MCP tool definitions (25-02)
+- ✅ Plan 01: Graph database traversal methods (25-01)
+- ⬜ Plan 02: Graph MCP tool definitions (25-02)
 - ⬜ Plan 03: Graph MCP server integration (25-03)
 
 **Future:**
@@ -121,10 +125,10 @@ None currently.
 6. Phase 28: Community plugin submission (6 requirements)
 
 **Last session:** 2026-01-28
-**Stopped at:** Completed 25-02-PLAN.md (Graph MCP tool definitions)
+**Stopped at:** Completed 25-01-PLAN.md (Graph database traversal methods)
 **Resume file:** None
 
-**Next action:** Continue Phase 25 (Graph MCP Tools) - plans 01 and 03 remaining
+**Next action:** Continue Phase 25 (Graph MCP Tools) - plans 02 and 03 remaining
 
 **Context for future sessions:**
 - Phase 23 complete: Template registry unified, plugin docs added, CLI test coverage 91%
@@ -135,11 +139,13 @@ None currently.
   - MCP server conditional tool registration
   - 25 integration tests using research template
   - All four query tools working (range, before, after, exact)
-- Phase 25 progress: Tool definitions complete (25-02)
-  - Zod validation schemas for neighbors, subgraph, path, list_types
-  - generateGraphTools() with dynamic relationship type discovery
-  - 26 unit tests passing
-  - Pattern matches Phase 24 timeline-tools.ts exactly
+- Phase 25 progress: Database layer complete (25-01)
+  - Graph traversal methods: queryNeighbors, querySubgraph, queryShortestPath, getEdgeBetween
+  - SQLite recursive CTEs for multi-hop BFS traversal with cycle prevention
+  - Depth limits enforced (subgraph max 5, shortest path max 10)
+  - Comprehensive filtering (direction, relationship types, entity types)
+  - 51 unit tests passing (27 new graph traversal tests)
+  - Pattern ready for SearchEngine integration (Phase 25-02)
 - Timeline tools ready for Phase 26 (Timeline Obsidian UI)
 - All tech debt cleaned (DEBT-01 through DEBT-05)
 - Research context available at C:\Users\Preston\git\hivemind\.planning\research\SUMMARY.md

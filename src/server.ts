@@ -39,6 +39,13 @@ import {
   QueryTimelineAfterArgsSchema,
   QueryTimelineExactArgsSchema,
 } from './mcp/timeline-tools.js';
+import {
+  generateGraphTools,
+  QueryGraphNeighborsArgsSchema,
+  QueryGraphSubgraphArgsSchema,
+  QueryGraphPathArgsSchema,
+  ListRelationshipTypesArgsSchema,
+} from './mcp/graph-tools.js';
 import { VaultReader } from './vault/reader.js';
 import { VaultWatcher } from './vault/watcher.js';
 import { HivemindDatabase } from './graph/database.js';
@@ -163,6 +170,9 @@ export class HivemindServer {
         ? generateTimelineTools(temporalTypes)
         : [];
 
+      // Generate graph tools (always available)
+      const graphTools = generateGraphTools();
+
       return {
         tools: [
           // Dynamic entity tools (query_X and list_X for each entity type)
@@ -170,6 +180,9 @@ export class HivemindServer {
 
           // Timeline tools (conditional on date fields in template)
           ...timelineTools,
+
+          // Graph tools (always available)
+          ...graphTools,
 
           // Static tools
           {
@@ -534,6 +547,28 @@ export class HivemindServer {
                 throw new Error(`Invalid date field "${parsed.dateField}" for entity type "${parsed.entityType}"`);
               }
               return await this.handleTimelineExact(parsed);
+            }
+          }
+        }
+
+        // Check for graph tools
+        if (name.startsWith('query_graph_') || name === 'list_relationship_types') {
+          switch (name) {
+            case 'query_graph_neighbors': {
+              const parsed = QueryGraphNeighborsArgsSchema.parse(args);
+              return await this.handleGraphNeighbors(parsed);
+            }
+            case 'query_graph_subgraph': {
+              const parsed = QueryGraphSubgraphArgsSchema.parse(args);
+              return await this.handleGraphSubgraph(parsed);
+            }
+            case 'query_graph_path': {
+              const parsed = QueryGraphPathArgsSchema.parse(args);
+              return await this.handleGraphPath(parsed);
+            }
+            case 'list_relationship_types': {
+              ListRelationshipTypesArgsSchema.parse(args);
+              return await this.handleListRelationshipTypes();
             }
           }
         }
@@ -1827,6 +1862,361 @@ File watcher keeps index updated automatically.
     }
 
     response += `---\n*Query: ${dateField} ${rangeDescription} | Sort: ${sortOrder} | Time: ${executionTime}ms*\n`;
+
+    return response;
+  }
+
+  /**
+   * Handle graph neighbors query
+   */
+  private async handleGraphNeighbors(args: z.infer<typeof QueryGraphNeighborsArgsSchema>) {
+    await this.ensureIndexed();
+
+    // Resolve entity ID
+    const entityId = await this.resolveEntityId(args.entityId);
+    if (!entityId) {
+      return {
+        content: [{
+          type: 'text',
+          text: `Entity not found: "${args.entityId}"\n\nTry searching with: search_vault`,
+        }],
+      };
+    }
+
+    const results = await this.searchEngine.queryGraphNeighbors(entityId, {
+      direction: args.direction,
+      includeRelationships: args.includeRelationships,
+      excludeRelationships: args.excludeRelationships,
+      includeEntityTypes: args.includeEntityTypes,
+      limit: args.limit,
+    });
+
+    const response = this.formatGraphNeighborsResults(
+      entityId,
+      results.neighbors,
+      args.direction || 'both',
+      results.metadata.executionTime
+    );
+
+    return {
+      content: [{
+        type: 'text',
+        text: response,
+      }],
+    };
+  }
+
+  /**
+   * Handle graph subgraph query
+   */
+  private async handleGraphSubgraph(args: z.infer<typeof QueryGraphSubgraphArgsSchema>) {
+    await this.ensureIndexed();
+
+    // Resolve entity ID
+    const entityId = await this.resolveEntityId(args.entityId);
+    if (!entityId) {
+      return {
+        content: [{
+          type: 'text',
+          text: `Entity not found: "${args.entityId}"\n\nTry searching with: search_vault`,
+        }],
+      };
+    }
+
+    const results = await this.searchEngine.queryGraphSubgraph(entityId, args.depth || 2, {
+      direction: args.direction,
+      includeRelationships: args.includeRelationships,
+      excludeRelationships: args.excludeRelationships,
+      includeEntityTypes: args.includeEntityTypes,
+      includeIntermediateNodes: args.includeIntermediateNodes,
+      limit: args.limit,
+    });
+
+    const response = this.formatGraphSubgraphResults(
+      entityId,
+      results.nodes,
+      results.metadata.depth,
+      results.metadata.executionTime
+    );
+
+    return {
+      content: [{
+        type: 'text',
+        text: response,
+      }],
+    };
+  }
+
+  /**
+   * Handle graph path query
+   */
+  private async handleGraphPath(args: z.infer<typeof QueryGraphPathArgsSchema>) {
+    await this.ensureIndexed();
+
+    // Resolve both entity IDs
+    const fromEntityId = await this.resolveEntityId(args.fromEntityId);
+    if (!fromEntityId) {
+      return {
+        content: [{
+          type: 'text',
+          text: `Starting entity not found: "${args.fromEntityId}"\n\nTry searching with: search_vault`,
+        }],
+      };
+    }
+
+    const toEntityId = await this.resolveEntityId(args.toEntityId);
+    if (!toEntityId) {
+      return {
+        content: [{
+          type: 'text',
+          text: `Target entity not found: "${args.toEntityId}"\n\nTry searching with: search_vault`,
+        }],
+      };
+    }
+
+    const results = await this.searchEngine.queryGraphPath(fromEntityId, toEntityId, {
+      includeRelationships: args.includeRelationships,
+      maxDepth: args.maxDepth,
+    });
+
+    const response = this.formatGraphPathResults(
+      fromEntityId,
+      toEntityId,
+      results.found,
+      results.path,
+      results.edges,
+      results.metadata.executionTime
+    );
+
+    return {
+      content: [{
+        type: 'text',
+        text: response,
+      }],
+    };
+  }
+
+  /**
+   * Handle list relationship types
+   */
+  private async handleListRelationshipTypes() {
+    const results = await this.searchEngine.listRelationshipTypes();
+
+    if (results.types.length === 0) {
+      return {
+        content: [{
+          type: 'text',
+          text: 'No relationship types found. Ensure a template is active.',
+        }],
+      };
+    }
+
+    let response = `# Relationship Types\n\nAvailable relationship types in vault:\n\n`;
+
+    for (const type of results.types) {
+      response += `## ${type.label || type.id}\n`;
+      response += `- **ID**: \`${type.id}\`\n`;
+      if (type.description) {
+        response += `- **Description**: ${type.description}\n`;
+      }
+      response += `\n`;
+    }
+
+    response += `---\n*Total: ${results.types.length} relationship types | Time: ${results.metadata.executionTime}ms*\n`;
+
+    return {
+      content: [{
+        type: 'text',
+        text: response,
+      }],
+    };
+  }
+
+  /**
+   * Resolve entity ID from various formats (Type:name, direct ID, name search)
+   */
+  private async resolveEntityId(entityId: string): Promise<string | null> {
+    // Try Type:name format first
+    if (entityId.includes(':')) {
+      const [type, name] = entityId.split(':', 2);
+      const results = await this.searchEngine.search(name, {
+        limit: 5,
+        filters: { type: [type.toLowerCase()] },
+      });
+      if (results.nodes.length > 0) {
+        return results.nodes[0].id;
+      }
+    }
+
+    // Try direct ID match
+    const node = this.database.getNode(entityId);
+    if (node) {
+      return node.id;
+    }
+
+    // Try name search (exact match preferred)
+    const results = await this.searchEngine.search(entityId, { limit: 5 });
+    if (results.nodes.length > 0) {
+      // Prefer exact title match
+      for (const node of results.nodes) {
+        if (node.title.toLowerCase() === entityId.toLowerCase()) {
+          return node.id;
+        }
+      }
+      // Otherwise return first result
+      return results.nodes[0].id;
+    }
+
+    return null;
+  }
+
+  /**
+   * Format graph neighbors results
+   */
+  private formatGraphNeighborsResults(
+    entityId: string,
+    neighbors: Array<{ node: GraphNode; relationship: { type: string; direction: 'outgoing' | 'incoming' } }>,
+    direction: string,
+    executionTime: number
+  ): string {
+    if (neighbors.length === 0) {
+      return `# Graph Neighbors: ${entityId}\n\nNo neighbors found (direction: ${direction}).`;
+    }
+
+    // Group by relationship type
+    const byRelType = new Map<string, Array<{ node: GraphNode; direction: 'outgoing' | 'incoming' }>>();
+    for (const neighbor of neighbors) {
+      const existing = byRelType.get(neighbor.relationship.type) || [];
+      existing.push({ node: neighbor.node, direction: neighbor.relationship.direction });
+      byRelType.set(neighbor.relationship.type, existing);
+    }
+
+    let response = `# Graph Neighbors: ${entityId}\n\n`;
+    response += `Found ${neighbors.length} neighbors across ${byRelType.size} relationship type(s).\n\n`;
+
+    // Format each relationship type group
+    for (const [relType, relNeighbors] of byRelType.entries()) {
+      response += `## ${relType} (${relNeighbors.length})\n\n`;
+
+      for (const { node, direction: dir } of relNeighbors) {
+        const arrow = dir === 'outgoing' ? '→' : '←';
+        response += `### ${arrow} ${node.title}\n`;
+        response += `- **Type**: ${node.type} | **Status**: ${node.status}\n`;
+        response += `- **ID**: \`${node.id}\`\n`;
+
+        // Show description if available
+        const props = node.properties as Record<string, unknown>;
+        if (props?.description && typeof props.description === 'string') {
+          const desc = props.description.trim();
+          const truncated = desc.length > 200 ? desc.substring(0, 200) + '...' : desc;
+          response += `- **Description**: ${truncated}\n`;
+        }
+
+        response += `\n`;
+      }
+    }
+
+    response += `---\n*Direction: ${direction} | Time: ${executionTime}ms*\n`;
+
+    return response;
+  }
+
+  /**
+   * Format graph subgraph results
+   */
+  private formatGraphSubgraphResults(
+    entityId: string,
+    nodes: GraphNode[],
+    depth: number,
+    executionTime: number
+  ): string {
+    if (nodes.length === 0) {
+      return `# Graph Subgraph: ${entityId} (depth: ${depth})\n\nNo entities found.`;
+    }
+
+    // Group by entity type
+    const byType = new Map<string, GraphNode[]>();
+    for (const node of nodes) {
+      const existing = byType.get(node.type) || [];
+      existing.push(node);
+      byType.set(node.type, existing);
+    }
+
+    let response = `# Graph Subgraph: ${entityId} (depth: ${depth})\n\n`;
+    response += `Found ${nodes.length} entities across ${byType.size} type(s).\n\n`;
+
+    // Format each type group
+    for (const [type, typeNodes] of byType.entries()) {
+      response += `## ${type} (${typeNodes.length})\n\n`;
+
+      for (const node of typeNodes) {
+        response += `- **${node.title}** (\`${node.id}\`) — ${node.status}\n`;
+
+        // Show brief description if available
+        const props = node.properties as Record<string, unknown>;
+        if (props?.description && typeof props.description === 'string') {
+          const desc = props.description.trim();
+          const truncated = desc.length > 100 ? desc.substring(0, 100) + '...' : desc;
+          response += `  ${truncated}\n`;
+        }
+      }
+
+      response += `\n`;
+    }
+
+    response += `---\n*Depth: ${depth} hops | Time: ${executionTime}ms*\n`;
+
+    return response;
+  }
+
+  /**
+   * Format graph path results
+   */
+  private formatGraphPathResults(
+    fromEntityId: string,
+    toEntityId: string,
+    found: boolean,
+    path: GraphNode[],
+    edges: Array<{ from: string; to: string; type: string }>,
+    executionTime: number
+  ): string {
+    if (!found) {
+      return `# Graph Path: ${fromEntityId} → ${toEntityId}\n\nNo path found.\n\n` +
+        `---\n*Time: ${executionTime}ms*\n`;
+    }
+
+    let response = `# Graph Path: ${fromEntityId} → ${toEntityId}\n\n`;
+    response += `Path found: ${path.length} hops\n\n`;
+
+    response += `## Path Sequence\n\n`;
+    for (let i = 0; i < path.length; i++) {
+      const node = path[i];
+      response += `${i + 1}. **${node.title}** (\`${node.id}\`) — ${node.type}\n`;
+
+      if (i < edges.length) {
+        const edge = edges[i];
+        response += `   ↓ via ${edge.type}\n`;
+      }
+    }
+
+    response += `\n## Path Details\n\n`;
+    for (const node of path) {
+      response += `### ${node.title}\n`;
+      response += `- **Type**: ${node.type} | **Status**: ${node.status}\n`;
+      response += `- **ID**: \`${node.id}\`\n`;
+
+      // Show brief description if available
+      const props = node.properties as Record<string, unknown>;
+      if (props?.description && typeof props.description === 'string') {
+        const desc = props.description.trim();
+        const truncated = desc.length > 150 ? desc.substring(0, 150) + '...' : desc;
+        response += `- **Description**: ${truncated}\n`;
+      }
+
+      response += `\n`;
+    }
+
+    response += `---\n*Path length: ${path.length} nodes, ${edges.length} edges | Time: ${executionTime}ms*\n`;
 
     return response;
   }

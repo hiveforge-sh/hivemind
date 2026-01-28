@@ -1,5 +1,6 @@
 import type { HivemindDatabase } from '../graph/database.js';
 import type { GraphNode, GraphEdge } from '../types/index.js';
+import { templateRegistry } from '../templates/registry.js';
 
 export interface QueryResult {
   nodes: GraphNode[];
@@ -372,6 +373,227 @@ export class SearchEngine {
         totalResults: nodes.length,
         dateField,
         queryType: 'exact',
+      },
+    };
+  }
+
+  /**
+   * Query immediate neighbors (1-hop) of an entity with full node details
+   *
+   * @param entityId - Entity ID to query
+   * @param options - Query options (direction, filters, limits)
+   * @returns Results with full node details, relationships, and metadata
+   */
+  async queryGraphNeighbors(
+    entityId: string,
+    options?: {
+      direction?: 'outgoing' | 'incoming' | 'both';
+      includeRelationships?: string[];
+      excludeRelationships?: string[];
+      includeEntityTypes?: string[];
+      limit?: number;
+    }
+  ): Promise<{
+    neighbors: Array<{ node: GraphNode; relationship: { type: string; direction: 'outgoing' | 'incoming' } }>;
+    metadata: {
+      source: 'graph';
+      executionTime: number;
+      totalResults: number;
+    };
+  }> {
+    const startTime = Date.now();
+
+    // Call database to get neighbor IDs
+    const dbResults = this.db.queryNeighbors(entityId, {
+      direction: options?.direction,
+      includeRelationships: options?.includeRelationships,
+      excludeRelationships: options?.excludeRelationships,
+      includeEntityTypes: options?.includeEntityTypes,
+      limit: options?.limit,
+    });
+
+    // Fetch full node details for each neighbor
+    const neighbors: Array<{ node: GraphNode; relationship: { type: string; direction: 'outgoing' | 'incoming' } }> = [];
+    for (const neighbor of dbResults) {
+      const node = this.db.getNode(neighbor.neighbor_id);
+      if (node) {
+        neighbors.push({
+          node,
+          relationship: {
+            type: neighbor.rel_type,
+            direction: neighbor.direction as 'outgoing' | 'incoming',
+          },
+        });
+      }
+    }
+
+    return {
+      neighbors,
+      metadata: {
+        source: 'graph',
+        executionTime: Date.now() - startTime,
+        totalResults: neighbors.length,
+      },
+    };
+  }
+
+  /**
+   * Query subgraph (N-hop neighborhood) of an entity with full node details
+   *
+   * @param entityId - Entity ID to query
+   * @param depth - Number of hops (1-5)
+   * @param options - Query options (direction, filters, limits)
+   * @returns Results with full node details and metadata
+   */
+  async queryGraphSubgraph(
+    entityId: string,
+    depth: number,
+    options?: {
+      direction?: 'outgoing' | 'incoming' | 'both';
+      includeRelationships?: string[];
+      excludeRelationships?: string[];
+      includeEntityTypes?: string[];
+      includeIntermediateNodes?: boolean;
+      limit?: number;
+    }
+  ): Promise<{
+    nodes: GraphNode[];
+    metadata: {
+      source: 'graph';
+      executionTime: number;
+      totalResults: number;
+      depth: number;
+    };
+  }> {
+    const startTime = Date.now();
+
+    // Call database to get subgraph results
+    const subgraphResults = this.db.querySubgraph(entityId, depth, {
+      direction: options?.direction,
+      includeRelationships: options?.includeRelationships,
+      excludeRelationships: options?.excludeRelationships,
+      includeEntityTypes: options?.includeEntityTypes,
+      includeIntermediateNodes: options?.includeIntermediateNodes,
+    });
+
+    // Fetch full node details for each entity
+    const nodes: GraphNode[] = [];
+    for (const row of subgraphResults) {
+      const node = this.db.getNode(row.entity_id);
+      if (node) {
+        nodes.push(node);
+      }
+    }
+
+    // Apply limit if specified
+    const limitedNodes = options?.limit ? nodes.slice(0, options.limit) : nodes;
+
+    return {
+      nodes: limitedNodes,
+      metadata: {
+        source: 'graph',
+        executionTime: Date.now() - startTime,
+        totalResults: limitedNodes.length,
+        depth,
+      },
+    };
+  }
+
+  /**
+   * Find shortest path between two entities with full node details
+   *
+   * @param fromEntityId - Starting entity ID
+   * @param toEntityId - Target entity ID
+   * @param options - Query options (relationship filter, max depth)
+   * @returns Path with full node details or not found
+   */
+  async queryGraphPath(
+    fromEntityId: string,
+    toEntityId: string,
+    options?: {
+      includeRelationships?: string[];
+      maxDepth?: number;
+    }
+  ): Promise<{
+    found: boolean;
+    path: GraphNode[];
+    edges: Array<{ from: string; to: string; type: string }>;
+    metadata: {
+      source: 'graph';
+      executionTime: number;
+      pathLength?: number;
+    };
+  }> {
+    const startTime = Date.now();
+
+    // Call database to find shortest path
+    const dbResult = this.db.queryShortestPath(fromEntityId, toEntityId, {
+      includeRelationships: options?.includeRelationships,
+      maxDepth: options?.maxDepth,
+    });
+
+    if (!dbResult.found) {
+      return {
+        found: false,
+        path: [],
+        edges: [],
+        metadata: {
+          source: 'graph',
+          executionTime: Date.now() - startTime,
+        },
+      };
+    }
+
+    // Fetch full node details for path
+    const path: GraphNode[] = [];
+    for (const id of dbResult.path) {
+      const node = this.db.getNode(id);
+      if (node) {
+        path.push(node);
+      }
+    }
+
+    return {
+      found: true,
+      path,
+      edges: dbResult.edges,
+      metadata: {
+        source: 'graph',
+        executionTime: Date.now() - startTime,
+        pathLength: path.length,
+      },
+    };
+  }
+
+  /**
+   * List all relationship types available in the vault
+   *
+   * @returns List of relationship types with metadata
+   */
+  async listRelationshipTypes(): Promise<{
+    types: Array<{ id: string; label?: string; description?: string }>;
+    metadata: {
+      source: 'template';
+      executionTime: number;
+      totalResults: number;
+    };
+  }> {
+    const startTime = Date.now();
+
+    const relationshipTypes = templateRegistry.getRelationshipTypes();
+
+    const types = relationshipTypes.map((r) => ({
+      id: r.id,
+      label: r.displayName,
+      description: r.description,
+    }));
+
+    return {
+      types,
+      metadata: {
+        source: 'template',
+        executionTime: Date.now() - startTime,
+        totalResults: types.length,
       },
     };
   }
