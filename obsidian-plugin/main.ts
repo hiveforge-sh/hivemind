@@ -38,6 +38,7 @@ interface HivemindSettings {
   autoMergeFrontmatter: boolean;
   validationSeverity: 'error' | 'warning';
   showValidationNotices: boolean;
+  timelineFilterTypes: string[];  // Persisted filter state
 }
 
 const DEFAULT_SETTINGS: HivemindSettings = {
@@ -49,6 +50,7 @@ const DEFAULT_SETTINGS: HivemindSettings = {
   autoMergeFrontmatter: false,
   validationSeverity: 'warning',
   showValidationNotices: false,
+  timelineFilterTypes: [],  // Empty means "all types active"
 };
 
 interface MCPToolCall {
@@ -1482,6 +1484,9 @@ interface TimelineEntity {
 class TimelineView extends ItemView {
   plugin: HivemindPlugin;
   private timeline: Timeline | null = null;
+  private items: DataSet<TimelineItem> | null = null;
+  private groups: DataSet<{id: string; content: string; order: number}> | null = null;
+  private activeFilters: Set<string> = new Set();
 
   constructor(leaf: WorkspaceLeaf, plugin: HivemindPlugin) {
     super(leaf);
@@ -1505,15 +1510,9 @@ class TimelineView extends ItemView {
     container.empty();
     container.addClass('hivemind-timeline-view');
 
-    // Create timeline container div with explicit height
-    const timelineContainer = container.createDiv({
-      cls: 'hvmd-timeline-container'
-    });
-    timelineContainer.style.height = '100%';
-    timelineContainer.style.minHeight = '400px';
-
     // Show loading state
-    timelineContainer.setText('Loading timeline data...');
+    const loadingEl = container.createDiv({ cls: 'hvmd-scanning' });
+    loadingEl.setText('Loading timeline data...');
 
     try {
       const items = await this.loadTimelineData();
@@ -1527,13 +1526,40 @@ class TimelineView extends ItemView {
         return;
       }
 
-      // Clear loading message
-      timelineContainer.empty();
+      // Clear loading
+      container.empty();
+      container.addClass('hivemind-timeline-view');
 
-      // Create vis-timeline DataSet
-      const dataSet = new DataSet(items);
+      // Build type count map for groups and filters
+      const typeCountMap = new Map<string, number>();
+      items.forEach(item => {
+        const count = typeCountMap.get(item.group) || 0;
+        typeCountMap.set(item.group, count + 1);
+      });
 
-      // Configure timeline options
+      // Create filter toolbar (top, per CONTEXT.md)
+      this.createFilterToolbar(container, typeCountMap);
+
+      // Create timeline container
+      const timelineContainer = container.createDiv({
+        cls: 'hvmd-timeline-container'
+      });
+
+      // Create groups (swim lanes)
+      // TVIEW-06: Create swim lane groups with count labels
+      const groupData = Array.from(typeCountMap.entries()).map(([type, count], index) => ({
+        id: type,
+        content: `${type.charAt(0).toUpperCase() + type.slice(1)} (${count})`,
+        order: index
+      }));
+
+      this.groups = new DataSet(groupData);
+      this.items = new DataSet(items);
+
+      // Apply initial filters (from saved state)
+      const filteredItems = items.filter(item => this.activeFilters.has(item.group));
+
+      // Timeline options
       // TVIEW-03: Auto-scaling handled by vis-timeline automatically
       const options = {
         editable: false,
@@ -1541,19 +1567,28 @@ class TimelineView extends ItemView {
         zoomable: true,
         moveable: true,
         orientation: 'top',
-        // Performance: limit zoom out to prevent rendering too many items
-        zoomMax: 1000 * 60 * 60 * 24 * 365 * 100, // 100 years max view
-        zoomMin: 1000 * 60 * 60 * 24,              // 1 day min view
-        // Fit all items initially
-        start: undefined,
-        end: undefined
+        zoomMax: 1000 * 60 * 60 * 24 * 365 * 100,
+        zoomMin: 1000 * 60 * 60 * 24,
+        groupOrder: 'order'  // Respect order property for swim lanes
       };
 
-      // Create timeline
-      this.timeline = new Timeline(timelineContainer, dataSet, options);
-
-      // Fit to show all items
+      // Create timeline with filtered items
+      this.timeline = new Timeline(timelineContainer, new DataSet(filteredItems), this.groups, options);
       this.timeline.fit();
+
+      // TVIEW-04: Click handler to open note
+      this.timeline.on('select', (properties: { items: string[] }) => {
+        if (properties.items.length > 0) {
+          const itemId = properties.items[0];
+          const item = this.items?.get(itemId);
+          if (item?.entityPath) {
+            const file = this.plugin.app.vault.getAbstractFileByPath(item.entityPath);
+            if (file instanceof TFile) {
+              void this.plugin.app.workspace.getLeaf('tab').openFile(file);
+            }
+          }
+        }
+      });
 
     } catch (error) {
       container.empty();
@@ -1580,6 +1615,78 @@ class TimelineView extends ItemView {
         const retryBtn = errorEl.createEl('button', { text: 'Retry' });
         retryBtn.addEventListener('click', () => void this.onOpen());
       }
+    }
+  }
+
+  private createFilterToolbar(container: HTMLElement, typeCountMap: Map<string, number>) {
+    // Load saved filter state before creating chips
+    this.loadFilterState(Array.from(typeCountMap.keys()));
+
+    const toolbar = container.createDiv({ cls: 'hvmd-timeline-toolbar' });
+
+    // Label
+    toolbar.createEl('span', {
+      text: 'Filter: ',
+      cls: 'hvmd-timeline-filter-label'
+    });
+
+    // Toggle chips for each entity type
+    // TVIEW-05: Filter timeline by entity type
+    typeCountMap.forEach((count, type) => {
+      const isActive = this.activeFilters.has(type);
+      const chip = toolbar.createEl('button', {
+        text: `${type} (${count})`,
+        cls: isActive ? 'hvmd-timeline-chip hvmd-timeline-chip-active' : 'hvmd-timeline-chip'
+      });
+      chip.dataset.type = type;
+
+      chip.addEventListener('click', () => {
+        if (this.activeFilters.has(type)) {
+          this.activeFilters.delete(type);
+          chip.removeClass('hvmd-timeline-chip-active');
+        } else {
+          this.activeFilters.add(type);
+          chip.addClass('hvmd-timeline-chip-active');
+        }
+        this.applyFilters();
+        void this.saveFilterState();
+      });
+    });
+
+    return toolbar;
+  }
+
+  private applyFilters() {
+    if (!this.timeline || !this.items || !this.groups) return;
+
+    // Filter items by active groups
+    const visibleItems = this.items.get().filter(item =>
+      this.activeFilters.has(item.group)
+    );
+
+    // Update timeline with filtered items
+    // Use setItems to refresh the display
+    this.timeline.setItems(new DataSet(visibleItems));
+  }
+
+  private async saveFilterState() {
+    // Convert Set to array for JSON serialization
+    this.plugin.settings.timelineFilterTypes = Array.from(this.activeFilters);
+    await this.plugin.saveSettings();
+  }
+
+  private loadFilterState(availableTypes: string[]) {
+    const saved = this.plugin.settings.timelineFilterTypes;
+    if (saved && saved.length > 0) {
+      // Only use saved types that still exist in data
+      this.activeFilters = new Set(saved.filter(t => availableTypes.includes(t)));
+      // If no valid types remain, default to all
+      if (this.activeFilters.size === 0) {
+        this.activeFilters = new Set(availableTypes);
+      }
+    } else {
+      // Default: all types active
+      this.activeFilters = new Set(availableTypes);
     }
   }
 
