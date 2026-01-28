@@ -343,8 +343,10 @@ describe('HivemindDatabase Timeline Queries', () => {
         'end_date'
       );
 
-      expect(results).toHaveLength(1);
-      expect(results[0].id).toBe('event-1'); // 2020-06-01 to 2020-06-05
+      // Should include both event-1 (ended June 5) and event-2 (ongoing since 2019)
+      expect(results).toHaveLength(2);
+      expect(results.some(r => r.id === 'event-1')).toBe(true);
+      expect(results.some(r => r.id === 'event-2')).toBe(true);
     });
 
     it('should include events with NULL end_date (ongoing)', () => {

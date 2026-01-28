@@ -224,16 +224,9 @@ export class HivemindDatabase {
   }
 
   /**
-   * Get a node by ID
+   * Convert a database row to a GraphNode
    */
-  getNode(id: string): GraphNode | undefined {
-    const stmt = this.db.prepare(`
-      SELECT * FROM nodes WHERE id = ?
-    `);
-
-    const row = stmt.get(id) as NodeRow | undefined;
-    if (!row) return undefined;
-
+  private rowToGraphNode(row: NodeRow): GraphNode {
     return {
       id: row.id,
       type: row.type as NoteType,
@@ -248,23 +241,26 @@ export class HivemindDatabase {
   }
 
   /**
+   * Get a node by ID
+   */
+  getNode(id: string): GraphNode | undefined {
+    const stmt = this.db.prepare(`
+      SELECT * FROM nodes WHERE id = ?
+    `);
+
+    const row = stmt.get(id) as NodeRow | undefined;
+    if (!row) return undefined;
+
+    return this.rowToGraphNode(row);
+  }
+
+  /**
    * Get all nodes
    */
   getAllNodes(): GraphNode[] {
     const stmt = this.db.prepare('SELECT * FROM nodes ORDER BY updated_at DESC');
     const rows = stmt.all() as NodeRow[];
-
-    return rows.map(row => ({
-      id: row.id,
-      type: row.type as NoteType,
-      status: row.status as NoteStatus,
-      title: row.title,
-      content: row.content,
-      properties: JSON.parse(row.frontmatter),
-      filePath: row.file_path,
-      created: new Date(row.created_at),
-      updated: new Date(row.updated_at),
-    }));
+    return rows.map(row => this.rowToGraphNode(row));
   }
 
   /**
@@ -273,18 +269,7 @@ export class HivemindDatabase {
   getNodesByType(type: string): GraphNode[] {
     const stmt = this.db.prepare('SELECT * FROM nodes WHERE type = ? ORDER BY title');
     const rows = stmt.all(type) as NodeRow[];
-
-    return rows.map(row => ({
-      id: row.id,
-      type: row.type as NoteType,
-      status: row.status as NoteStatus,
-      title: row.title,
-      content: row.content,
-      properties: JSON.parse(row.frontmatter),
-      filePath: row.file_path,
-      created: new Date(row.created_at),
-      updated: new Date(row.updated_at),
-    }));
+    return rows.map(row => this.rowToGraphNode(row));
   }
 
   /**
@@ -377,6 +362,250 @@ export class HivemindDatabase {
   hasNodes(): boolean {
     const result = this.db.prepare('SELECT COUNT(*) as count FROM nodes').get() as CountRow;
     return result.count > 0;
+  }
+
+  /**
+   * Initialize generated columns for date fields
+   * Creates VIRTUAL generated columns that extract date values from JSON frontmatter
+   * and indexes them for efficient queries.
+   *
+   * @param dateFields - Array of date field names (e.g., ['birth_date', 'start_date'])
+   */
+  initializeDateColumns(dateFields: string[]): void {
+    for (const field of dateFields) {
+      try {
+        // Add VIRTUAL generated column
+        // SQLite doesn't support IF NOT EXISTS for ALTER TABLE ADD COLUMN
+        // So we catch the error if column already exists
+        this.db.exec(`
+          ALTER TABLE nodes
+          ADD COLUMN ${field} TEXT
+          GENERATED ALWAYS AS (json_extract(frontmatter, '$.${field}')) VIRTUAL;
+        `);
+      } catch (error) {
+        // Ignore "duplicate column" errors (makes this idempotent)
+        if (!(error instanceof Error && error.message.includes('duplicate column'))) {
+          throw error;
+        }
+      }
+
+      // Create index on the generated column (IF NOT EXISTS supported for indexes)
+      this.db.exec(`
+        CREATE INDEX IF NOT EXISTS idx_nodes_${field} ON nodes(${field});
+      `);
+    }
+  }
+
+  /**
+   * Query nodes by date range
+   *
+   * @param startDate - Start date (inclusive) in ISO format (YYYY-MM-DD)
+   * @param endDate - End date (inclusive) in ISO format (YYYY-MM-DD)
+   * @param dateField - Name of the date field to query
+   * @param options - Query options (entityType, sortOrder, limit)
+   * @returns Array of matching GraphNodes
+   */
+  queryByDateRange(
+    startDate: string,
+    endDate: string,
+    dateField: string,
+    options?: {
+      entityType?: string;
+      sortOrder?: 'asc' | 'desc';
+      limit?: number;
+    }
+  ): GraphNode[] {
+    const { entityType, sortOrder = 'asc', limit = 100 } = options || {};
+
+    let sql = `
+      SELECT * FROM nodes
+      WHERE json_extract(frontmatter, '$.${dateField}') BETWEEN ? AND ?
+    `;
+
+    const params: unknown[] = [startDate, endDate];
+
+    if (entityType) {
+      sql += ' AND type = ?';
+      params.push(entityType);
+    }
+
+    sql += ` ORDER BY json_extract(frontmatter, '$.${dateField}') ${sortOrder.toUpperCase()}`;
+    sql += ' LIMIT ?';
+    params.push(limit);
+
+    const stmt = this.db.prepare(sql);
+    const rows = stmt.all(...params) as NodeRow[];
+    return rows.map(row => this.rowToGraphNode(row));
+  }
+
+  /**
+   * Query nodes before a specific date
+   *
+   * @param date - Date threshold in ISO format (YYYY-MM-DD)
+   * @param dateField - Name of the date field to query
+   * @param options - Query options (entityType, sortOrder, limit)
+   * @returns Array of matching GraphNodes (default: desc order - most recent first)
+   */
+  queryByDateBefore(
+    date: string,
+    dateField: string,
+    options?: {
+      entityType?: string;
+      sortOrder?: 'asc' | 'desc';
+      limit?: number;
+    }
+  ): GraphNode[] {
+    const { entityType, sortOrder = 'desc', limit = 100 } = options || {};
+
+    let sql = `
+      SELECT * FROM nodes
+      WHERE json_extract(frontmatter, '$.${dateField}') < ?
+    `;
+
+    const params: unknown[] = [date];
+
+    if (entityType) {
+      sql += ' AND type = ?';
+      params.push(entityType);
+    }
+
+    sql += ` ORDER BY json_extract(frontmatter, '$.${dateField}') ${sortOrder.toUpperCase()}`;
+    sql += ' LIMIT ?';
+    params.push(limit);
+
+    const stmt = this.db.prepare(sql);
+    const rows = stmt.all(...params) as NodeRow[];
+    return rows.map(row => this.rowToGraphNode(row));
+  }
+
+  /**
+   * Query nodes after a specific date
+   *
+   * @param date - Date threshold in ISO format (YYYY-MM-DD)
+   * @param dateField - Name of the date field to query
+   * @param options - Query options (entityType, sortOrder, limit)
+   * @returns Array of matching GraphNodes (default: asc order - earliest first)
+   */
+  queryByDateAfter(
+    date: string,
+    dateField: string,
+    options?: {
+      entityType?: string;
+      sortOrder?: 'asc' | 'desc';
+      limit?: number;
+    }
+  ): GraphNode[] {
+    const { entityType, sortOrder = 'asc', limit = 100 } = options || {};
+
+    let sql = `
+      SELECT * FROM nodes
+      WHERE json_extract(frontmatter, '$.${dateField}') > ?
+    `;
+
+    const params: unknown[] = [date];
+
+    if (entityType) {
+      sql += ' AND type = ?';
+      params.push(entityType);
+    }
+
+    sql += ` ORDER BY json_extract(frontmatter, '$.${dateField}') ${sortOrder.toUpperCase()}`;
+    sql += ' LIMIT ?';
+    params.push(limit);
+
+    const stmt = this.db.prepare(sql);
+    const rows = stmt.all(...params) as NodeRow[];
+    return rows.map(row => this.rowToGraphNode(row));
+  }
+
+  /**
+   * Query nodes by exact date match
+   *
+   * @param date - Date to match in ISO format (YYYY-MM-DD)
+   * @param dateField - Name of the date field to query
+   * @param options - Query options (entityType, sortOrder, limit)
+   * @returns Array of matching GraphNodes
+   */
+  queryByExactDate(
+    date: string,
+    dateField: string,
+    options?: {
+      entityType?: string;
+      sortOrder?: 'asc' | 'desc';
+      limit?: number;
+    }
+  ): GraphNode[] {
+    const { entityType, sortOrder = 'asc', limit = 100 } = options || {};
+
+    let sql = `
+      SELECT * FROM nodes
+      WHERE json_extract(frontmatter, '$.${dateField}') = ?
+    `;
+
+    const params: unknown[] = [date];
+
+    if (entityType) {
+      sql += ' AND type = ?';
+      params.push(entityType);
+    }
+
+    sql += ` ORDER BY json_extract(frontmatter, '$.${dateField}') ${sortOrder.toUpperCase()}`;
+    sql += ' LIMIT ?';
+    params.push(limit);
+
+    const stmt = this.db.prepare(sql);
+    const rows = stmt.all(...params) as NodeRow[];
+    return rows.map(row => this.rowToGraphNode(row));
+  }
+
+  /**
+   * Query nodes whose date range overlaps with the specified range
+   * Useful for events with start_date and end_date
+   *
+   * @param startDate - Query range start in ISO format (YYYY-MM-DD)
+   * @param endDate - Query range end in ISO format (YYYY-MM-DD)
+   * @param startField - Name of the start date field
+   * @param endField - Name of the end date field
+   * @param options - Query options (entityType, sortOrder, limit)
+   * @returns Array of matching GraphNodes
+   */
+  queryByDateOverlap(
+    startDate: string,
+    endDate: string,
+    startField: string,
+    endField: string,
+    options?: {
+      entityType?: string;
+      sortOrder?: 'asc' | 'desc';
+      limit?: number;
+    }
+  ): GraphNode[] {
+    const { entityType, sortOrder = 'asc', limit = 100 } = options || {};
+
+    // Overlap condition: entity starts before query ends AND (entity ends after query starts OR entity has no end date)
+    let sql = `
+      SELECT * FROM nodes
+      WHERE json_extract(frontmatter, '$.${startField}') <= ?
+        AND (
+          json_extract(frontmatter, '$.${endField}') >= ?
+          OR json_extract(frontmatter, '$.${endField}') IS NULL
+        )
+    `;
+
+    const params: unknown[] = [endDate, startDate];
+
+    if (entityType) {
+      sql += ' AND type = ?';
+      params.push(entityType);
+    }
+
+    sql += ` ORDER BY json_extract(frontmatter, '$.${startField}') ${sortOrder.toUpperCase()}`;
+    sql += ' LIMIT ?';
+    params.push(limit);
+
+    const stmt = this.db.prepare(sql);
+    const rows = stmt.all(...params) as NodeRow[];
+    return rows.map(row => this.rowToGraphNode(row));
   }
 
   /**
