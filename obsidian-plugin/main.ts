@@ -1816,6 +1816,8 @@ class GraphView extends ItemView {
   private renderer: Sigma | null = null;
   private graph: Graph | null = null;
   private hoveredEdge: string | null = null;
+  private activeFilters: Set<string> = new Set();
+  private allGraphData: GraphData = { nodes: [], edges: [] };
 
   constructor(leaf: WorkspaceLeaf, plugin: HivemindPlugin) {
     super(leaf);
@@ -1845,25 +1847,29 @@ class GraphView extends ItemView {
 
     try {
       // Load graph data from MCP
-      const graphData = await this.loadGraphData();
+      this.allGraphData = await this.loadGraphData();
 
       // Clear loading state
       container.empty();
 
       // Check if we have data
-      if (graphData.nodes.length === 0) {
+      if (this.allGraphData.nodes.length === 0) {
         const emptyEl = container.createDiv({ text: 'No graph data available. Open a note to see its connections.' });
         return;
       }
 
+      // Get available entity types from data
+      const availableTypes = Array.from(new Set(this.allGraphData.nodes.map(n => n.type)));
+      this.loadFilterState(availableTypes);
+
       // Show warning for large graphs (>100 nodes)
-      if (graphData.nodes.length > 100) {
+      if (this.allGraphData.nodes.length > 100) {
         const warningEl = container.createDiv({ cls: 'hvmd-graph-warning' });
-        warningEl.setText(`⚠️ Large graph detected (${graphData.nodes.length} nodes). Performance may be affected.`);
+        warningEl.setText(`⚠️ Large graph detected (${this.allGraphData.nodes.length} nodes). Performance may be affected.`);
       }
 
-      // Create toolbar with Local/Full toggle
-      this.createToolbar(container);
+      // Create toolbar with Local/Full toggle and filter chips
+      this.createToolbar(container, availableTypes);
 
       // Create graph container
       const graphContainer = container.createDiv({ cls: 'hvmd-graph-container' });
@@ -1871,8 +1877,13 @@ class GraphView extends ItemView {
       // Create graphology graph instance
       this.graph = new Graph();
 
+      // Filter nodes by active entity types
+      const filteredNodes = this.allGraphData.nodes.filter(node =>
+        this.activeFilters.has(node.type)
+      );
+
       // Add nodes with attributes
-      graphData.nodes.forEach(node => {
+      filteredNodes.forEach(node => {
         this.graph!.addNode(node.id, {
           label: node.title,
           type: node.type,
@@ -1884,8 +1895,14 @@ class GraphView extends ItemView {
         });
       });
 
+      // Filter edges to only include those between visible nodes
+      const visibleNodeIds = new Set(filteredNodes.map(n => n.id));
+      const filteredEdges = this.allGraphData.edges.filter(edge =>
+        visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target)
+      );
+
       // Add edges
-      graphData.edges.forEach(edge => {
+      filteredEdges.forEach(edge => {
         if (!this.graph!.hasEdge(edge.source, edge.target)) {
           this.graph!.addEdge(edge.source, edge.target, {
             relationshipType: edge.relationshipType
@@ -1935,9 +1952,9 @@ class GraphView extends ItemView {
   }
 
   /**
-   * Create toolbar with Local/Full view mode toggle
+   * Create toolbar with Local/Full view mode toggle and entity type filter chips
    */
-  private createToolbar(container: HTMLElement) {
+  private createToolbar(container: HTMLElement, availableTypes: string[]) {
     const toolbar = container.createDiv({ cls: 'hvmd-graph-toolbar' });
 
     const label = toolbar.createEl('span', { text: 'View: ' });
@@ -1967,6 +1984,89 @@ class GraphView extends ItemView {
       void this.plugin.saveSettings();
       void this.onOpen(); // Reload view
     });
+
+    // Add entity type filter chips (GVIEW-06)
+    if (availableTypes.length > 0) {
+      const filterLabel = toolbar.createEl('span', {
+        text: 'Types:',
+        cls: 'hvmd-graph-filter-label'
+      });
+      filterLabel.style.marginLeft = '16px';
+
+      // Get entity type counts
+      const typeCounts = new Map<string, number>();
+      this.allGraphData.nodes.forEach(node => {
+        typeCounts.set(node.type, (typeCounts.get(node.type) || 0) + 1);
+      });
+
+      availableTypes.forEach(type => {
+        const count = typeCounts.get(type) || 0;
+        const chip = toolbar.createEl('button', {
+          text: `${type} (${count})`,
+          cls: this.activeFilters.has(type)
+            ? 'hvmd-graph-chip hvmd-graph-chip-active'
+            : 'hvmd-graph-chip'
+        });
+
+        // Apply Okabe-Ito color for active chips
+        if (this.activeFilters.has(type)) {
+          const colorMap: Record<string, string> = {
+            'Event': '#E69F00',
+            'Character': '#56B4E9',
+            'Location': '#009E73',
+            'Faction': '#F0E442',
+            'Item': '#0072B2',
+            'Concept': '#D55E00',
+            'Timeline': '#CC79A7',
+          };
+          const color = colorMap[type] || '#999999';
+          chip.style.backgroundColor = color;
+          chip.style.borderColor = color;
+          chip.style.color = this.getContrastColor(color);
+        }
+
+        chip.addEventListener('click', () => {
+          if (this.activeFilters.has(type)) {
+            this.activeFilters.delete(type);
+            chip.removeClass('hvmd-graph-chip-active');
+            chip.style.backgroundColor = '';
+            chip.style.borderColor = '';
+            chip.style.color = '';
+          } else {
+            this.activeFilters.add(type);
+            chip.addClass('hvmd-graph-chip-active');
+            const colorMap: Record<string, string> = {
+              'Event': '#E69F00',
+              'Character': '#56B4E9',
+              'Location': '#009E73',
+              'Faction': '#F0E442',
+              'Item': '#0072B2',
+              'Concept': '#D55E00',
+              'Timeline': '#CC79A7',
+            };
+            const color = colorMap[type] || '#999999';
+            chip.style.backgroundColor = color;
+            chip.style.borderColor = color;
+            chip.style.color = this.getContrastColor(color);
+          }
+          this.applyFilters();
+          void this.saveFilterState();
+        });
+      });
+    }
+  }
+
+  /**
+   * Get contrast color (black or white) for a given background color
+   */
+  private getContrastColor(hexColor: string): string {
+    // Convert hex to RGB
+    const r = parseInt(hexColor.substr(1, 2), 16);
+    const g = parseInt(hexColor.substr(3, 2), 16);
+    const b = parseInt(hexColor.substr(5, 2), 16);
+    // Calculate luminance
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.5 ? '#000' : '#fff';
   }
 
   /**
@@ -2009,6 +2109,82 @@ class GraphView extends ItemView {
         label: isHovered ? (data.relationshipType || '') : ''
       };
     };
+  }
+
+  /**
+   * Apply entity type filters by rebuilding the graph
+   */
+  private applyFilters() {
+    if (!this.graph || !this.renderer) return;
+
+    // Clear existing graph
+    this.graph.clear();
+
+    // Filter nodes by active entity types
+    const filteredNodes = this.allGraphData.nodes.filter(node =>
+      this.activeFilters.has(node.type)
+    );
+
+    // Add filtered nodes
+    filteredNodes.forEach(node => {
+      this.graph!.addNode(node.id, {
+        label: node.title,
+        type: node.type,
+        path: node.path,
+        description: node.description,
+        size: 10,
+        x: Math.random() * 100,
+        y: Math.random() * 100
+      });
+    });
+
+    // Filter edges to only include those between visible nodes
+    const visibleNodeIds = new Set(filteredNodes.map(n => n.id));
+    const filteredEdges = this.allGraphData.edges.filter(edge =>
+      visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target)
+    );
+
+    // Add filtered edges
+    filteredEdges.forEach(edge => {
+      if (!this.graph!.hasEdge(edge.source, edge.target)) {
+        this.graph!.addEdge(edge.source, edge.target, {
+          relationshipType: edge.relationshipType
+        });
+      }
+    });
+
+    // Reapply layout
+    const settings = forceAtlas2.inferSettings(this.graph);
+    forceAtlas2.assign(this.graph, { settings, iterations: 50 });
+
+    // Refresh renderer
+    this.renderer.refresh();
+  }
+
+  /**
+   * Save filter state to plugin settings
+   */
+  private async saveFilterState() {
+    this.plugin.settings.graphFilterTypes = Array.from(this.activeFilters);
+    await this.plugin.saveSettings();
+  }
+
+  /**
+   * Load filter state from plugin settings
+   */
+  private loadFilterState(availableTypes: string[]) {
+    const saved = this.plugin.settings.graphFilterTypes;
+    if (saved && saved.length > 0) {
+      // Only use saved types that still exist in data
+      this.activeFilters = new Set(saved.filter(t => availableTypes.includes(t)));
+      // If no valid types remain, default to all
+      if (this.activeFilters.size === 0) {
+        this.activeFilters = new Set(availableTypes);
+      }
+    } else {
+      // Default: all types active
+      this.activeFilters = new Set(availableTypes);
+    }
   }
 
   /**
@@ -2210,7 +2386,7 @@ class GraphView extends ItemView {
           });
       });
 
-      menu.showAtMouseEvent(event.event as MouseEvent);
+      menu.showAtMouseEvent(event.event as unknown as MouseEvent);
     });
 
     // Edge hover to show relationship type label (GVIEW-03)

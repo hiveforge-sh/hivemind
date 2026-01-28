@@ -517,11 +517,18 @@
 
 .hvmd-graph-toolbar {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
   padding: 8px 0;
   margin-bottom: 8px;
   border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.hvmd-graph-filter-label {
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-right: 4px;
 }
 
 .hvmd-graph-btn {
@@ -543,6 +550,26 @@
   background-color: var(--interactive-accent);
   color: var(--text-on-accent);
   border-color: var(--interactive-accent);
+}
+
+/* Entity type filter chips */
+.hvmd-graph-chip {
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 0.85em;
+  cursor: pointer;
+  background-color: var(--background-secondary);
+  color: var(--text-muted);
+  border: 1px solid var(--background-modifier-border);
+  transition: all 0.15s ease;
+}
+
+.hvmd-graph-chip:hover {
+  background-color: var(--background-modifier-hover);
+}
+
+.hvmd-graph-chip-active {
+  /* Active state colors set inline via Okabe-Ito palette */
 }
 
 .hvmd-graph-container {
