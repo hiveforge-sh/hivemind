@@ -6,6 +6,7 @@
  */
 
 import type { EntityTypeConfig } from '../templates/types.js';
+import type { GraphNode, GraphEdge } from '../types/index.js';
 import { z } from 'zod';
 
 /**
@@ -16,7 +17,7 @@ export interface ToolDefinition {
   description: string;
   inputSchema: {
     type: 'object';
-    properties: Record<string, any>;
+    properties: Record<string, unknown>;
     required: string[];
   };
 }
@@ -183,7 +184,7 @@ export function parseListToolName(toolName: string): string | null {
  */
 export function formatEntityWithRelationships(
   entityType: EntityTypeConfig,
-  result: { node: any; relationships?: any[]; relatedNodes: any[] },
+  result: { node: GraphNode; relationships?: GraphEdge[]; relatedNodes: GraphNode[] },
   includeContent = true,
   contentLimit = 500
 ): string {
@@ -234,7 +235,7 @@ export function formatEntityWithRelationships(
     response += `## Relationships\n`;
 
     // Build a map from node ID to node for quick lookup
-    const nodeMap = new Map<string, any>();
+    const nodeMap = new Map<string, GraphNode>();
     nodeMap.set(node.id, node);
     for (const related of relatedNodes) {
       nodeMap.set(related.id, related);
@@ -273,7 +274,7 @@ export function formatEntityWithRelationships(
     // Fallback: group by entity type if no relationship data available
     response += `## Relationships\n`;
 
-    const byType: Record<string, any[]> = {};
+    const byType: Record<string, GraphNode[]> = {};
     for (const related of relatedNodes) {
       const type = related.type || 'unknown';
       if (!byType[type]) byType[type] = [];
@@ -282,7 +283,7 @@ export function formatEntityWithRelationships(
 
     for (const [type, nodes] of Object.entries(byType)) {
       const typeLabel = type.charAt(0).toUpperCase() + type.slice(1) + 's';
-      response += `**${typeLabel}**: ${nodes.map((n: any) => n.title).join(', ')}\n`;
+      response += `**${typeLabel}**: ${nodes.map((n) => n.title).join(', ')}\n`;
     }
     response += `\n`;
   }
@@ -304,7 +305,7 @@ export function formatEntityWithRelationships(
  */
 export function formatEntityList(
   entityType: EntityTypeConfig,
-  nodes: any[],
+  nodes: GraphNode[],
   includeContent = false,
   contentLimit = 200
 ): string {

@@ -34,12 +34,45 @@ import { VaultReader } from './vault/reader.js';
 import { VaultWatcher } from './vault/watcher.js';
 import { HivemindDatabase } from './graph/database.js';
 import { GraphBuilder } from './graph/builder.js';
-import { SearchEngine } from './search/engine.js';
+import { SearchEngine, QueryResult } from './search/engine.js';
+import type { FieldConfig } from './templates/types.js';
 import { ComfyUIClient } from './comfyui/client.js';
 import { WorkflowManager } from './comfyui/workflow.js';
 import { join } from 'path';
 import * as path from 'path';
 import * as fs from 'fs';
+
+/** Row shape returned from the assets SQLite table. */
+interface AssetRow {
+  id: string;
+  asset_type: string;
+  file_path: string;
+  depicts: string | null;
+  workflow_id: string | null;
+  prompt: string | null;
+  parameters: string | null;
+  created: string;
+  status: string;
+}
+
+/** Search filter structure matching SearchEngine.search() options. */
+interface SearchFilters {
+  type?: string[];
+  status?: string[];
+}
+
+/** Shape of a ComfyUI node in a workflow definition. */
+interface ComfyUIWorkflowNode {
+  class_type?: string;
+  inputs?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+/** Shape of a ComfyUI output node result. */
+interface ComfyUIOutputNode {
+  images?: Array<{ filename: string; subfolder: string; type: string }>;
+  [key: string]: unknown;
+}
 
 export class HivemindServer {
   private server: Server;
@@ -587,7 +620,7 @@ export class HivemindServer {
    */
   private async handleGenericQuery(
     typeName: string,
-    entityType: { name: string; displayName: string; pluralName: string; fields: any[] },
+    entityType: { name: string; displayName: string; pluralName: string; fields: FieldConfig[] },
     args: { id: string; includeContent?: boolean; contentLimit?: number }
   ) {
     await this.ensureIndexed();
@@ -652,13 +685,13 @@ export class HivemindServer {
    */
   private async handleGenericList(
     typeName: string,
-    entityType: { name: string; displayName: string; pluralName: string; fields: any[] },
+    entityType: { name: string; displayName: string; pluralName: string; fields: FieldConfig[] },
     args: { limit?: number; status?: string; includeContent?: boolean; contentLimit?: number }
   ) {
     await this.ensureIndexed();
 
     // Build filters
-    const filters: any = { type: [typeName] };
+    const filters: SearchFilters = { type: [typeName] };
     if (args.status) {
       filters.status = [args.status];
     }
@@ -694,7 +727,7 @@ export class HivemindServer {
     };
   }
 
-  private async handleSearchVault(args: { query: string; filters?: any; limit?: number; includeContent?: boolean; contentLimit?: number }) {
+  private async handleSearchVault(args: { query: string; filters?: SearchFilters; limit?: number; includeContent?: boolean; contentLimit?: number }) {
     await this.ensureIndexed();
 
     // Use enhanced search engine
@@ -917,7 +950,7 @@ File watcher keeps index updated automatically.
     }
   }
 
-  private formatSearchResults(results: any, includeContent = false, contentLimit = 300): string {
+  private formatSearchResults(results: QueryResult, includeContent = false, contentLimit = 300): string {
     const { nodes, metadata } = results;
 
     let response = `# Search Results\n\n`;
@@ -1081,7 +1114,7 @@ File watcher keeps index updated automatically.
     if (args.seed !== undefined) {
       // Find KSampler nodes and set seed
       for (const [, node] of Object.entries(workflowWithContext)) {
-        const nodeData = node as any;
+        const nodeData = node as ComfyUIWorkflowNode;
         if (nodeData.class_type?.includes('Sampler') || nodeData.class_type?.includes('KSampler')) {
           if (nodeData.inputs) {
             nodeData.inputs.seed = args.seed;
@@ -1105,7 +1138,7 @@ File watcher keeps index updated automatically.
     // Extract output images
     const outputs = result.outputs || {};
     const imageNodes = Object.entries(outputs).filter(([, value]) => {
-      const v = value as any;
+      const v = value as ComfyUIOutputNode;
       return v.images && Array.isArray(v.images);
     });
 
@@ -1115,7 +1148,7 @@ File watcher keeps index updated automatically.
 
     // Get first image
     const [, nodeOutput] = imageNodes[0];
-    const firstImage = (nodeOutput as any).images[0];
+    const firstImage = (nodeOutput as ComfyUIOutputNode).images![0];
     
     // Download image from ComfyUI
     console.error(`Downloading image ${firstImage.filename} from ComfyUI...`);
@@ -1196,7 +1229,7 @@ File watcher keeps index updated automatically.
   private async handleQueryAsset(args: z.infer<typeof QueryAssetArgsSchema>) {
     const asset = this.database.db.prepare(`
       SELECT * FROM assets WHERE id = ?
-    `).get(args.id) as any;
+    `).get(args.id) as AssetRow | undefined;
 
     if (!asset) {
       return {
@@ -1245,7 +1278,7 @@ File watcher keeps index updated automatically.
 
   private async handleListAssets(args: z.infer<typeof ListAssetsArgsSchema>) {
     let query = 'SELECT * FROM assets WHERE 1=1';
-    const params: any[] = [];
+    const params: (string | number)[] = [];
 
     if (args.depicts) {
       query += ` AND depicts LIKE ?`;
@@ -1267,7 +1300,7 @@ File watcher keeps index updated automatically.
     query += ` ORDER BY created DESC LIMIT ?`;
     params.push(args.limit || 20);
 
-    const assets = this.database.db.prepare(query).all(...params) as any[];
+    const assets = this.database.db.prepare(query).all(...params) as AssetRow[];
 
     if (assets.length === 0) {
       return {
@@ -1309,7 +1342,7 @@ File watcher keeps index updated automatically.
     const allNotes = this.vaultReader.getAllNotes();
 
     // Group notes by status
-    const byStatus: Record<string, any[]> = {
+    const byStatus: Record<string, Array<{ id: string; title: string; type: string; path: string }>> = {
       draft: [],
       pending: [],
       canon: [],
