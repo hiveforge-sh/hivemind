@@ -1818,6 +1818,8 @@ class GraphView extends ItemView {
   private hoveredEdge: string | null = null;
   private activeFilters: Set<string> = new Set();
   private allGraphData: GraphData = { nodes: [], edges: [] };
+  private highlightedNodes: Set<string> = new Set();
+  private searchQuery: string = '';
 
   constructor(leaf: WorkspaceLeaf, plugin: HivemindPlugin) {
     super(leaf);
@@ -2054,6 +2056,46 @@ class GraphView extends ItemView {
         });
       });
     }
+
+    // Add search section (GVIEW-07)
+    const searchContainer = toolbar.createDiv({ cls: 'hvmd-graph-search-container' });
+    searchContainer.style.marginLeft = '16px';
+
+    const searchLabel = searchContainer.createEl('span', {
+      text: 'Search:',
+      cls: 'hvmd-graph-filter-label'
+    });
+
+    const searchInput = searchContainer.createEl('input', {
+      type: 'text',
+      placeholder: 'Search nodes...',
+      cls: 'hvmd-graph-search-input'
+    });
+
+    // Debounced search (200ms)
+    let searchTimeout: NodeJS.Timeout | null = null;
+    searchInput.addEventListener('input', (e) => {
+      if (searchTimeout) {
+        clearTimeout(searchTimeout);
+      }
+      searchTimeout = setTimeout(() => {
+        this.searchQuery = (e.target as HTMLInputElement).value;
+        this.performSearch();
+      }, 200);
+    });
+
+    const clearBtn = searchContainer.createEl('button', {
+      text: '×',
+      cls: 'hvmd-graph-search-clear'
+    });
+    clearBtn.addEventListener('click', () => {
+      searchInput.value = '';
+      this.searchQuery = '';
+      this.highlightedNodes.clear();
+      if (this.renderer) {
+        this.renderer.refresh();
+      }
+    });
   }
 
   /**
@@ -2071,6 +2113,7 @@ class GraphView extends ItemView {
 
   /**
    * Get node reducer for Okabe-Ito entity type coloring (GVIEW-09)
+   * and search result highlighting (GVIEW-07)
    * Uses scientifically validated color-blind accessible palette
    */
   private getNodeReducer() {
@@ -2087,10 +2130,24 @@ class GraphView extends ItemView {
 
     return (node: string, data: any) => {
       const type = data.type || 'default';
+      const isHighlighted = this.highlightedNodes.has(node);
+
+      // If node is in search results, highlight in pink
+      if (isHighlighted) {
+        return {
+          ...data,
+          color: '#FF69B4', // Pink highlight color from Okabe-Ito adjacent
+          size: 15, // Larger node size for visibility
+          label: data.label
+        };
+      }
+
+      // Otherwise use standard entity type color
       const color = colorMap[type] || '#999999'; // Gray fallback
       return {
         ...data,
         color,
+        size: 10,
         label: data.label
       };
     };
@@ -2184,6 +2241,55 @@ class GraphView extends ItemView {
     } else {
       // Default: all types active
       this.activeFilters = new Set(availableTypes);
+    }
+  }
+
+  /**
+   * Perform search and highlight matching nodes (GVIEW-07)
+   */
+  private performSearch() {
+    if (!this.graph || !this.renderer) return;
+
+    this.highlightedNodes.clear();
+
+    if (this.searchQuery.trim().length === 0) {
+      // Clear highlights if search is empty
+      this.renderer.refresh();
+      return;
+    }
+
+    const query = this.searchQuery.toLowerCase();
+    let firstMatch: string | null = null;
+
+    // Find matching nodes by label (case-insensitive substring)
+    this.graph.forEachNode((nodeId, attributes) => {
+      const label = attributes.label?.toLowerCase() || '';
+      if (label.includes(query)) {
+        this.highlightedNodes.add(nodeId);
+        if (!firstMatch) {
+          firstMatch = nodeId;
+        }
+      }
+    });
+
+    // Refresh renderer to apply highlighting
+    this.renderer.refresh();
+
+    // Pan camera to first match
+    if (firstMatch && this.graph.hasNode(firstMatch)) {
+      const nodeAttributes = this.graph.getNodeAttributes(firstMatch);
+      const camera = this.renderer.getCamera();
+      camera.animate({
+        x: nodeAttributes.x,
+        y: nodeAttributes.y,
+        ratio: 0.3
+      }, {
+        duration: 500
+      });
+
+      new Notice(`Found ${this.highlightedNodes.size} matching node(s)`);
+    } else {
+      new Notice('No matching nodes found');
     }
   }
 

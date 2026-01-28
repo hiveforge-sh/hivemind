@@ -572,6 +572,44 @@
   /* Active state colors set inline via Okabe-Ito palette */
 }
 
+/* Search input section */
+.hvmd-graph-search-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hvmd-graph-search-input {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.85em;
+  background-color: var(--background-primary);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+  width: 180px;
+}
+
+.hvmd-graph-search-input:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+}
+
+.hvmd-graph-search-clear {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 1.2em;
+  cursor: pointer;
+  background-color: var(--background-secondary);
+  color: var(--text-muted);
+  border: 1px solid var(--background-modifier-border);
+  transition: all 0.15s ease;
+}
+
+.hvmd-graph-search-clear:hover {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-error);
+}
+
 .hvmd-graph-container {
   flex: 1;
   min-height: 400px;
