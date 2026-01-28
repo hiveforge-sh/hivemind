@@ -12,30 +12,24 @@
 
 ## Current Position
 
-**Phase:** 24 - Timeline MCP Tools
-**Plan:** 3 of 3 complete
-**Status:** Phase complete
-**Last activity:** 2026-01-28 - Completed 24-03-PLAN.md (Timeline MCP server integration)
+**Phase:** 25 - Graph MCP Tools
+**Plan:** 1 of 3 in progress (plan 02 complete)
+**Status:** In progress
+**Last activity:** 2026-01-28 - Completed 25-02-PLAN.md (Graph MCP tool definitions)
 
 **Progress:**
 ```
-[███-----------------] 13/39 requirements complete (33%)
+[███-----------------] 14/39 requirements complete (36%)
 ```
 
-**Phase Goal:** Add timeline query database layer and MCP tools for temporal queries. ✅ COMPLETE
+**Phase Goal:** Add graph traversal MCP tools for relationship queries and pathfinding
 
 **Phase Success Criteria:**
-1. ✅ Plugin uses template registry instead of duplicated FRONTMATTER_TEMPLATES constant
-2. ✅ Template initialization pattern unified between CLI and Obsidian plugin (no duplication)
-3. ✅ cli/init modules have test coverage above 80% (lines) - 91% achieved
-4. ✅ process.chdir() Stryker exclusion resolved or documented with justification
-5. ✅ child_process import resolved or documented with Obsidian review team justification
-6. ✅ Timeline query tools discoverable from template date fields
-7. ✅ Four timeline query tools working (range, before, after, exact)
-8. ✅ Timeline results include full entity context and relationships
-9. ✅ Timeline queries performant via generated column indexes
-10. ✅ Timeline tools conditionally registered per template
-11. ✅ Integration test coverage for timeline tools
+1. ✅ Graph tools use Zod schemas for input validation (25-02 complete)
+2. ✅ Tool definitions match MCP spec format (25-02 complete)
+3. ✅ Tool descriptions include available relationship types (25-02 complete)
+4. ⬜ Four graph query tools working (neighbors, subgraph, path, list_types)
+5. ⬜ Graph queries use SQLite recursive CTEs for traversal
 
 ## Performance Metrics
 
@@ -107,6 +101,11 @@ None currently.
 - ✅ Plan 02: Timeline database queries (24-02)
 - ✅ Plan 03: Timeline MCP server integration (24-03)
 
+**Phase 25 (In Progress):**
+- ⬜ Plan 01: Graph database traversal methods (25-01)
+- ✅ Plan 02: Graph MCP tool definitions (25-02)
+- ⬜ Plan 03: Graph MCP server integration (25-03)
+
 **Future:**
 - Add bundle size monitoring to CI (Phase 27)
 - Build cross-timezone test suite for date queries (Phase 24-03)
@@ -122,10 +121,10 @@ None currently.
 6. Phase 28: Community plugin submission (6 requirements)
 
 **Last session:** 2026-01-28
-**Stopped at:** Completed Phase 24 (Timeline MCP Tools)
+**Stopped at:** Completed 25-02-PLAN.md (Graph MCP tool definitions)
 **Resume file:** None
 
-**Next action:** Begin Phase 25 (Graph MCP Tools).
+**Next action:** Continue Phase 25 (Graph MCP Tools) - plans 01 and 03 remaining
 
 **Context for future sessions:**
 - Phase 23 complete: Template registry unified, plugin docs added, CLI test coverage 91%
@@ -136,8 +135,12 @@ None currently.
   - MCP server conditional tool registration
   - 25 integration tests using research template
   - All four query tools working (range, before, after, exact)
+- Phase 25 progress: Tool definitions complete (25-02)
+  - Zod validation schemas for neighbors, subgraph, path, list_types
+  - generateGraphTools() with dynamic relationship type discovery
+  - 26 unit tests passing
+  - Pattern matches Phase 24 timeline-tools.ts exactly
 - Timeline tools ready for Phase 26 (Timeline Obsidian UI)
-- Pattern established for Phase 25 (Graph MCP Tools)
 - All tech debt cleaned (DEBT-01 through DEBT-05)
 - Research context available at C:\Users\Preston\git\hivemind\.planning\research\SUMMARY.md
 
