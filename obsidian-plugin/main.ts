@@ -1927,6 +1927,29 @@ class GraphView extends ItemView {
       const settings = forceAtlas2.inferSettings(this.graph);
       forceAtlas2.assign(this.graph, { settings, iterations: 50 });
 
+      // Auto-restore saved layout if available (GVIEW-12)
+      const saved = this.plugin.settings.graphLayoutPositions;
+      if (saved && Object.keys(saved).length > 0) {
+        let restoredCount = 0;
+        this.graph.forEachNode((nodeId) => {
+          const savedPos = saved[nodeId];
+          if (savedPos) {
+            this.graph!.setNodeAttribute(nodeId, 'x', savedPos.x);
+            this.graph!.setNodeAttribute(nodeId, 'y', savedPos.y);
+            restoredCount++;
+          }
+        });
+        if (restoredCount > 0) {
+          console.log(`[Graph] Auto-restored layout for ${restoredCount} nodes`);
+        }
+      }
+
+      // Load cluster coloring state from settings
+      this.showClusters = this.plugin.settings.graphShowClusters;
+      if (this.showClusters) {
+        this.detectCommunities();
+      }
+
       // Create sigma renderer with Okabe-Ito coloring
       this.renderer = new Sigma(this.graph, graphContainer, {
         renderLabels: true,
@@ -2123,6 +2146,70 @@ class GraphView extends ItemView {
       }
       new Notice('Path cleared');
     });
+
+    // Add color mode toggle: By Type vs Clusters (GVIEW-11)
+    const colorLabel = toolbar.createEl('span', {
+      text: 'Color:',
+      cls: 'hvmd-graph-filter-label'
+    });
+    colorLabel.style.marginLeft = '16px';
+
+    const byTypeBtn = toolbar.createEl('button', {
+      text: 'By Type',
+      cls: !this.showClusters ? 'hvmd-graph-btn hvmd-graph-btn-active' : 'hvmd-graph-btn'
+    });
+    byTypeBtn.addEventListener('click', () => {
+      this.showClusters = false;
+      this.plugin.settings.graphShowClusters = false;
+      void this.plugin.saveSettings();
+      if (this.renderer) {
+        this.renderer.refresh();
+      }
+      byTypeBtn.addClass('hvmd-graph-btn-active');
+      clustersBtn.removeClass('hvmd-graph-btn-active');
+    });
+
+    const clustersBtn = toolbar.createEl('button', {
+      text: 'Clusters',
+      cls: this.showClusters ? 'hvmd-graph-btn hvmd-graph-btn-active' : 'hvmd-graph-btn'
+    });
+    clustersBtn.addEventListener('click', () => {
+      this.showClusters = true;
+      this.plugin.settings.graphShowClusters = true;
+      void this.plugin.saveSettings();
+      // Detect communities if not already done
+      if (this.communities.size === 0) {
+        this.detectCommunities();
+      }
+      if (this.renderer) {
+        this.renderer.refresh();
+      }
+      clustersBtn.addClass('hvmd-graph-btn-active');
+      byTypeBtn.removeClass('hvmd-graph-btn-active');
+    });
+
+    // Add layout persistence buttons (GVIEW-12)
+    const layoutLabel = toolbar.createEl('span', {
+      text: 'Layout:',
+      cls: 'hvmd-graph-filter-label'
+    });
+    layoutLabel.style.marginLeft = '16px';
+
+    const saveLayoutBtn = toolbar.createEl('button', {
+      text: 'Save',
+      cls: 'hvmd-graph-btn'
+    });
+    saveLayoutBtn.addEventListener('click', () => {
+      void this.saveLayout();
+    });
+
+    const restoreLayoutBtn = toolbar.createEl('button', {
+      text: 'Restore',
+      cls: 'hvmd-graph-btn'
+    });
+    restoreLayoutBtn.addEventListener('click', () => {
+      this.restoreLayout();
+    });
   }
 
   /**
@@ -2139,14 +2226,105 @@ class GraphView extends ItemView {
   }
 
   /**
+   * Detect communities using Louvain algorithm (GVIEW-11)
+   */
+  private detectCommunities() {
+    if (!this.graph) return;
+
+    try {
+      // Run Louvain community detection
+      const communityAssignments = louvain(this.graph);
+
+      // Store community assignments
+      this.communities.clear();
+      for (const [nodeId, communityId] of Object.entries(communityAssignments)) {
+        this.communities.set(nodeId, communityId as number);
+      }
+
+      new Notice(`Detected ${new Set(Object.values(communityAssignments)).size} communities`);
+    } catch (error) {
+      console.error('[Graph] Failed to detect communities:', error);
+      new Notice('Failed to detect communities');
+    }
+  }
+
+  /**
+   * Get Okabe-Ito color palette for community coloring
+   */
+  private getCommunityColors(): string[] {
+    return [
+      '#E69F00',  // Orange
+      '#56B4E9',  // Sky blue
+      '#009E73',  // Bluish green
+      '#F0E442',  // Yellow
+      '#0072B2',  // Blue
+      '#D55E00',  // Vermillion
+      '#CC79A7',  // Reddish purple
+      '#999999',  // Gray (fallback)
+    ];
+  }
+
+  /**
+   * Save current layout positions to plugin settings (GVIEW-12)
+   */
+  private async saveLayout() {
+    if (!this.graph) return;
+
+    const positions: Record<string, { x: number; y: number }> = {};
+
+    this.graph.forEachNode((nodeId, attributes) => {
+      positions[nodeId] = {
+        x: attributes.x,
+        y: attributes.y
+      };
+    });
+
+    this.plugin.settings.graphLayoutPositions = positions;
+    await this.plugin.saveSettings();
+
+    new Notice(`Saved layout for ${Object.keys(positions).length} nodes`);
+  }
+
+  /**
+   * Restore layout positions from plugin settings (GVIEW-12)
+   */
+  private restoreLayout() {
+    if (!this.graph) return;
+
+    const saved = this.plugin.settings.graphLayoutPositions;
+    if (!saved || Object.keys(saved).length === 0) {
+      new Notice('No saved layout found');
+      return;
+    }
+
+    let restoredCount = 0;
+
+    this.graph.forEachNode((nodeId, attributes) => {
+      const savedPos = saved[nodeId];
+      if (savedPos) {
+        this.graph!.setNodeAttribute(nodeId, 'x', savedPos.x);
+        this.graph!.setNodeAttribute(nodeId, 'y', savedPos.y);
+        restoredCount++;
+      }
+    });
+
+    if (this.renderer) {
+      this.renderer.refresh();
+    }
+
+    new Notice(`Restored layout for ${restoredCount} nodes`);
+  }
+
+  /**
    * Get node reducer for Okabe-Ito entity type coloring (GVIEW-09),
    * search result highlighting (GVIEW-07),
-   * and shortest path highlighting (GVIEW-10)
+   * shortest path highlighting (GVIEW-10),
+   * and cluster coloring (GVIEW-11)
    * Uses scientifically validated color-blind accessible palette
    */
   private getNodeReducer() {
     // Okabe-Ito palette mapping entity types to colors
-    const colorMap: Record<string, string> = {
+    const entityColorMap: Record<string, string> = {
       'Event': '#E69F00',      // Orange
       'Character': '#56B4E9',  // Sky blue
       'Location': '#009E73',   // Bluish green
@@ -2155,6 +2333,8 @@ class GraphView extends ItemView {
       'Concept': '#D55E00',    // Vermillion
       'Timeline': '#CC79A7',   // Reddish purple
     };
+
+    const communityColors = this.getCommunityColors();
 
     return (node: string, data: any) => {
       const type = data.type || 'default';
@@ -2181,8 +2361,22 @@ class GraphView extends ItemView {
         };
       }
 
-      // Priority 3: Standard entity type color
-      const color = colorMap[type] || '#999999'; // Gray fallback
+      // Priority 3: Cluster coloring (if enabled)
+      if (this.showClusters && this.communities.size > 0) {
+        const communityId = this.communities.get(node);
+        const color = communityId !== undefined
+          ? communityColors[communityId % communityColors.length]
+          : '#999999';
+        return {
+          ...data,
+          color,
+          size: 10,
+          label: data.label
+        };
+      }
+
+      // Priority 4: Standard entity type color
+      const color = entityColorMap[type] || '#999999'; // Gray fallback
       return {
         ...data,
         color,
