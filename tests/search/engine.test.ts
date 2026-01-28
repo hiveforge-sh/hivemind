@@ -167,6 +167,84 @@ describe('SearchEngine', () => {
 
       expect(result.relationships).toBeUndefined();
     });
+
+    it('should return all nodes when query is empty', async () => {
+      const result = await searchEngine.search('');
+
+      expect(result.nodes.length).toBe(4);
+      expect(result.metadata.source).toBe('graph');
+      expect(result.metadata.totalResults).toBe(4);
+    });
+
+    it('should return nodes by single type filter with empty query', async () => {
+      const result = await searchEngine.search('', {
+        filters: { type: ['character'] }
+      });
+
+      expect(result.nodes.every(n => n.type === 'character')).toBe(true);
+      expect(result.nodes.length).toBe(3);
+    });
+
+    it('should return nodes by multiple type filters with empty query', async () => {
+      const result = await searchEngine.search('', {
+        filters: { type: ['character', 'location'] }
+      });
+
+      expect(result.nodes.length).toBe(4);
+    });
+
+    it('should filter by status with empty query', async () => {
+      const result = await searchEngine.search('', {
+        filters: { status: ['draft'] }
+      });
+
+      expect(result.nodes.length).toBe(1);
+      expect(result.nodes[0].id).toBe('char-3');
+    });
+
+    it('should apply both type and status filters with empty query', async () => {
+      const result = await searchEngine.search('  ', {
+        filters: { type: ['character'], status: ['canon'] }
+      });
+
+      expect(result.nodes.length).toBe(2);
+      expect(result.nodes.every(n => n.type === 'character' && n.status === 'canon')).toBe(true);
+    });
+
+    it('should respect limit with empty query', async () => {
+      const result = await searchEngine.search('', { limit: 2 });
+
+      expect(result.nodes.length).toBe(2);
+      expect(result.metadata.totalResults).toBe(4);
+    });
+
+    it('should filter by status on FTS search results', async () => {
+      const result = await searchEngine.search('character', {
+        filters: { status: ['draft'] }
+      });
+
+      expect(result.nodes.every(n => n.status === 'draft')).toBe(true);
+    });
+
+    it('should filter relationships by type in search', async () => {
+      const result = await searchEngine.search('Alice', {
+        includeRelationships: true,
+        relationshipType: 'ally'
+      });
+
+      expect(result.relationships).toBeDefined();
+      expect(result.relationships!.every(r => r.relationType === 'ally')).toBe(true);
+    });
+
+    it('should return empty relationships when relationshipType matches nothing', async () => {
+      const result = await searchEngine.search('Alice', {
+        includeRelationships: true,
+        relationshipType: 'enemy'
+      });
+
+      expect(result.relationships).toBeDefined();
+      expect(result.relationships!.length).toBe(0);
+    });
   });
 
   describe('getNodeWithRelationships', () => {
@@ -190,6 +268,19 @@ describe('SearchEngine', () => {
 
       expect(result).toBeDefined();
       expect(result!.relationships.length).toBe(2); // One incoming, one outgoing
+    });
+
+    it('should filter relationships by type', async () => {
+      const result = await searchEngine.getNodeWithRelationships('char-2', {
+        relationshipType: 'ally'
+      });
+
+      expect(result).toBeDefined();
+      expect(result!.relationships.every(r => r.relationType === 'ally')).toBe(true);
+      expect(result!.relationships.length).toBe(1);
+      // Related nodes should only include those from filtered relationships
+      expect(result!.relatedNodes.length).toBe(1);
+      expect(result!.relatedNodes[0].id).toBe('char-1');
     });
 
     it('should return unique related nodes', async () => {

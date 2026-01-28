@@ -1,6 +1,17 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { ComfyUIClient } from '../../src/comfyui/client.js';
 
+// Mock ws module
+const mockWsOn = vi.fn();
+const mockWsClose = vi.fn();
+vi.mock('ws', () => {
+  const MockWebSocket = vi.fn(function(this: Record<string, unknown>) {
+    this.on = mockWsOn;
+    this.close = mockWsClose;
+  });
+  return { default: MockWebSocket };
+});
+
 // Mock global fetch
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
@@ -20,6 +31,8 @@ describe('ComfyUIClient', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockWsOn.mockReset();
+    mockWsClose.mockReset();
 
     client = new ComfyUIClient({
       enabled: true,
@@ -304,9 +317,173 @@ describe('ComfyUIClient', () => {
     });
   });
 
+  describe('fetchJson error handling', () => {
+    it('should throw on non-ok response', async () => {
+      mockFetch.mockResolvedValue(mockJsonResponse({}, false, 500));
+      await expect(client.getSystemStats()).rejects.toThrow('HTTP 500');
+    });
+  });
+
+  describe('downloadImage error handling', () => {
+    it('should throw on non-ok response', async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+      });
+      await expect(client.downloadImage('missing.png')).rejects.toThrow('HTTP 404');
+    });
+  });
+
+  describe('connectWebSocket', () => {
+    it('should create WebSocket and register message handler', () => {
+      const onProgress = vi.fn();
+      client.connectWebSocket(onProgress);
+
+      expect(mockWsOn).toHaveBeenCalledWith('message', expect.any(Function));
+      expect(mockWsOn).toHaveBeenCalledWith('error', expect.any(Function));
+    });
+
+    it('should parse and forward valid messages', () => {
+      const onProgress = vi.fn();
+      client.connectWebSocket(onProgress);
+
+      const messageHandler = mockWsOn.mock.calls.find((c: unknown[]) => c[0] === 'message')![1] as (data: unknown) => void;
+      messageHandler(JSON.stringify({ type: 'progress', data: { value: 1, max: 10 } }));
+
+      expect(onProgress).toHaveBeenCalledWith({ type: 'progress', data: { value: 1, max: 10 } });
+    });
+
+    it('should handle invalid JSON messages gracefully', () => {
+      const onProgress = vi.fn();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      client.connectWebSocket(onProgress);
+
+      const messageHandler = mockWsOn.mock.calls.find((c: unknown[]) => c[0] === 'message')![1] as (data: unknown) => void;
+      messageHandler('not-json');
+
+      expect(consoleSpy).toHaveBeenCalledWith('Failed to parse WebSocket message:', expect.any(Error));
+      expect(onProgress).not.toHaveBeenCalled();
+    });
+
+    it('should log WebSocket errors', () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      client.connectWebSocket(vi.fn());
+
+      const errorHandler = mockWsOn.mock.calls.find((c: unknown[]) => c[0] === 'error')![1] as (err: unknown) => void;
+      errorHandler(new Error('ws fail'));
+
+      expect(consoleSpy).toHaveBeenCalledWith('WebSocket error:', expect.any(Error));
+    });
+  });
+
   describe('disconnectWebSocket', () => {
     it('should not throw when no websocket is connected', () => {
       expect(() => client.disconnectWebSocket()).not.toThrow();
+    });
+
+    it('should close and clear websocket when connected', () => {
+      client.connectWebSocket(vi.fn());
+      client.disconnectWebSocket();
+
+      expect(mockWsClose).toHaveBeenCalled();
+    });
+  });
+
+  describe('executeWorkflow', () => {
+    const historyEntry = {
+      prompt: [0, 'id', {}, {}, []],
+      outputs: {},
+      status: { status_str: 'success', completed: true },
+    };
+
+    // Use a short-timeout client for these tests (real timers)
+    let fastClient: ComfyUIClient;
+
+    beforeEach(() => {
+      fastClient = new ComfyUIClient({
+        enabled: true,
+        endpoint: 'http://127.0.0.1:8188',
+        timeout: 3000,
+      });
+    });
+
+    it('should queue prompt and poll history until complete', async () => {
+      mockFetch
+        .mockResolvedValueOnce(mockJsonResponse({ prompt_id: 'p1', number: 1, node_errors: {} }))
+        .mockResolvedValueOnce(mockJsonResponse({ p1: historyEntry }));
+
+      const result = await fastClient.executeWorkflow({ '1': {} });
+      expect(result).toEqual(historyEntry);
+    });
+
+    it('should throw on node errors', async () => {
+      mockFetch.mockResolvedValueOnce(mockJsonResponse({
+        prompt_id: 'p1',
+        number: 1,
+        node_errors: { '1': { message: 'bad node' } },
+      }));
+
+      await expect(fastClient.executeWorkflow({ '1': {} })).rejects.toThrow('Node errors');
+    });
+
+    it('should connect WebSocket when onProgress provided', async () => {
+      mockFetch
+        .mockResolvedValueOnce(mockJsonResponse({ prompt_id: 'p1', number: 1, node_errors: {} }))
+        .mockResolvedValueOnce(mockJsonResponse({ p1: historyEntry }));
+
+      const onProgress = vi.fn();
+      await fastClient.executeWorkflow({ '1': {} }, onProgress);
+
+      expect(mockWsOn).toHaveBeenCalled();
+    });
+
+    it('should timeout if history never returns result', async () => {
+      const tinyClient = new ComfyUIClient({
+        enabled: true,
+        endpoint: 'http://127.0.0.1:8188',
+        timeout: 1500,
+      });
+
+      mockFetch
+        .mockResolvedValueOnce(mockJsonResponse({ prompt_id: 'p1', number: 1, node_errors: {} }))
+        .mockResolvedValue(mockJsonResponse({}));
+
+      await expect(tinyClient.executeWorkflow({ '1': {} })).rejects.toThrow('Workflow execution timed out');
+    }, 5000);
+
+    it('should reject when history polling fails', async () => {
+      mockFetch
+        .mockResolvedValueOnce(mockJsonResponse({ prompt_id: 'p1', number: 1, node_errors: {} }))
+        .mockRejectedValue(new Error('network down'));
+
+      await expect(fastClient.executeWorkflow({ '1': {} })).rejects.toThrow('network down');
+    }, 5000);
+
+    it('should wrap non-Error rejections from history polling', async () => {
+      mockFetch
+        .mockResolvedValueOnce(mockJsonResponse({ prompt_id: 'p1', number: 1, node_errors: {} }))
+        .mockRejectedValue('string error');
+
+      await expect(fastClient.executeWorkflow({ '1': {} })).rejects.toThrow('string error');
+    }, 5000);
+  });
+
+  describe('getNestedValue edge cases', () => {
+    it('should return undefined for non-existent nested path', () => {
+      const workflow = {
+        '1': { inputs: { text: '{{a.b.c}}' } },
+      };
+      const result = client.injectContext(workflow, { a: { b: {} } });
+      expect(result['1'].inputs.text).toBe('');
+    });
+
+    it('should return undefined when intermediate is not an object', () => {
+      const workflow = {
+        '1': { inputs: { text: '{{a.b.c}}' } },
+      };
+      const result = client.injectContext(workflow, { a: 'string' });
+      expect(result['1'].inputs.text).toBe('');
     });
   });
 });
