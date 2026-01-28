@@ -30,12 +30,22 @@ import {
   QueryEntityArgsSchema,
   ListEntityArgsSchema,
 } from './mcp/tool-generator.js';
+import {
+  generateTimelineTools,
+  discoverTemporalTypes,
+  validateDateField,
+  QueryTimelineRangeArgsSchema,
+  QueryTimelineBeforeArgsSchema,
+  QueryTimelineAfterArgsSchema,
+  QueryTimelineExactArgsSchema,
+} from './mcp/timeline-tools.js';
 import { VaultReader } from './vault/reader.js';
 import { VaultWatcher } from './vault/watcher.js';
 import { HivemindDatabase } from './graph/database.js';
 import { GraphBuilder } from './graph/builder.js';
 import { SearchEngine, QueryResult } from './search/engine.js';
 import type { FieldConfig } from './templates/types.js';
+import type { GraphNode, GraphEdge } from './types/index.js';
 import { ComfyUIClient } from './comfyui/client.js';
 import { WorkflowManager } from './comfyui/workflow.js';
 import { join } from 'path';
@@ -147,10 +157,19 @@ export class HivemindServer {
         ? generateToolsForEntityTypes(activeTemplate.entityTypes)
         : [];
 
+      // Generate timeline tools if template has date fields
+      const temporalTypes = discoverTemporalTypes();
+      const timelineTools = temporalTypes.length > 0
+        ? generateTimelineTools(temporalTypes)
+        : [];
+
       return {
         tools: [
           // Dynamic entity tools (query_X and list_X for each entity type)
           ...dynamicTools,
+
+          // Timeline tools (conditional on date fields in template)
+          ...timelineTools,
 
           // Static tools
           {
@@ -481,6 +500,41 @@ export class HivemindServer {
           if (entityType) {
             const parsed = ListEntityArgsSchema.parse(args);
             return await this.handleGenericList(listTypeName, entityType, parsed);
+          }
+        }
+
+        // Check for timeline tools
+        if (name.startsWith('query_timeline_')) {
+          switch (name) {
+            case 'query_timeline_range': {
+              const parsed = QueryTimelineRangeArgsSchema.parse(args);
+              // Validate dateField if entityType provided
+              if (parsed.entityType && !validateDateField(parsed.entityType, parsed.dateField)) {
+                throw new Error(`Invalid date field "${parsed.dateField}" for entity type "${parsed.entityType}"`);
+              }
+              return await this.handleTimelineRange(parsed);
+            }
+            case 'query_timeline_before': {
+              const parsed = QueryTimelineBeforeArgsSchema.parse(args);
+              if (parsed.entityType && !validateDateField(parsed.entityType, parsed.dateField)) {
+                throw new Error(`Invalid date field "${parsed.dateField}" for entity type "${parsed.entityType}"`);
+              }
+              return await this.handleTimelineBefore(parsed);
+            }
+            case 'query_timeline_after': {
+              const parsed = QueryTimelineAfterArgsSchema.parse(args);
+              if (parsed.entityType && !validateDateField(parsed.entityType, parsed.dateField)) {
+                throw new Error(`Invalid date field "${parsed.dateField}" for entity type "${parsed.entityType}"`);
+              }
+              return await this.handleTimelineAfter(parsed);
+            }
+            case 'query_timeline_exact': {
+              const parsed = QueryTimelineExactArgsSchema.parse(args);
+              if (parsed.entityType && !validateDateField(parsed.entityType, parsed.dateField)) {
+                throw new Error(`Invalid date field "${parsed.dateField}" for entity type "${parsed.entityType}"`);
+              }
+              return await this.handleTimelineExact(parsed);
+            }
           }
         }
 
@@ -1569,6 +1623,214 @@ File watcher keeps index updated automatically.
     };
   }
 
+  /**
+   * Handle timeline range query
+   */
+  private async handleTimelineRange(args: z.infer<typeof QueryTimelineRangeArgsSchema>) {
+    await this.ensureIndexed();
+
+    const results = await this.searchEngine.queryTimelineRange(
+      args.startDate,
+      args.endDate,
+      args.dateField,
+      {
+        entityType: args.entityType,
+        sortOrder: args.sortOrder,
+        limit: args.limit,
+      }
+    );
+
+    const response = this.formatTimelineResults(
+      results.nodes,
+      results.relationships,
+      results.metadata.dateField,
+      `${args.startDate} to ${args.endDate}`,
+      args.sortOrder || 'asc',
+      results.metadata.executionTime
+    );
+
+    return {
+      content: [{
+        type: 'text',
+        text: response,
+      }],
+    };
+  }
+
+  /**
+   * Handle timeline before query
+   */
+  private async handleTimelineBefore(args: z.infer<typeof QueryTimelineBeforeArgsSchema>) {
+    await this.ensureIndexed();
+
+    const results = await this.searchEngine.queryTimelineBefore(
+      args.date,
+      args.dateField,
+      {
+        entityType: args.entityType,
+        sortOrder: args.sortOrder,
+        limit: args.limit,
+      }
+    );
+
+    const response = this.formatTimelineResults(
+      results.nodes,
+      results.relationships,
+      results.metadata.dateField,
+      `before ${args.date}`,
+      args.sortOrder || 'desc',
+      results.metadata.executionTime
+    );
+
+    return {
+      content: [{
+        type: 'text',
+        text: response,
+      }],
+    };
+  }
+
+  /**
+   * Handle timeline after query
+   */
+  private async handleTimelineAfter(args: z.infer<typeof QueryTimelineAfterArgsSchema>) {
+    await this.ensureIndexed();
+
+    const results = await this.searchEngine.queryTimelineAfter(
+      args.date,
+      args.dateField,
+      {
+        entityType: args.entityType,
+        sortOrder: args.sortOrder,
+        limit: args.limit,
+      }
+    );
+
+    const response = this.formatTimelineResults(
+      results.nodes,
+      results.relationships,
+      results.metadata.dateField,
+      `after ${args.date}`,
+      args.sortOrder || 'asc',
+      results.metadata.executionTime
+    );
+
+    return {
+      content: [{
+        type: 'text',
+        text: response,
+      }],
+    };
+  }
+
+  /**
+   * Handle timeline exact query
+   */
+  private async handleTimelineExact(args: z.infer<typeof QueryTimelineExactArgsSchema>) {
+    await this.ensureIndexed();
+
+    const results = await this.searchEngine.queryTimelineExact(
+      args.date,
+      args.dateField,
+      {
+        entityType: args.entityType,
+        sortOrder: args.sortOrder,
+        limit: args.limit,
+      }
+    );
+
+    const response = this.formatTimelineResults(
+      results.nodes,
+      results.relationships,
+      results.metadata.dateField,
+      `on ${args.date}`,
+      args.sortOrder || 'asc',
+      results.metadata.executionTime
+    );
+
+    return {
+      content: [{
+        type: 'text',
+        text: response,
+      }],
+    };
+  }
+
+  /**
+   * Format timeline query results
+   */
+  private formatTimelineResults(
+    nodes: GraphNode[],
+    relationships: GraphEdge[],
+    dateField: string,
+    rangeDescription: string,
+    sortOrder: string,
+    executionTime: number
+  ): string {
+    if (nodes.length === 0) {
+      return `# Timeline Results: ${dateField} ${rangeDescription}\n\nNo entities found.`;
+    }
+
+    // Group by entity type
+    const byType = new Map<string, GraphNode[]>();
+    for (const node of nodes) {
+      const existing = byType.get(node.type) || [];
+      existing.push(node);
+      byType.set(node.type, existing);
+    }
+
+    let response = `# Timeline Results: ${dateField} ${rangeDescription}\n\n`;
+    response += `Found ${nodes.length} entities across ${byType.size} type(s).\n\n`;
+
+    // Format each type group
+    for (const [type, typeNodes] of byType.entries()) {
+      response += `## ${type} (${typeNodes.length})\n\n`;
+
+      for (const node of typeNodes) {
+        const dateValue = (node.properties as Record<string, unknown>)?.[dateField] || 'unknown';
+
+        response += `### ${node.title}\n`;
+        response += `- **Date**: ${dateValue}\n`;
+        response += `- **Type**: ${node.type} | **Status**: ${node.status}\n`;
+        response += `- **ID**: \`${node.id}\`\n`;
+
+        // Show key frontmatter fields
+        const props = node.properties as Record<string, unknown>;
+        if (props) {
+          for (const [key, value] of Object.entries(props)) {
+            if (key !== dateField && key !== 'id' && key !== 'type' && key !== 'status' && key !== 'title') {
+              if (typeof value === 'string' || typeof value === 'number') {
+                response += `- **${key}**: ${value}\n`;
+              }
+            }
+          }
+        }
+
+        // Show relationships
+        const nodeRels = relationships.filter(r => r.sourceId === node.id || r.targetId === node.id);
+        if (nodeRels.length > 0) {
+          response += `- **Relationships**: `;
+          const relStrings = nodeRels.slice(0, 5).map(r => {
+            const otherNodeId = r.sourceId === node.id ? r.targetId : r.sourceId;
+            const direction = r.sourceId === node.id ? '→' : '←';
+            return `${direction} ${otherNodeId} (${r.relationType})`;
+          });
+          response += relStrings.join(', ');
+          if (nodeRels.length > 5) {
+            response += ` and ${nodeRels.length - 5} more`;
+          }
+          response += `\n`;
+        }
+
+        response += `\n`;
+      }
+    }
+
+    response += `---\n*Query: ${dateField} ${rangeDescription} | Sort: ${sortOrder} | Time: ${executionTime}ms*\n`;
+
+    return response;
+  }
+
   async start(): Promise<void> {
     // Initialize template system
     console.error('[Server] Initializing template system...');
@@ -1578,6 +1840,16 @@ File watcher keeps index updated automatically.
     } catch (err) {
       console.error('[Server] Warning: Template init failed:', err);
       // Continue without templates - backwards compatibility
+    }
+
+    // Initialize date columns for timeline queries
+    const temporalTypes = discoverTemporalTypes();
+    if (temporalTypes.length > 0) {
+      const allDateFields = Array.from(
+        new Set(temporalTypes.flatMap(t => t.dateFields.map(f => f.name)))
+      );
+      console.error(`[Server] Initializing date columns: ${allDateFields.join(', ')}`);
+      this.database.initializeDateColumns(allDateFields);
     }
 
     // Initial vault scan

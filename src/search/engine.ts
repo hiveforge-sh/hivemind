@@ -169,4 +169,210 @@ export class SearchEngine {
   getStats() {
     return this.db.getStats();
   }
+
+  /**
+   * Query nodes by date range with full context
+   *
+   * @param startDate - Start date (inclusive) in ISO format (YYYY-MM-DD)
+   * @param endDate - End date (inclusive) in ISO format (YYYY-MM-DD)
+   * @param dateField - Name of the date field to query
+   * @param options - Query options (entityType, sortOrder, limit)
+   * @returns Results grouped by entity type with relationships and metadata
+   */
+  async queryTimelineRange(
+    startDate: string,
+    endDate: string,
+    dateField: string,
+    options?: {
+      entityType?: string;
+      sortOrder?: 'asc' | 'desc';
+      limit?: number;
+    }
+  ): Promise<{
+    nodes: GraphNode[];
+    relationships: GraphEdge[];
+    metadata: {
+      source: 'timeline';
+      executionTime: number;
+      totalResults: number;
+      dateField: string;
+      queryType: 'range';
+    };
+  }> {
+    const startTime = Date.now();
+
+    const nodes = this.db.queryByDateRange(startDate, endDate, dateField, options);
+
+    // Fetch relationships for all returned nodes
+    const relationships: GraphEdge[] = [];
+    for (const node of nodes) {
+      const rels = this.db.getRelationships(node.id);
+      relationships.push(...rels);
+    }
+
+    return {
+      nodes,
+      relationships,
+      metadata: {
+        source: 'timeline',
+        executionTime: Date.now() - startTime,
+        totalResults: nodes.length,
+        dateField,
+        queryType: 'range',
+      },
+    };
+  }
+
+  /**
+   * Query nodes before a specific date with full context
+   *
+   * @param date - Date threshold in ISO format (YYYY-MM-DD)
+   * @param dateField - Name of the date field to query
+   * @param options - Query options (entityType, sortOrder, limit)
+   * @returns Results grouped by entity type with relationships and metadata
+   */
+  async queryTimelineBefore(
+    date: string,
+    dateField: string,
+    options?: {
+      entityType?: string;
+      sortOrder?: 'asc' | 'desc';
+      limit?: number;
+    }
+  ): Promise<{
+    nodes: GraphNode[];
+    relationships: GraphEdge[];
+    metadata: {
+      source: 'timeline';
+      executionTime: number;
+      totalResults: number;
+      dateField: string;
+      queryType: 'before';
+    };
+  }> {
+    const startTime = Date.now();
+
+    const nodes = this.db.queryByDateBefore(date, dateField, options);
+
+    // Fetch relationships for all returned nodes
+    const relationships: GraphEdge[] = [];
+    for (const node of nodes) {
+      const rels = this.db.getRelationships(node.id);
+      relationships.push(...rels);
+    }
+
+    return {
+      nodes,
+      relationships,
+      metadata: {
+        source: 'timeline',
+        executionTime: Date.now() - startTime,
+        totalResults: nodes.length,
+        dateField,
+        queryType: 'before',
+      },
+    };
+  }
+
+  /**
+   * Query nodes after a specific date with full context
+   *
+   * @param date - Date threshold in ISO format (YYYY-MM-DD)
+   * @param dateField - Name of the date field to query
+   * @param options - Query options (entityType, sortOrder, limit)
+   * @returns Results grouped by entity type with relationships and metadata
+   */
+  async queryTimelineAfter(
+    date: string,
+    dateField: string,
+    options?: {
+      entityType?: string;
+      sortOrder?: 'asc' | 'desc';
+      limit?: number;
+    }
+  ): Promise<{
+    nodes: GraphNode[];
+    relationships: GraphEdge[];
+    metadata: {
+      source: 'timeline';
+      executionTime: number;
+      totalResults: number;
+      dateField: string;
+      queryType: 'after';
+    };
+  }> {
+    const startTime = Date.now();
+
+    const nodes = this.db.queryByDateAfter(date, dateField, options);
+
+    // Fetch relationships for all returned nodes
+    const relationships: GraphEdge[] = [];
+    for (const node of nodes) {
+      const rels = this.db.getRelationships(node.id);
+      relationships.push(...rels);
+    }
+
+    return {
+      nodes,
+      relationships,
+      metadata: {
+        source: 'timeline',
+        executionTime: Date.now() - startTime,
+        totalResults: nodes.length,
+        dateField,
+        queryType: 'after',
+      },
+    };
+  }
+
+  /**
+   * Query nodes by exact date match with full context
+   *
+   * @param date - Date to match in ISO format (YYYY-MM-DD)
+   * @param dateField - Name of the date field to query
+   * @param options - Query options (entityType, sortOrder, limit)
+   * @returns Results grouped by entity type with relationships and metadata
+   */
+  async queryTimelineExact(
+    date: string,
+    dateField: string,
+    options?: {
+      entityType?: string;
+      sortOrder?: 'asc' | 'desc';
+      limit?: number;
+    }
+  ): Promise<{
+    nodes: GraphNode[];
+    relationships: GraphEdge[];
+    metadata: {
+      source: 'timeline';
+      executionTime: number;
+      totalResults: number;
+      dateField: string;
+      queryType: 'exact';
+    };
+  }> {
+    const startTime = Date.now();
+
+    const nodes = this.db.queryByExactDate(date, dateField, options);
+
+    // Fetch relationships for all returned nodes
+    const relationships: GraphEdge[] = [];
+    for (const node of nodes) {
+      const rels = this.db.getRelationships(node.id);
+      relationships.push(...rels);
+    }
+
+    return {
+      nodes,
+      relationships,
+      metadata: {
+        source: 'timeline',
+        executionTime: Date.now() - startTime,
+        totalResults: nodes.length,
+        dateField,
+        queryType: 'exact',
+      },
+    };
+  }
 }

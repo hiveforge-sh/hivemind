@@ -12,17 +12,17 @@
 
 ## Current Position
 
-**Phase:** 23 - Tech Debt Cleanup
-**Plan:** 3/3 complete
-**Status:** Complete (verified)
-**Last activity:** 2026-01-28 - Phase 23 verified, all 5 success criteria met
+**Phase:** 24 - Timeline MCP Tools
+**Plan:** 1 of 3 complete
+**Status:** In progress
+**Last activity:** 2026-01-28 - Completed 24-01-PLAN.md (Date field discovery and validation)
 
 **Progress:**
 ```
-[██------------------] 5/39 requirements complete (13%)
+[██------------------] 7/39 requirements complete (18%)
 ```
 
-**Phase Goal:** Clean accumulated technical debt before adding temporal and graph complexity.
+**Phase Goal:** Add timeline query database layer and MCP tools for temporal queries.
 
 **Phase Success Criteria:**
 1. ✅ Plugin uses template registry instead of duplicated FRONTMATTER_TEMPLATES constant
@@ -35,7 +35,7 @@
 
 **v4.0 Progress:**
 - Phases complete: 1/6
-- Requirements complete: 5/39
+- Requirements complete: 7/39
 - Days elapsed: 2 (started 2026-01-27)
 
 **Historical:**
@@ -60,6 +60,8 @@
 | Worldbuilding template is source of truth (23-01) | Template registry entity configs drive both CLI and plugin; plugin's hardcoded templates were outdated | Complete |
 | Indirect testing for thin wrappers (23-03) | prompts.ts wrappers tested via wizard integration tests rather than complex ESM mocking | Complete |
 | Mock-based orchestration testing (23-03) | index.ts routing logic tested with mocked dependencies for TTY-free testing | Complete |
+| ISO8601 format-only validation (24-01) | Regex validates YYYY-MM-DD format without calendar correctness; SQLite handles invalid dates correctly | Complete |
+| Variable default sort order (24-01) | timeline_before defaults desc (most recent first), others default asc (chronological) matches user intent | Complete |
 
 ### Active Concerns
 
@@ -70,7 +72,8 @@
 
 **Technical constraints:**
 - Obsidian Sync 5MB per-file limit (current main.js ~150KB, sigma.js adds ~60KB)
-- SQLite date queries require dedicated indexed columns (not JSON extraction)
+- Timeline queries require date-typed fields in template registry
+- ISO8601 YYYY-MM-DD format required for all date inputs
 - Template registry must be shared (no duplication between CLI and plugin)
 
 ### Blockers
@@ -81,6 +84,7 @@ None currently.
 
 1. **Date field migration:** How to handle vaults with non-standard date field names (date, created, timestamp)? (Research during Phase 24)
 2. **Bundle size thresholds:** What's the actual bundle size with sigma.js + graphology? (Measure during Phase 27)
+3. **Temporal types caching:** Should discoverTemporalTypes() cache results? (Currently O(n) scan each call) (Consider during Phase 24-02)
 
 ### TODOs
 
@@ -89,9 +93,13 @@ None currently.
 - ✅ Plan 02: Stryker exclusions and plugin documentation (DEBT-04, DEBT-05)
 - ✅ Plan 03: CLI init test coverage 91.17% (DEBT-03)
 
+**Phase 24 (In Progress):**
+- ✅ Plan 01: Date field discovery and validation schemas (24-01)
+- ⏳ Plan 02: Timeline database queries (next)
+
 **Future:**
 - Add bundle size monitoring to CI (Phase 27)
-- Build cross-timezone test suite for date queries (Phase 24)
+- Build cross-timezone test suite for date queries (Phase 24-03)
 
 ## Session Continuity
 
@@ -104,15 +112,18 @@ None currently.
 6. Phase 28: Community plugin submission (6 requirements)
 
 **Last session:** 2026-01-28
-**Stopped at:** Phase 23 complete and verified
+**Stopped at:** Completed 24-01-PLAN.md
 **Resume file:** None
 
-**Next action:** `/gsd:discuss-phase 24` to plan Timeline MCP Tools.
+**Next action:** Continue Phase 24 with Plan 02 (Timeline database queries).
 
 **Context for future sessions:**
 - Phase 23 complete: Template registry unified, plugin docs added, CLI test coverage 91%
+- Phase 24 Plan 01 complete: Date field discovery and validation (TDD, 27 tests)
+- Timeline foundations ready: discoverTemporalTypes(), validateDateField(), 4 Zod schemas, generateTimelineTools()
+- ISO8601 format validation (YYYY-MM-DD only, no calendar correctness)
+- Variable default sort order per query intent (before=desc, others=asc)
 - All tech debt cleaned (DEBT-01 through DEBT-05)
-- Phase 27 unblocked (template registry now single source of truth)
 - Clean foundation for temporal and graph features
 - Research context available at C:\Users\Preston\git\hivemind\.planning\research\SUMMARY.md
 

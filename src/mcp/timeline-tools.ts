@@ -7,7 +7,6 @@
 
 import { z } from 'zod';
 import { templateRegistry } from '../templates/registry.js';
-import type { FieldConfig } from '../templates/types.js';
 import type { ToolDefinition } from './tool-generator.js';
 
 /**
