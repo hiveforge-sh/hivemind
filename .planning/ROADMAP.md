@@ -122,18 +122,18 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 25-01-PLAN.md — Graph traversal database methods (TDD)
-- [ ] 25-02-PLAN.md — Graph MCP tool definitions and Zod schemas
-- [ ] 25-03-PLAN.md — MCP server integration and integration tests
+- [x] 25-01-PLAN.md — Graph traversal database methods (TDD)
+- [x] 25-02-PLAN.md — Graph MCP tool definitions and Zod schemas
+- [x] 25-03-PLAN.md — MCP server integration and integration tests
 
 **Success Criteria:**
-1. Claude can query "show me all entities connected to Character:john" and receive neighbors with relationship types
-2. Subgraph queries support configurable depth (1-hop, 2-hop, 3-hop) with reasonable performance
-3. Relationship types included in results (e.g., "Character:alice manages Character:bob")
-4. Shortest path tool finds path between any two entities in vault graph
-5. Graph traversal filtered by relationship type (e.g., only "manages" edges, skip "allies_with")
+1. ✅ Claude can query "show me all entities connected to Character:john" and receive neighbors with relationship types
+2. ✅ Subgraph queries support configurable depth (1-hop, 2-hop, 3-hop) with reasonable performance
+3. ✅ Relationship types included in results (e.g., "Character:alice manages Character:bob")
+4. ✅ Shortest path tool finds path between any two entities in vault graph
+5. ✅ Graph traversal filtered by relationship type (e.g., only "manages" edges, skip "allies_with")
 
-**Status:** Planned
+**Status:** Complete (2026-01-28)
 
 ---
 
@@ -213,7 +213,7 @@ Plans:
 | 17-22 | v3.1 | 8/8 | Complete | 2026-01-27 |
 | 23 | v4.0 | 3/3 | Complete | 2026-01-28 |
 | 24 | v4.0 | 3/3 | Complete | 2026-01-28 |
-| 25 | v4.0 | 0/3 | Planned | — |
+| 25 | v4.0 | 3/3 | Complete | 2026-01-28 |
 | 26 | v4.0 | 0/? | Pending | — |
 | 27 | v4.0 | 0/? | Pending | — |
 | 28 | v4.0 | 0/? | Pending | — |
