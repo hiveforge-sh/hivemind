@@ -1,3 +1,10 @@
+# [3.2.0](https://github.com/hiveforge-sh/hivemind/compare/3.1.0...3.2.0) (2026-01-28)
+
+
+### Features
+
+* **19:** replace all any types in server.ts and tool-generator.ts ([8d6ea52](https://github.com/hiveforge-sh/hivemind/commit/8d6ea52c07c5ac3132f454b4a7d3e554f3eb775b))
+
 # [3.1.0](https://github.com/hiveforge-sh/hivemind/compare/3.0.3...3.1.0) (2026-01-27)
 
 
