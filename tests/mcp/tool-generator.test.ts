@@ -260,6 +260,149 @@ describe('Tool Generator', () => {
       const response = formatEntityWithRelationships(characterType, mockResult);
       expect(response).toContain('characters/alice.md');
     });
+
+    it('should format array fields as comma-separated values', () => {
+      const resultWithTraits = {
+        ...mockResult,
+        node: {
+          ...mockResult.node,
+          properties: {
+            ...mockResult.node.properties,
+            traits: ['brave', 'clever', 'kind'],
+          },
+        },
+      };
+      const response = formatEntityWithRelationships(characterType, resultWithTraits);
+      expect(response).toContain('brave, clever, kind');
+    });
+
+    it('should skip empty array fields', () => {
+      const resultWithEmptyTraits = {
+        ...mockResult,
+        node: {
+          ...mockResult.node,
+          properties: {
+            ...mockResult.node.properties,
+            traits: [],
+          },
+        },
+      };
+      const response = formatEntityWithRelationships(characterType, resultWithEmptyTraits);
+      expect(response).not.toContain('Traits');
+    });
+
+    it('should group relationships by relationship type when edges are provided', () => {
+      const resultWithEdges = {
+        node: mockResult.node,
+        relationships: [
+          { sourceId: 'char-alice', targetId: 'char-bob', relationType: 'knows' },
+          { sourceId: 'char-alice', targetId: 'loc-town', relationType: 'lives_in' },
+        ],
+        relatedNodes: [
+          { id: 'char-bob', title: 'Bob', type: 'character' },
+          { id: 'loc-town', title: 'Hometown', type: 'location' },
+        ],
+      };
+      const response = formatEntityWithRelationships(characterType, resultWithEdges);
+      expect(response).toContain('**Knows**: Bob');
+      expect(response).toContain('**Lives In**: Hometown');
+    });
+
+    it('should use "related" as default relationship type when relationType is missing', () => {
+      const resultWithEdges = {
+        node: mockResult.node,
+        relationships: [
+          { sourceId: 'char-alice', targetId: 'char-bob' },
+        ],
+        relatedNodes: [
+          { id: 'char-bob', title: 'Bob', type: 'character' },
+        ],
+      };
+      const response = formatEntityWithRelationships(characterType, resultWithEdges);
+      expect(response).toContain('**Related**: Bob');
+    });
+
+    it('should deduplicate relationship titles', () => {
+      const resultWithDupes = {
+        node: mockResult.node,
+        relationships: [
+          { sourceId: 'char-alice', targetId: 'char-bob', relationType: 'knows' },
+          { sourceId: 'char-bob', targetId: 'char-alice', relationType: 'knows' },
+        ],
+        relatedNodes: [
+          { id: 'char-bob', title: 'Bob', type: 'character' },
+        ],
+      };
+      const response = formatEntityWithRelationships(characterType, resultWithDupes);
+      // Bob should appear only once under Knows
+      const knowsMatch = response.match(/\*\*Knows\*\*: (.+)/);
+      expect(knowsMatch).not.toBeNull();
+      expect(knowsMatch![1]).toBe('Bob');
+    });
+
+    it('should handle reverse relationships (target is current node)', () => {
+      const resultWithReverse = {
+        node: mockResult.node,
+        relationships: [
+          { sourceId: 'char-bob', targetId: 'char-alice', relationType: 'mentors' },
+        ],
+        relatedNodes: [
+          { id: 'char-bob', title: 'Bob', type: 'character' },
+        ],
+      };
+      const response = formatEntityWithRelationships(characterType, resultWithReverse);
+      expect(response).toContain('**Mentors**: Bob');
+    });
+
+    it('should skip relationships where other node is not in relatedNodes', () => {
+      const resultWithMissing = {
+        node: mockResult.node,
+        relationships: [
+          { sourceId: 'char-alice', targetId: 'char-unknown', relationType: 'knows' },
+        ],
+        relatedNodes: [],
+      };
+      // No relationships section since no related nodes match
+      const response = formatEntityWithRelationships(characterType, resultWithMissing);
+      expect(response).not.toContain('## Relationships');
+    });
+
+    it('should exclude content when includeContent is false', () => {
+      const response = formatEntityWithRelationships(characterType, mockResult, false);
+      expect(response).not.toContain('Description');
+      expect(response).not.toContain('A brave adventurer');
+    });
+
+    it('should fallback to grouping by entity type when no edges provided', () => {
+      // This is the existing mockResult path (no relationships field)
+      const response = formatEntityWithRelationships(characterType, mockResult);
+      expect(response).toContain('## Relationships');
+      // Should group by type with plural labels
+      expect(response).toContain('Locations');
+      expect(response).toContain('Characters');
+    });
+
+    it('should skip record type fields', () => {
+      const typeWithRecord: EntityTypeConfig = {
+        ...characterType,
+        fields: [
+          ...characterType.fields,
+          { name: 'metadata', type: 'record' },
+        ],
+      };
+      const resultWithRecord = {
+        ...mockResult,
+        node: {
+          ...mockResult.node,
+          properties: {
+            ...mockResult.node.properties,
+            metadata: { foo: 'bar' },
+          },
+        },
+      };
+      const response = formatEntityWithRelationships(typeWithRecord, resultWithRecord);
+      expect(response).not.toContain('Metadata');
+    });
   });
 
   describe('formatEntityList', () => {
@@ -295,6 +438,15 @@ describe('Tool Generator', () => {
     it('should not include content by default', () => {
       const response = formatEntityList(characterType, mockNodes, false);
       expect(response).not.toContain('Content A');
+    });
+
+    it('should truncate long content snippets', () => {
+      const nodesWithLongContent = [
+        { id: 'char-alice', title: 'Alice', type: 'character', status: 'canon', filePath: 'a.md', content: 'x'.repeat(500) },
+      ];
+      const response = formatEntityList(characterType, nodesWithLongContent, true, 100);
+      expect(response).toContain('...');
+      expect(response).toContain('x'.repeat(100));
     });
   });
 
