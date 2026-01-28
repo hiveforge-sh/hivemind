@@ -3,7 +3,6 @@ import { spawn, ChildProcess } from 'child_process';
 import { FolderMapper } from '../src/templates/folder-mapper.js';
 import { templateRegistry } from '../src/templates/registry.js';
 import { worldbuildingTemplate } from '../src/templates/builtin/worldbuilding.js';
-import matter from 'gray-matter';
 
 interface HivemindSettings {
   mcpServerPath: string;
@@ -388,7 +387,7 @@ export default class HivemindPlugin extends Plugin {
 
   // MCP Server Communication
 
-  async startMCPServer() {
+  startMCPServer() {
     if (this.mcpProcess) {
       new Notice('MCP server already running');
       return;
@@ -544,8 +543,7 @@ export default class HivemindPlugin extends Plugin {
       const frontmatter = cache.frontmatter;
 
       if (!frontmatter.id || !frontmatter.type) {
-        // eslint-disable-next-line obsidianmd/ui/sentence-case -- technical term "frontmatter"
-        new Notice('Note must have id and type in frontmatter');
+        new Notice('Note must have ID and type fields set');
         return;
       }
 
@@ -592,7 +590,7 @@ export default class HivemindPlugin extends Plugin {
     try {
       // Read file content and existing frontmatter
       const content = await this.app.vault.read(file);
-      const { data: existingFrontmatter } = matter(content);
+      const existingFrontmatter = this.extractFrontmatter(content);
 
       // If no type, use shared FolderMapper to infer from folder path
       if (!existingFrontmatter.type && this.folderMapper) {
@@ -641,7 +639,7 @@ export default class HivemindPlugin extends Plugin {
         }
       } else if (existingFrontmatter.type) {
         // Type already exists, open AddFrontmatterModal with existing type
-        new AddFrontmatterModal(this.app, this, file, existingFrontmatter.type, existingFrontmatter).open();
+        new AddFrontmatterModal(this.app, this, file, String(existingFrontmatter.type), existingFrontmatter).open();
       } else {
         // No folder mapping and no type - show full type selection
         new TypeSelectionModal(this.app, this, file, undefined, (selectedType: string) => {
@@ -716,7 +714,7 @@ export default class HivemindPlugin extends Plugin {
       for (const file of filesToProcess) {
         try {
           const content = await this.app.vault.read(file);
-          const { data: existingFrontmatter } = matter(content);
+          const existingFrontmatter = this.extractFrontmatter(content);
 
           // Skip if already has all fields
           const template = FRONTMATTER_TEMPLATES[entityType];
@@ -857,7 +855,7 @@ export default class HivemindPlugin extends Plugin {
       if (value === null || value === undefined) {
         lines.push(`${indentStr}${key}:`);
       } else if (value instanceof Date) {
-        // gray-matter parses YAML dates into Date objects — preserve as ISO date string
+        // Preserve Date objects as ISO date string
         const iso = value.toISOString().split('T')[0];
         lines.push(`${indentStr}${key}: ${iso}`);
       } else if (Array.isArray(value)) {
@@ -886,7 +884,10 @@ export default class HivemindPlugin extends Plugin {
           lines.push(`${indentStr}${key}: ${value}`);
         }
       } else {
-        lines.push(`${indentStr}${key}: ${value}`);
+        const stringified = typeof value === 'object' && value !== null
+          ? JSON.stringify(value)
+          : String(value);
+        lines.push(`${indentStr}${key}: ${stringified}`);
       }
     }
 
@@ -905,6 +906,16 @@ export default class HivemindPlugin extends Plugin {
     }
 
     return result;
+  }
+
+  /**
+   * Extract frontmatter data from raw file content (replaces gray-matter).
+   * Returns the parsed frontmatter object.
+   */
+  extractFrontmatter(content: string): Record<string, unknown> {
+    const match = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!match) return {};
+    return this.parseFrontmatter(match[1]);
   }
 
   async executeWorkflow(workflowId: string, contextId: string, contextType: string) {
@@ -955,8 +966,8 @@ export default class HivemindPlugin extends Plugin {
       // Read file content
       const content = await this.app.vault.read(file);
 
-      // Parse frontmatter using gray-matter
-      const { data: frontmatter } = matter(content);
+      // Parse frontmatter
+      const frontmatter = this.extractFrontmatter(content);
 
       // Validation issues
       const issues: Array<{type: string, detail: string}> = [];
@@ -984,13 +995,14 @@ export default class HivemindPlugin extends Plugin {
 
       // Check type against template entity types
       if (frontmatter.type) {
+        const entityTypeStr = String(frontmatter.type);
         const template = templateRegistry.getActive();
         const validTypes = template?.entityTypes.map((e) => e.name) || [];
 
-        if (!validTypes.includes(frontmatter.type)) {
+        if (!validTypes.includes(entityTypeStr)) {
           issues.push({
             type: 'invalid_type',
-            detail: `Invalid type '${frontmatter.type}'. Valid types: ${validTypes.join(', ')}`
+            detail: `Invalid type '${entityTypeStr}'. Valid types: ${validTypes.join(', ')}`
           });
         }
       }
@@ -1030,7 +1042,7 @@ export default class HivemindPlugin extends Plugin {
     try {
       // Read file and parse frontmatter
       const content = await this.app.vault.read(file);
-      const { data: existingFrontmatter } = matter(content);
+      const existingFrontmatter = this.extractFrontmatter(content);
 
       // If no frontmatter at all, redirect to add-frontmatter flow
       if (!existingFrontmatter || Object.keys(existingFrontmatter).length === 0) {
@@ -1039,7 +1051,7 @@ export default class HivemindPlugin extends Plugin {
       }
 
       // If no type, try to resolve it
-      let entityType = existingFrontmatter.type;
+      let entityType: string = typeof existingFrontmatter.type === 'string' ? existingFrontmatter.type : '';
       if (!entityType && this.folderMapper) {
         const result = await this.folderMapper.resolveType(file.path);
         if (result.confidence === 'exact') {
@@ -1072,7 +1084,7 @@ export default class HivemindPlugin extends Plugin {
       }
 
       // Open FixFieldsModal with missing fields
-      new FixFieldsModal(this.app, this, file, existingFrontmatter, missingFields, entityType as string).open();
+      new FixFieldsModal(this.app, this, file, existingFrontmatter, missingFields, entityType).open();
 
     } catch (error) {
       console.error('Failed to fix frontmatter:', error);
@@ -1095,7 +1107,7 @@ export default class HivemindPlugin extends Plugin {
         try {
           // Read file and parse frontmatter
           const content = await this.app.vault.read(file);
-          const { data: existingFrontmatter } = matter(content);
+          const existingFrontmatter = this.extractFrontmatter(content);
 
           // Skip files without frontmatter
           if (!existingFrontmatter || Object.keys(existingFrontmatter).length === 0) {
@@ -1104,7 +1116,7 @@ export default class HivemindPlugin extends Plugin {
           }
 
           // Resolve type
-          let entityType = existingFrontmatter.type;
+          let entityType: string = typeof existingFrontmatter.type === 'string' ? existingFrontmatter.type : '';
           if (!entityType && this.folderMapper) {
             const result = await this.folderMapper.resolveType(file.path);
             if (result.confidence === 'exact') {
@@ -1130,7 +1142,7 @@ export default class HivemindPlugin extends Plugin {
           const fileName = file.basename;
           const autoFilledTemplate = {
             ...template,
-            id: existingFrontmatter.id || this.generateId(fileName, entityType as string),
+            id: existingFrontmatter.id || this.generateId(fileName, entityType),
             name: existingFrontmatter.name || fileName,
             title: existingFrontmatter.title || fileName
           };
@@ -1179,7 +1191,7 @@ export default class HivemindPlugin extends Plugin {
       for (const file of folderFiles) {
         try {
           const content = await this.app.vault.read(file);
-          const { data: frontmatter } = matter(content);
+          const frontmatter = this.extractFrontmatter(content);
           const fileIssues: Array<{type: string, detail: string}> = [];
 
           if (!frontmatter || Object.keys(frontmatter).length === 0) {
@@ -1199,12 +1211,13 @@ export default class HivemindPlugin extends Plugin {
             }
 
             if (frontmatter.type) {
+              const typeStr = String(frontmatter.type);
               const template = templateRegistry.getActive();
               const validTypes = template?.entityTypes.map((e) => e.name) || [];
-              if (!validTypes.includes(frontmatter.type)) {
+              if (!validTypes.includes(typeStr)) {
                 fileIssues.push({
                   type: 'invalid_type',
-                  detail: `Invalid type '${frontmatter.type}'`
+                  detail: `Invalid type '${typeStr}'`
                 });
               }
             }
@@ -1249,14 +1262,14 @@ export default class HivemindPlugin extends Plugin {
       for (const file of folderFiles) {
         try {
           const content = await this.app.vault.read(file);
-          const { data: existingFrontmatter } = matter(content);
+          const existingFrontmatter = this.extractFrontmatter(content);
 
           if (!existingFrontmatter || Object.keys(existingFrontmatter).length === 0) {
             skippedCount++;
             continue;
           }
 
-          let entityType = existingFrontmatter.type;
+          let entityType: string = typeof existingFrontmatter.type === 'string' ? existingFrontmatter.type : '';
           if (!entityType && this.folderMapper) {
             const result = await this.folderMapper.resolveType(file.path);
             if (result.confidence === 'exact') {
@@ -1279,7 +1292,7 @@ export default class HivemindPlugin extends Plugin {
           const fileName = file.basename;
           const autoFilledTemplate = {
             ...template,
-            id: existingFrontmatter.id || this.generateId(fileName, entityType as string),
+            id: existingFrontmatter.id || this.generateId(fileName, entityType),
             name: existingFrontmatter.name || fileName,
             title: existingFrontmatter.title || fileName
           };
@@ -1375,7 +1388,7 @@ class ValidationSidebarView extends ItemView {
     });
 
     // Results container
-    const resultsContainer = container.createDiv({ cls: 'hivemind-validation-results hvmd-results-container' });
+    container.createDiv({ cls: 'hivemind-validation-results hvmd-results-container' });
 
     // Run initial validation
     await this.runValidation();
@@ -1401,7 +1414,7 @@ class ValidationSidebarView extends ItemView {
     for (const file of allFiles) {
       try {
         const content = await this.app.vault.read(file);
-        const { data: frontmatter } = matter(content);
+        const frontmatter = this.plugin.extractFrontmatter(content);
         const issues: Array<{type: string, detail: string}> = [];
 
         if (!frontmatter || Object.keys(frontmatter).length === 0) {
@@ -1421,12 +1434,13 @@ class ValidationSidebarView extends ItemView {
           }
 
           if (frontmatter.type) {
+            const typeStr = String(frontmatter.type);
             const template = templateRegistry.getActive();
             const validTypes = template?.entityTypes.map((e) => e.name) || [];
-            if (!validTypes.includes(frontmatter.type)) {
+            if (!validTypes.includes(typeStr)) {
               issues.push({
                 type: 'invalid_type',
-                detail: `Invalid type '${frontmatter.type}'`
+                detail: `Invalid type '${typeStr}'`
               });
             }
 
@@ -1434,7 +1448,7 @@ class ValidationSidebarView extends ItemView {
             if (this.plugin.folderMapper && issues.length === 0) {
               try {
                 const resolved = await this.plugin.folderMapper.resolveType(file.path);
-                if (resolved.confidence === 'exact' && resolved.types[0] !== frontmatter.type) {
+                if (resolved.confidence === 'exact' && resolved.types[0] !== typeStr) {
                   const severity = this.plugin.settings.validationSeverity || 'warning';
                   issues.push({
                     type: severity === 'error' ? 'folder_mismatch_error' : 'folder_mismatch',
@@ -1464,12 +1478,12 @@ class ValidationSidebarView extends ItemView {
     // Show summary
     const summaryEl = resultsContainer.createDiv({ cls: 'validation-summary hvmd-summary' });
 
-    const validEl = summaryEl.createEl('div', {
+    summaryEl.createEl('div', {
       text: `Valid: ${validFiles.length}`,
       cls: 'validation-summary-item hvmd-text-success'
     });
 
-    const issuesCountEl = summaryEl.createEl('div', {
+    summaryEl.createEl('div', {
       text: `Issues: ${invalidFiles.length}`,
       cls: 'validation-summary-item hvmd-text-warning'
     });
@@ -1534,12 +1548,12 @@ class FolderValidationResultModal extends Modal {
     // Summary
     const summaryEl = contentEl.createDiv({ cls: 'validation-summary hvmd-summary-with-margin-top' });
 
-    const validEl = summaryEl.createEl('div', {
+    summaryEl.createEl('div', {
       text: `Valid: ${this.validCount}`,
       cls: 'hvmd-text-success'
     });
 
-    const issuesCountEl = summaryEl.createEl('div', {
+    summaryEl.createEl('div', {
       text: `Issues: ${this.invalidCount}`,
       cls: 'hvmd-text-warning'
     });
@@ -1897,7 +1911,7 @@ class WorkflowSelectionModal extends Modal {
           this.close();
           this.plugin.stopMCPServer();
           await new Promise(resolve => setTimeout(resolve, 1000));
-          await this.plugin.startMCPServer();
+          this.plugin.startMCPServer();
         });
 
         return;
@@ -2016,7 +2030,7 @@ class CreateWorkflowModal extends Modal {
       .setName('Workflow ID')
       .setDesc('Unique identifier (lowercase, no spaces)')
       .addText(text => text
-        .setPlaceholder('my-portrait')
+        .setPlaceholder('Enter workflow ID')
         .onChange(value => {
           this.result.id = value.toLowerCase().replace(/\s+/g, '-');
         }));
@@ -2212,8 +2226,7 @@ class WorkflowCreatedModal extends Modal {
     const steps = contentEl.createEl('ol');
     steps.createEl('li', { text: 'Open ComfyUI in your browser' });
     steps.createEl('li', { text: 'Create/load your workflow' });
-    // eslint-disable-next-line obsidianmd/ui/sentence-case -- "Save" is a UI button label
-    steps.createEl('li', { text: 'Click "Save (API format)" button' });
+    steps.createEl('li', { text: 'Click the save (API format) button' });
     steps.createEl('li', { text: 'Copy the JSON output' });
     steps.createEl('li', { text: 'Paste it into the "workflow" field in your JSON file' });
 
@@ -2228,7 +2241,7 @@ class WorkflowCreatedModal extends Modal {
       this.close();
       this.plugin.stopMCPServer();
       await new Promise(resolve => setTimeout(resolve, 1000));
-      await this.plugin.startMCPServer();
+      this.plugin.startMCPServer();
       new Notice('MCP server reconnected - workflow loaded!');
     });
   }
@@ -2497,12 +2510,12 @@ class TypeSelectionModal extends Modal {
           cls: 'type-selection-btn mod-cta hvmd-type-btn'
         });
 
-        const typeNameEl = typeBtn.createEl('div', {
+        typeBtn.createEl('div', {
           text: type.charAt(0).toUpperCase() + type.slice(1),
           cls: 'hvmd-type-name'
         });
 
-        const typeDescEl = typeBtn.createEl('div', {
+        typeBtn.createEl('div', {
           text: description,
           cls: 'hvmd-type-desc'
         });
@@ -2529,12 +2542,12 @@ class TypeSelectionModal extends Modal {
         cls: 'type-selection-btn hvmd-type-btn'
       });
 
-      const typeNameEl = typeBtn.createEl('div', {
+      typeBtn.createEl('div', {
         text: type.charAt(0).toUpperCase() + type.slice(1),
         cls: 'hvmd-type-name'
       });
 
-      const typeDescEl = typeBtn.createEl('div', {
+      typeBtn.createEl('div', {
         text: description,
         cls: 'hvmd-type-desc'
       });
@@ -2627,8 +2640,7 @@ class HivemindSettingTab extends PluginSettingTab {
       .setName('MCP server command')
       .setDesc('Command to start the MCP server')
       .addText(text => text
-        // eslint-disable-next-line obsidianmd/ui/sentence-case -- npm package name
-        .setPlaceholder('npx @hiveforge/hivemind-mcp start')
+        .setPlaceholder('Enter server start command')
         .setValue(this.plugin.settings.mcpServerPath)
         .onChange(async (value) => {
           this.plugin.settings.mcpServerPath = value;
