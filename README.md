@@ -1,359 +1,139 @@
 <p align="center">
-  <img src="gh-social-preview.png" alt="Hivemind" width="100%"/>
+  <img src="gh-social-preview.png" alt="Hivemind for Obsidian" width="100%"/>
 </p>
 
-# Hivemind MCP Server
+# Hivemind for Obsidian
 
-[![NPM Version](https://img.shields.io/npm/v/@hiveforge/hivemind-mcp.svg)](https://www.npmjs.com/package/@hiveforge/hivemind-mcp)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/hiveforge-sh/hivemind/test.yml?branch=master&label=tests)](https://github.com/hiveforge-sh/hivemind/actions/workflows/test.yml)
-[![Release](https://img.shields.io/github/actions/workflow/status/hiveforge-sh/hivemind/release.yml?branch=master&label=release)](https://github.com/hiveforge-sh/hivemind/actions/workflows/release.yml)
-[![codecov](https://codecov.io/gh/hiveforge-sh/hivemind/branch/master/graph/badge.svg)](https://codecov.io/gh/hiveforge-sh/hivemind)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![GitHub issues](https://img.shields.io/github/issues/hiveforge-sh/hivemind)](https://github.com/hiveforge-sh/hivemind/issues)
-[![GitHub stars](https://img.shields.io/github/stars/hiveforge-sh/hivemind)](https://github.com/hiveforge-sh/hivemind/stargazers)
 
-A domain-agnostic MCP (Model Context Protocol) server for Obsidian vaults that provides AI tools with consistent, structured context from your knowledge base.
+**Your canon is the source of truth. AI stays inside the lines.**
 
-**The AI Memory Firewall**: Hivemind's core value isn't just better answers — it's *preventing AI from inventing context*. Your knowledge graph becomes a truth anchor that keeps AI grounded in facts you control.
+## Why Hivemind?
 
-## What is Hivemind?
+When building fictional worlds — whether you're writing a novel, designing a game, or running an RPG campaign — AI tools can be powerful collaborators. But they hallucinate. Ask your AI assistant about a character you created last week, and it might invent details that contradict your established canon.
 
-Hivemind bridges your Obsidian vault and AI tools (Claude, ComfyUI, etc.) via the Model Context Protocol. With pluggable templates, it supports multiple domains out of the box:
+Hivemind solves this by giving AI tools structured access to your Obsidian vault. Think of it as an **AI Firewall**: your worldbuilding notes become a truth anchor that keeps AI grounded in facts you control. Ask about a character, and the AI reads your actual notes — not a hallucinated version. Query a timeline, and it references your established events — not invented dates.
 
-- **Worldbuilding** — Characters, Locations, Events, Factions, Lore, Assets
-- **Research** — Papers, Citations, Concepts, Notes
-- **People Management** — People, Goals, Teams, 1:1 Meetings
-- **Software Architecture** — Systems, Components, ADRs, Constraints *(community)*
-- **UX Research** — Interviews, Insights, Hypotheses, Personas *(community)*
+Beyond AI integration, Hivemind provides powerful visualization tools:
+- **Timeline View** — See your story's events laid out chronologically
+- **Graph View** — Explore relationships between characters, locations, factions, and more
+- **Canon Workflow** — Track which content is approved, in review, or still draft
 
-Or define your own custom entity types via `config.json` — no code required.
+Hivemind is built for worldbuilders, but the same principles apply to research vaults, people management, software architecture — anywhere you need AI to respect your established knowledge.
 
 ## Features
 
-- **Pluggable Templates**: Built-in templates for worldbuilding, research, people management, and software architecture — or define your own
-- **HybridRAG Search**: Combines vector, graph, and keyword search for accurate context retrieval
-- **Obsidian Native**: Works with standard markdown, YAML frontmatter, and wikilinks
-- **Custom Relationships**: Define relationship types per template with bidirectionality and validation
-- **Asset Provenance**: Track AI-generated images and their generation settings
-- **Local-First**: Your data stays on your machine — critical for sensitive domains like people management and architecture decisions
-- **Canon Management**: Draft → Pending → Canon approval workflow with consistency validation
-- **High Performance**: <300ms query latency, supports 1000+ note vaults
+- **Timeline View** — Visualize events chronologically with filtering and search
+- **Graph View** — Explore entity relationships with interactive visualization
+- **AI Integration** — MCP-compatible server for Claude, GitHub Copilot, and other AI tools
+- **Pluggable Templates** — Built-in templates for worldbuilding, research, people management, and more
+- **Canon Workflow** — Draft → Pending → Canon approval system with consistency validation
+- **Obsidian Native** — Works with standard markdown, YAML frontmatter, and wikilinks
+- **Local-First** — Your data stays on your machine
 
-### Canon Workflow: Not Just for Fiction
-
-The canon workflow applies far beyond worldbuilding:
-
-| Domain | What Gets Canon Status |
-|--------|----------------------|
-| **Worldbuilding** | Approved lore, character facts, timeline events |
-| **Architecture** | Accepted ADRs, design decisions, constraints |
-| **Brand** | Voice guidelines, approved messaging, visual identity |
-| **Security** | Approved policies, access controls, compliance rules |
-| **People Management** | Finalized goals, approved team structures |
-
-AI that references non-canon content gets flagged. AI that violates canon constraints gets corrected. This is **governance without meetings**.
-
-## Quick Start
-
-### Installation
-
-```bash
-# Install globally
-npm install -g @hiveforge/hivemind-mcp
-
-# Or use with npx (no installation needed)
-npx @hiveforge/hivemind-mcp init
-```
-
-### Setup
-
-```bash
-# Interactive setup - creates config.json
-npx @hiveforge/hivemind-mcp init
-
-# Validate your configuration
-npx @hiveforge/hivemind-mcp validate
-
-# Start the server
-npx @hiveforge/hivemind-mcp start
-
-# Or start with a specific vault path (no config needed)
-npx @hiveforge/hivemind-mcp --vault /path/to/vault
-npx @hiveforge/hivemind-mcp --vault .  # Use current directory
-```
-
-### Configuration for MCP Clients
-
-**Claude Desktop** (`%APPDATA%\Claude\claude_desktop_config.json`):
-```json
-{
-  "mcpServers": {
-    "hivemind": {
-      "command": "npx",
-      "args": ["-y", "@hiveforge/hivemind-mcp", "start"]
-    }
-  }
-}
-```
-
-**Claude Desktop with vault override**:
-```json
-{
-  "mcpServers": {
-    "hivemind": {
-      "command": "npx",
-      "args": ["-y", "@hiveforge/hivemind-mcp", "--vault", "C:\\Path\\To\\Your\\Vault"]
-    }
-  }
-}
-```
-
-**GitHub Copilot** (`~/.copilot/mcp-config.json`):
-```json
-{
-  "mcpServers": {
-    "hivemind": {
-      "type": "local",
-      "command": "npx",
-      "args": ["-y", "@hiveforge/hivemind-mcp", "start"],
-      "tools": ["*"]
-    }
-  }
-}
-```
-
-### Manual Configuration
-
-If you prefer to configure manually, create a `config.json`:
-
-```json
-{
-  "vault": {
-    "path": "/path/to/your/obsidian/vault",
-    "watchForChanges": true,
-    "debounceMs": 100
-  },
-  "server": {
-    "transport": "stdio"
-  },
-  "template": {
-    "activeTemplate": "worldbuilding"
-  },
-  "indexing": {
-    "strategy": "incremental",
-    "batchSize": 100,
-    "enableVectorSearch": false,
-    "enableFullTextSearch": true
-  }
-}
-```
-
-### Choosing a Template
-
-Set `activeTemplate` to one of the built-in or community templates:
+### Built-in Templates
 
 | Template | Use Case | Entity Types |
 |----------|----------|--------------|
-| `worldbuilding` | Fiction writers, game masters | Characters, Locations, Events, Factions, Lore, Assets, References |
-| `research` | Academics, knowledge workers | Papers, Citations, Concepts, Notes |
-| `people-management` | Managers, team leads | People, Goals, Teams, 1:1 Meetings |
-| `software-architecture` | Engineers, architects | Systems, Components, Decisions (ADRs), Constraints, Interfaces |
-| `ux-research` | UX researchers, product teams | Interviews, Insights, Hypotheses, Personas, Experiments |
+| **Worldbuilding** | Fiction writers, game designers, RPG creators | Characters, Locations, Events, Factions, Lore, Assets |
+| **Research** | Academics, knowledge workers | Papers, Citations, Concepts, Notes |
+| **People Management** | Managers, team leads | People, Goals, Teams, 1:1 Meetings |
+| **Software Architecture** | Engineers, architects | Systems, Components, ADRs, Constraints |
 
-### Custom Templates
+Define your own custom entity types via config — no code required. See [CONTRIBUTING_TEMPLATES.md](CONTRIBUTING_TEMPLATES.md) for details.
 
-Define custom entity types directly in your `config.json`:
+## Installation
 
-```json
-{
-  "template": {
-    "activeTemplate": "my-template",
-    "templates": [{
-      "id": "my-template",
-      "name": "My Custom Template",
-      "version": "1.0.0",
-      "entityTypes": [{
-        "name": "project",
-        "displayName": "Project",
-        "pluralName": "Projects",
-        "fields": [
-          { "name": "title", "type": "string", "required": true },
-          { "name": "deadline", "type": "date" },
-          { "name": "priority", "type": "enum", "enumValues": ["low", "medium", "high"] }
-        ]
-      }],
-      "relationshipTypes": [{
-        "id": "depends_on",
-        "displayName": "Depends On",
-        "sourceTypes": ["project"],
-        "targetTypes": ["project"],
-        "bidirectional": true,
-        "reverseId": "blocks"
-      }]
-    }]
-  }
-}
-```
+### Obsidian Plugin (Recommended)
 
-See [samples/](samples/) for complete example vaults for each template.
+1. Open Obsidian Settings
+2. Go to Community plugins → Browse
+3. Search for "Hivemind"
+4. Click Install, then Enable
 
-### CLI Template Tools
+### Manual Installation
 
-Create, manage, and validate templates using the command line:
+1. Download the latest release from [GitHub Releases](https://github.com/hiveforge-sh/hivemind/releases)
+2. Extract to your vault's `.obsidian/plugins/hivemind` directory
+3. Reload Obsidian and enable the plugin in Settings
 
-```bash
-# List available templates (built-in + community)
-npx @hiveforge/hivemind-mcp list-templates
+### AI Integration (Optional)
 
-# Add a template from the registry, URL, or local file
-npx @hiveforge/hivemind-mcp add-template software-architecture
-npx @hiveforge/hivemind-mcp add-template https://example.com/template.json
-npx @hiveforge/hivemind-mcp add-template ./my-template.json
+Want AI tools to query your vault? Set up the MCP server:
 
-# Interactive template creation wizard
-npx @hiveforge/hivemind-mcp create-template
+**[MCP Setup Guide →](docs/MCP_SETUP_GUIDE.md)**
 
-# Validate a template file
-npx @hiveforge/hivemind-mcp validate-template template.json
+The guide covers:
+- Claude Desktop configuration (Windows, macOS, Linux)
+- GitHub Copilot configuration
+- Template selection
+- Troubleshooting
 
-# Check template compatibility with your Hivemind version
-npx @hiveforge/hivemind-mcp check-compatibility
-npx @hiveforge/hivemind-mcp check-compatibility software-architecture
+## Quick Start
 
-# Generate template catalog JSON (for documentation sites)
-npx @hiveforge/hivemind-mcp generate-catalog
-```
+1. **Choose a template** — Open Hivemind settings in Obsidian and select a template (worldbuilding, research, etc.)
 
-Want to contribute a template? See [CONTRIBUTING_TEMPLATES.md](CONTRIBUTING_TEMPLATES.md).
+2. **Create entities** — Use Obsidian's note creation as usual. Add YAML frontmatter to define entity types:
+   ```yaml
+   ---
+   entity_type: character
+   canon_status: draft
+   ---
+   ```
 
-## Architecture
+3. **Visualize** — Open the Timeline view or Graph view from the ribbon icons
 
-```
-Obsidian Vault → File Watcher → Markdown Parser → Knowledge Graph
-                                                         ↓
-                                     ┌───────────────────┴─────────────────┐
-                                     │                                     │
-                              Full-Text Index                      Vector Index
-                                 (SQLite)                            (FAISS)
-                                     │                                     │
-                                     └───────────────────┬─────────────────┘
-                                                         ↓
-                                                  HybridRAG Router
-                                                         ↓
-                                                    MCP Server
-                                                         ↓
-                                              AI Clients (Claude, etc.)
-```
+4. **Connect to AI** — Follow the [MCP Setup Guide](docs/MCP_SETUP_GUIDE.md) to let AI tools query your vault
 
-## Development Status
+For detailed setup instructions, see [docs/SETUP_GUIDE.md](docs/SETUP_GUIDE.md).
 
-**Current**: v2.1 Community Templates Complete ✅
+## Screenshots
 
-### v2.1 — Community Templates (Complete)
+### Timeline View
+*Coming soon — chronological visualization of events*
 
-- [x] CLI tools: `create-template`, `validate-template`, `add-template`, `list-templates`
-- [x] Community templates: software-architecture, ux-research
-- [x] Enhanced metadata: category, tags, author, repository, license
-- [x] Template catalog generation for docs sites
-- [x] Version compatibility checking with `minHivemindVersion`
-- [x] Template contribution guide
+![Timeline View Placeholder](docs/images/timeline-view.png)
 
-### v2.0 — Template System (Complete)
+### Graph View
+*Coming soon — interactive entity relationship visualization*
 
-Hivemind is now domain-agnostic with pluggable templates:
+![Graph View Placeholder](docs/images/graph-view.png)
 
-- [x] Template registry with config-driven entity definitions
-- [x] Dynamic Zod schema generation from config
-- [x] Auto-generated MCP tools per entity type (`query_<type>`, `list_<type>`)
-- [x] Worldbuilding template extraction (backwards compatible)
-- [x] Custom relationship types per template with validation
-- [x] Built-in templates: worldbuilding, research, people-management
-- [x] Sample vaults for each template
+## Use Cases
 
-### v1.0 — MVP + Core Features (Shipped)
+**Worldbuilding:**
+- Track characters, locations, and events across your novel
+- AI remembers your character details when helping with dialogue
+- Visualize timeline of your story's key events
 
-- [x] MCP server with hybrid search (vector, graph, keyword)
-- [x] Vault templates for all entity types (Character, Location, Event, Faction, Lore, Asset)
-- [x] Canon workflow tools (status management, consistency validation)
-- [x] Asset management with full provenance tracking
-- [x] ComfyUI integration with workflow management
-- [x] Obsidian plugin with image generation
-- [x] CI/CD with semantic-release and CodeQL scanning
+**Research:**
+- Organize papers, citations, and concepts in your field
+- AI references your actual research when answering questions
+- Explore connections between concepts in your knowledge base
 
-### Coming Soon
+**People Management:**
+- Track team goals, 1:1 meeting notes, and people details
+- AI recalls context from previous meetings when drafting agendas
+- Visualize team relationships and reporting structures
 
-- [ ] Obsidian community plugin submission
-- [ ] Timeline queries with date range filtering
-- [ ] Web-based template builder
-
-## MCP Tools
-
-### Dynamic Entity Tools (Auto-Generated)
-
-Tools are automatically generated for each entity type defined in the active template:
-
-| Tool Pattern | Description |
-|--------------|-------------|
-| `query_<type>` | Get entity by ID/name with relationships and content |
-| `list_<type>` | List all entities of type with optional filters |
-
-**Built-in and community template tools:**
-
-| Template | Generated Tools |
-|----------|-----------------|
-| `worldbuilding` | `query_character`, `query_location`, `query_event`, `query_faction`, `query_lore`, `query_asset`, `query_reference` + list variants |
-| `research` | `query_paper`, `query_citation`, `query_concept`, `query_note` + list variants |
-| `people-management` | `query_person`, `query_goal`, `query_team`, `query_one_on_one` + list variants |
-| `software-architecture` | `query_system`, `query_component`, `query_decision`, `query_constraint`, `query_interface` + list variants |
-| `ux-research` | `query_interview`, `query_insight`, `query_hypothesis`, `query_persona`, `query_experiment` + list variants |
-
-### Search
-| Tool | Description |
-|------|-------------|
-| `search_vault` | Hybrid search across all content with type/status filters |
-
-### Asset Management
-| Tool | Description |
-|------|-------------|
-| `store_asset` | Store generated image with provenance metadata |
-| `query_asset` | Get asset with generation settings |
-| `list_assets` | Filter assets by entity, type, status, workflow |
-
-### Canon Workflow
-| Tool | Description |
-|------|-------------|
-| `get_canon_status` | List entities grouped by status (draft/pending/canon) |
-| `submit_for_review` | Move entity from draft to pending review |
-| `validate_consistency` | Check for broken links, duplicates, conflicts |
-
-### ComfyUI Integration (when enabled)
-| Tool | Description |
-|------|-------------|
-| `store_workflow` | Save ComfyUI workflow to vault |
-| `list_workflows` | Browse saved workflows |
-| `get_workflow` | Retrieve workflow by ID |
-| `generate_image` | Generate image with vault context injection |
-
-### Utility
-| Tool | Description |
-|------|-------------|
-| `rebuild_index` | Force complete re-index of vault |
-| `get_vault_stats` | Vault statistics and token savings metrics |
+**Software Architecture:**
+- Document systems, components, and architectural decisions (ADRs)
+- AI references your ADRs when suggesting design patterns
+- Track dependencies between components visually
 
 ## Documentation
 
 - [Setup Guide](docs/SETUP_GUIDE.md) — Getting started with Hivemind
+- [MCP Setup Guide](docs/MCP_SETUP_GUIDE.md) — AI integration configuration
 - [Vault Migration Guide](docs/VAULT_MIGRATION_GUIDE.md) — Migrating existing vaults
-- [Canon Workflow for Enterprise](docs/CANON_WORKFLOW_ENTERPRISE.md) — Using canon workflow for ADRs, research, and more
-- [MCP Compatibility](docs/MCP_COMPATIBILITY.md) — Supported AI clients
-- [ComfyUI Integration](docs/COMFYUI_INTEGRATION.md) — AI image generation
-- [Obsidian Plugin Workflow](docs/OBSIDIAN_PLUGIN_WORKFLOW.md) — Plugin development
+- [Canon Workflow](docs/CANON_WORKFLOW_ENTERPRISE.md) — Using canon workflow beyond worldbuilding
+- [Contributing Templates](CONTRIBUTING_TEMPLATES.md) — Create and share templates
 - [Sample Vaults](samples/README.md) — Example vaults for each template
-- [Contributing Templates](CONTRIBUTING_TEMPLATES.md) — How to create and contribute templates
 
-## License
+## Community
 
-MIT
+- **Issues & Feature Requests** — [GitHub Issues](https://github.com/hiveforge-sh/hivemind/issues)
+- **Discussions** — [GitHub Discussions](https://github.com/hiveforge-sh/hivemind/discussions)
 
 ## Contributing
 
@@ -365,10 +145,10 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 <type>: <description>
 
 [optional body]
-
-[optional footer]
 ```
 
 Common types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
 
-Example: `feat: add pagination support to search results`
+## License
+
+[MIT](LICENSE) — Free for personal and commercial use.
