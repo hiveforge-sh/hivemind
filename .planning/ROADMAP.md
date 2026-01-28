@@ -93,6 +93,13 @@ Plans:
 
 **Requirements:** TIME-01, TIME-02, TIME-03, TIME-04, TIME-05, TIME-06
 
+**Plans:** 3 plans
+
+Plans:
+- [ ] 24-01-PLAN.md — Date field discovery and validation schemas (TDD)
+- [ ] 24-02-PLAN.md — Database timeline query methods with generated columns (TDD)
+- [ ] 24-03-PLAN.md — MCP tool registration, server wiring, and integration tests
+
 **Success Criteria:**
 1. Claude can query "show me all events between June 2024 and August 2024" and receive sorted results
 2. MCP tool validates ISO8601 date format (YYYY-MM-DD) and rejects malformed input with clear error
@@ -100,7 +107,7 @@ Plans:
 4. Timeline queries only work on entity types with date fields (skip types without dates)
 5. Queries return results in ascending or descending order based on user preference
 
-**Status:** Pending
+**Status:** Planned
 
 ---
 
@@ -198,7 +205,7 @@ Plans:
 | 12-16 | v3.0 | 19/19 | Complete | 2026-01-27 |
 | 17-22 | v3.1 | 8/8 | Complete | 2026-01-27 |
 | 23 | v4.0 | 3/3 | Complete | 2026-01-28 |
-| 24 | v4.0 | 0/? | Pending | — |
+| 24 | v4.0 | 0/3 | Planned | — |
 | 25 | v4.0 | 0/? | Pending | — |
 | 26 | v4.0 | 0/? | Pending | — |
 | 27 | v4.0 | 0/? | Pending | — |
