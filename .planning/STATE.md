@@ -13,20 +13,20 @@
 ## Current Position
 
 **Phase:** 23 - Tech Debt Cleanup
-**Plan:** 02 of 4
+**Plan:** 01 of 4
 **Status:** In progress
-**Last activity:** 2026-01-28 - Completed 23-02-PLAN.md
+**Last activity:** 2026-01-28 - Completed 23-01-PLAN.md
 
 **Progress:**
 ```
-[█-------------------] 2/39 requirements complete (5%)
+[██------------------] 4/39 requirements complete (10%)
 ```
 
 **Phase Goal:** Clean accumulated technical debt before adding temporal and graph complexity.
 
 **Phase Success Criteria:**
-1. Plugin uses template registry instead of duplicated FRONTMATTER_TEMPLATES constant
-2. Template initialization pattern unified between CLI and Obsidian plugin (no duplication)
+1. ✅ Plugin uses template registry instead of duplicated FRONTMATTER_TEMPLATES constant
+2. ✅ Template initialization pattern unified between CLI and Obsidian plugin (no duplication)
 3. cli/init modules have test coverage above 80% (lines)
 4. ✅ process.chdir() Stryker exclusion resolved or documented with justification
 5. ✅ child_process import resolved or documented with Obsidian review team justification
@@ -35,7 +35,7 @@
 
 **v4.0 Progress:**
 - Phases complete: 0/6
-- Requirements complete: 2/39
+- Requirements complete: 4/39
 - Days elapsed: 1 (started 2026-01-27)
 
 **Historical:**
@@ -57,6 +57,7 @@
 | Submission last | Polish features before review | Planned |
 | Test isolation via explicit paths (23-02) | Removed process.chdir() tests in favor of explicit configPath parameter to avoid Stryker worker conflicts | Complete |
 | Inline child_process docs (23-02) | Documented at import site for review team visibility vs separate ADR | Complete |
+| Worldbuilding template is source of truth (23-01) | Template registry entity configs drive both CLI and plugin; plugin's hardcoded templates were outdated | Complete |
 
 ### Active Concerns
 
@@ -82,9 +83,9 @@ None currently.
 ### TODOs
 
 **Phase 23 (In Progress):**
+- ✅ Plan 01: Template registry deduplication (DEBT-01, DEBT-02)
 - ✅ Plan 02: Stryker exclusions and plugin documentation (DEBT-04, DEBT-05)
-- Next: Plans 01, 03, 04 for template registry deduplication and CLI coverage
-- Prioritize DEBT-01/DEBT-02 (template registry deduplication) as it affects Phase 27
+- Next: Plans 03, 04 for CLI test coverage (DEBT-03)
 
 **Future:**
 - Add bundle size monitoring to CI (Phase 27)
@@ -93,7 +94,7 @@ None currently.
 ## Session Continuity
 
 **Completing v4.0 requires:**
-1. Phase 23: Clean tech debt (5 requirements, 2 complete)
+1. Phase 23: Clean tech debt (5 requirements, 4 complete)
 2. Phase 24: Timeline MCP tools (6 requirements)
 3. Phase 25: Graph MCP tools (5 requirements)
 4. Phase 26: Timeline Obsidian view (6 requirements)
@@ -101,15 +102,16 @@ None currently.
 6. Phase 28: Community plugin submission (6 requirements)
 
 **Last session:** 2026-01-28
-**Stopped at:** Completed 23-02-PLAN.md
+**Stopped at:** Completed 23-01-PLAN.md
 **Resume file:** None
 
-**Next action:** Continue Phase 23 with plans 01, 03, 04 for template registry deduplication and CLI test coverage.
+**Next action:** Continue Phase 23 with plans 03, 04 for CLI test coverage (DEBT-03).
 
 **Context for future sessions:**
-- Phase 23 plan 02 complete: process.chdir() removed, child_process documented
-- DEBT-04 and DEBT-05 resolved, clearing blockers for Phase 28
-- Template registry deduplication (plans 01, 03) is prerequisite for Phase 27
+- Phase 23 plans 01-02 complete: Template registry deduplication done, plugin docs done
+- DEBT-01, DEBT-02, DEBT-04, DEBT-05 all resolved
+- Phase 27 unblocked (template registry now single source of truth)
+- Remaining: DEBT-03 (CLI test coverage for init modules)
 - Research context available at C:\Users\Preston\git\hivemind\.planning\research\SUMMARY.md
 
 ---
