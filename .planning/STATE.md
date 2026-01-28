@@ -13,29 +13,29 @@
 ## Current Position
 
 **Phase:** 25 - Graph MCP Tools
-**Plan:** 1 of 3 complete
-**Status:** In progress
-**Last activity:** 2026-01-28 - Completed 25-01-PLAN.md (Graph traversal database methods)
+**Plan:** 3 of 3 complete
+**Status:** Phase complete
+**Last activity:** 2026-01-28 - Completed 25-03-PLAN.md (Graph MCP server integration)
 
 **Progress:**
 ```
-[███-----------------] 14/39 requirements complete (36%)
+[████----------------] 18/39 requirements complete (46%)
 ```
 
 **Phase Goal:** Add graph traversal MCP tools for relationship queries and pathfinding
 
 **Phase Success Criteria:**
 1. ✅ Graph database layer with recursive CTE traversal methods (25-01 complete)
-2. ⬜ Graph tools use Zod schemas for input validation
-3. ⬜ Tool definitions match MCP spec format
-4. ⬜ Tool descriptions include available relationship types
-5. ⬜ Four graph query tools working (neighbors, subgraph, path, list_types)
+2. ✅ Graph tools use Zod schemas for input validation (25-02 complete)
+3. ✅ Tool definitions match MCP spec format (25-02 complete)
+4. ✅ Tool descriptions include available relationship types (25-02 complete)
+5. ✅ Four graph query tools working (neighbors, subgraph, path, list_types) (25-03 complete)
 
 ## Performance Metrics
 
 **v4.0 Progress:**
-- Phases complete: 2/6
-- Requirements complete: 13/39
+- Phases complete: 3/6
+- Requirements complete: 18/39
 - Days elapsed: 2 (started 2026-01-27)
 
 **Historical:**
@@ -69,6 +69,9 @@
 | Depth caps for graph queries (25-01) | Subgraph capped at 5 hops (default 2), shortest path at 10 to prevent runaway queries in dense graphs | Complete |
 | Cycle prevention via path tracking (25-01) | Use path NOT LIKE pattern for SQLite-native cycle detection without additional data structures | Complete |
 | Two-stage CTE for depth filtering (25-01) | Group by MIN(depth) first, then filter WHERE depth = N to ensure shortest path to each node | Complete |
+| Graph methods enrich with full node details (25-03) | SearchEngine delegates to database then fetches full GraphNode objects, matching timeline pattern | Complete |
+| Always-available graph tool registration (25-03) | Graph tools always registered (unlike conditional timeline tools), as relationships are core to all templates | Complete |
+| Entity ID resolution with multiple formats (25-03) | Support Type:name format, direct ID, and name search for flexible entity identification | Complete |
 
 ### Active Concerns
 
@@ -105,10 +108,10 @@ None currently.
 - ✅ Plan 02: Timeline database queries (24-02)
 - ✅ Plan 03: Timeline MCP server integration (24-03)
 
-**Phase 25 (In Progress):**
+**Phase 25 (Complete):**
 - ✅ Plan 01: Graph database traversal methods (25-01)
-- ⬜ Plan 02: Graph MCP tool definitions (25-02)
-- ⬜ Plan 03: Graph MCP server integration (25-03)
+- ✅ Plan 02: Graph MCP tool definitions (25-02)
+- ✅ Plan 03: Graph MCP server integration (25-03)
 
 **Future:**
 - Add bundle size monitoring to CI (Phase 27)
@@ -118,17 +121,17 @@ None currently.
 
 **Completing v4.0 requires:**
 1. Phase 23: Clean tech debt (5 requirements, 5 complete) ✅ PHASE COMPLETE
-2. Phase 24: Timeline MCP tools (6 requirements)
-3. Phase 25: Graph MCP tools (5 requirements)
+2. Phase 24: Timeline MCP tools (6 requirements, 6 complete) ✅ PHASE COMPLETE
+3. Phase 25: Graph MCP tools (5 requirements, 5 complete) ✅ PHASE COMPLETE
 4. Phase 26: Timeline Obsidian view (6 requirements)
 5. Phase 27: Graph Obsidian view (12 requirements)
 6. Phase 28: Community plugin submission (6 requirements)
 
 **Last session:** 2026-01-28
-**Stopped at:** Completed 25-01-PLAN.md (Graph database traversal methods)
+**Stopped at:** Completed 25-03-PLAN.md (Graph MCP server integration)
 **Resume file:** None
 
-**Next action:** Continue Phase 25 (Graph MCP Tools) - plans 02 and 03 remaining
+**Next action:** Phase 26 (Timeline Obsidian View) - timeline UI visualization
 
 **Context for future sessions:**
 - Phase 23 complete: Template registry unified, plugin docs added, CLI test coverage 91%
@@ -139,14 +142,17 @@ None currently.
   - MCP server conditional tool registration
   - 25 integration tests using research template
   - All four query tools working (range, before, after, exact)
-- Phase 25 progress: Database layer complete (25-01)
-  - Graph traversal methods: queryNeighbors, querySubgraph, queryShortestPath, getEdgeBetween
+- Phase 25 complete: Graph MCP tools fully integrated and tested (893 tests passing)
+  - Graph traversal database methods: queryNeighbors, querySubgraph, queryShortestPath, getEdgeBetween
   - SQLite recursive CTEs for multi-hop BFS traversal with cycle prevention
-  - Depth limits enforced (subgraph max 5, shortest path max 10)
-  - Comprehensive filtering (direction, relationship types, entity types)
-  - 51 unit tests passing (27 new graph traversal tests)
-  - Pattern ready for SearchEngine integration (Phase 25-02)
-- Timeline tools ready for Phase 26 (Timeline Obsidian UI)
+  - Graph MCP tool definitions with Zod schemas (25-02)
+  - SearchEngine graph methods with full node enrichment
+  - MCP server always-available graph tool registration
+  - Entity ID resolution (Type:name format, direct ID, name search)
+  - Result formatting grouped by relationship type/entity type
+  - 26 integration tests using worldbuilding template
+  - All four query tools working (neighbors, subgraph, path, list_types)
+- Timeline and graph tools ready for Phase 26 & 27 (Obsidian UI layers)
 - All tech debt cleaned (DEBT-01 through DEBT-05)
 - Research context available at C:\Users\Preston\git\hivemind\.planning\research\SUMMARY.md
 
