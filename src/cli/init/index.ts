@@ -55,8 +55,10 @@ async function initFromPreset(presetPath: string): Promise<void> {
   const preset = validatePresetFile(presetPath);
 
   // Extract required fields
-  const vaultPath = (preset.vault as any)?.path || (preset as any).vaultPath;
-  const templateId = (preset.template as any)?.activeTemplate || (preset as any).templateId || 'worldbuilding';
+  const vault = preset.vault as Record<string, unknown> | undefined;
+  const template = preset.template as Record<string, unknown> | undefined;
+  const vaultPath = vault?.path as string | undefined || preset.vaultPath as string | undefined;
+  const templateId = template?.activeTemplate as string | undefined || preset.templateId as string | undefined || 'worldbuilding';
 
   if (!vaultPath) {
     throw new Error('Preset must include vault.path or vaultPath');

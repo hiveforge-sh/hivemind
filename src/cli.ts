@@ -649,11 +649,11 @@ async function addTemplate() {
       case '2': {
         // Add to config.json
         const configPath = resolve(process.cwd(), 'config.json');
-        let config: any = {};
+        let config: { vault?: { path?: string }; template?: { activeTemplate?: string; templates?: TemplateDefinition[] } } = {};
 
         if (existsSync(configPath)) {
           try {
-            config = JSON.parse(readFileSync(configPath, 'utf-8'));
+            config = JSON.parse(readFileSync(configPath, 'utf-8')) as typeof config;
           } catch {
             // Start fresh if config is invalid
           }
@@ -669,7 +669,7 @@ async function addTemplate() {
 
         // Check if template already exists
         const existingIndex = config.template.templates.findIndex(
-          (t: any) => t.id === template.id
+          (t: TemplateDefinition) => t.id === template.id
         );
 
         if (existingIndex >= 0) {
@@ -698,7 +698,7 @@ async function addTemplate() {
       case '3': {
         // Just update activeTemplate in config.json
         const configPath = resolve(process.cwd(), 'config.json');
-        let config: any = {};
+        let config: { vault?: { path?: string }; template?: { activeTemplate?: string } } = {};
 
         if (existsSync(configPath)) {
           try {

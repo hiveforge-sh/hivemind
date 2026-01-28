@@ -2,16 +2,65 @@ import axios, { AxiosInstance } from 'axios';
 import WebSocket from 'ws';
 import { ComfyUIConfig } from '../types/index.js';
 
+export interface ComfyUINodeData {
+  class_type?: string;
+  inputs?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export type ComfyUIWorkflowData = Record<string, ComfyUINodeData>;
+
 export interface ComfyUIPrompt {
-  prompt: Record<string, any>;
+  prompt: Record<string, unknown>;
   client_id?: string;
 }
 
 export interface ComfyUIQueueResponse {
   prompt_id: string;
   number: number;
-  node_errors: Record<string, any>;
+  node_errors: Record<string, ComfyUINodeError>;
 }
+
+export interface ComfyUINodeError {
+  message?: string;
+  details?: string;
+  [key: string]: unknown;
+}
+
+export interface ComfyUISystemStats {
+  system: {
+    os: string;
+    python_version: string;
+    embedded_python: boolean;
+    [key: string]: unknown;
+  };
+  devices: Array<{
+    name: string;
+    type: string;
+    vram_total: number;
+    vram_free: number;
+    [key: string]: unknown;
+  }>;
+  [key: string]: unknown;
+}
+
+export interface ComfyUIHistoryEntry {
+  prompt: [number, string, ComfyUIWorkflowData, Record<string, unknown>, string[]];
+  outputs: Record<string, ComfyUINodeOutput>;
+  status: {
+    status_str: string;
+    completed: boolean;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
+export interface ComfyUINodeOutput {
+  images?: Array<{ filename: string; subfolder: string; type: string }>;
+  [key: string]: unknown;
+}
+
+export type ComfyUIHistory = Record<string, ComfyUIHistoryEntry>;
 
 export interface ComfyUIProgress {
   type: 'progress' | 'executing' | 'executed';
@@ -19,7 +68,7 @@ export interface ComfyUIProgress {
     node?: string;
     value?: number;
     max?: number;
-    output?: any;
+    output?: Record<string, unknown>;
   };
 }
 
@@ -57,12 +106,12 @@ export class ComfyUIClient {
     }
   }
 
-  async getSystemStats(): Promise<any> {
+  async getSystemStats(): Promise<ComfyUISystemStats> {
     const response = await this.httpClient.get('/system_stats');
     return response.data;
   }
 
-  async queuePrompt(workflow: Record<string, any>): Promise<ComfyUIQueueResponse> {
+  async queuePrompt(workflow: Record<string, unknown>): Promise<ComfyUIQueueResponse> {
     const payload: ComfyUIPrompt = {
       prompt: workflow,
       client_id: this.clientId,
@@ -72,7 +121,7 @@ export class ComfyUIClient {
     return response.data;
   }
 
-  async getHistory(promptId: string): Promise<any> {
+  async getHistory(promptId: string): Promise<ComfyUIHistory> {
     const response = await this.httpClient.get(`/history/${promptId}`);
     return response.data;
   }
@@ -117,9 +166,9 @@ export class ComfyUIClient {
   }
 
   async executeWorkflow(
-    workflow: Record<string, any>,
+    workflow: Record<string, unknown>,
     onProgress?: (progress: ComfyUIProgress) => void
-  ): Promise<any> {
+  ): Promise<ComfyUIHistoryEntry> {
     return new Promise(async (resolve, reject) => {
       try {
         if (onProgress) {
@@ -164,21 +213,21 @@ export class ComfyUIClient {
   }
 
   injectContext(
-    workflow: Record<string, any>,
-    context: Record<string, any>,
+    workflow: Record<string, unknown>,
+    context: Record<string, unknown>,
     targetNodes?: string[]
-  ): Record<string, any> {
-    const workflowCopy = JSON.parse(JSON.stringify(workflow));
+  ): Record<string, unknown> {
+    const workflowCopy = JSON.parse(JSON.stringify(workflow)) as ComfyUIWorkflowData;
     const nodesToUpdate = targetNodes || this.findPromptNodes(workflowCopy);
 
     for (const nodeId of nodesToUpdate) {
       if (workflowCopy[nodeId] && workflowCopy[nodeId].inputs) {
         const inputs = workflowCopy[nodeId].inputs;
         
-        if (inputs.text) {
+        if (typeof inputs.text === 'string') {
           inputs.text = this.interpolateContext(inputs.text, context);
         }
-        if (inputs.prompt) {
+        if (typeof inputs.prompt === 'string') {
           inputs.prompt = this.interpolateContext(inputs.prompt, context);
         }
       }
@@ -187,11 +236,11 @@ export class ComfyUIClient {
     return workflowCopy;
   }
 
-  private findPromptNodes(workflow: Record<string, any>): string[] {
+  private findPromptNodes(workflow: ComfyUIWorkflowData): string[] {
     const promptNodes: string[] = [];
 
     for (const [nodeId, node] of Object.entries(workflow)) {
-      const nodeData = node as any;
+      const nodeData = node as ComfyUINodeData;
       if (
         nodeData.class_type?.includes('CLIP') ||
         nodeData.class_type?.includes('Text') ||
@@ -206,7 +255,7 @@ export class ComfyUIClient {
     return promptNodes;
   }
 
-  private interpolateContext(text: string, context: Record<string, any>): string {
+  private interpolateContext(text: string, context: Record<string, unknown>): string {
     return text.replace(/\{\{([^}]+)\}\}/g, (_match, path) => {
       const trimmedPath = path.trim();
       const value = this.getNestedValue(context, trimmedPath);
@@ -218,7 +267,7 @@ export class ComfyUIClient {
       
       // Provide sensible defaults for common missing fields instead of leaving template vars
       const defaults: Record<string, string> = {
-        'name': context.title || 'character',
+        'name': (typeof context.title === 'string' ? context.title : '') || 'character',
         'age': 'adult',
         'species': 'humanoid',
         'race': 'humanoid',
@@ -235,13 +284,13 @@ export class ComfyUIClient {
     });
   }
 
-  private getNestedValue(obj: Record<string, any>, path: string): any {
+  private getNestedValue(obj: Record<string, unknown>, path: string): unknown {
     const parts = path.split('.');
-    let current = obj;
+    let current: unknown = obj;
 
     for (const part of parts) {
-      if (current && typeof current === 'object' && part in current) {
-        current = current[part];
+      if (current && typeof current === 'object' && part in (current as Record<string, unknown>)) {
+        current = (current as Record<string, unknown>)[part];
       } else {
         return undefined;
       }

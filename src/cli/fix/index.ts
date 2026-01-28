@@ -106,15 +106,15 @@ function loadConfig(vaultOverride?: string): { vaultPath: string; activeTemplate
     process.exit(2);
   }
 
-  let config: any;
+  let config: { vault?: { path?: string }; template?: { activeTemplate?: string } };
   try {
-    config = JSON.parse(readFileSync(configPath, 'utf-8'));
+    config = JSON.parse(readFileSync(configPath, 'utf-8')) as typeof config;
   } catch (err) {
     console.error(error('Configuration error:'), err instanceof Error ? err.message : String(err));
     process.exit(2);
   }
 
-  const vaultPath = resolve(config.vault?.path);
+  const vaultPath = resolve(config.vault?.path ?? '');
   if (!vaultPath || !existsSync(vaultPath)) {
     console.error(error('Vault path does not exist:'), vaultPath);
     process.exit(2);

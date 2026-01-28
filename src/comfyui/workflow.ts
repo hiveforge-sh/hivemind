@@ -3,6 +3,17 @@ import { ComfyUIWorkflow, StoreWorkflowArgs } from '../types/index.js';
 import { join } from 'path';
 import { promises as fs } from 'fs';
 
+interface WorkflowRow {
+  id: string;
+  name: string;
+  description: string | null;
+  file_path: string;
+  context_fields: string | null;
+  output_path: string | null;
+  created: string;
+  updated: string;
+}
+
 export class WorkflowManager {
   private database: HivemindDatabase;
   private vaultPath: string;
@@ -54,7 +65,7 @@ export class WorkflowManager {
   async getWorkflow(id: string): Promise<ComfyUIWorkflow | null> {
     const row = this.database.db.prepare(`
       SELECT * FROM workflows WHERE id = ?
-    `).get(id) as any;
+    `).get(id) as WorkflowRow | undefined;
 
     if (!row) {
       return null;
@@ -68,10 +79,10 @@ export class WorkflowManager {
       return {
         id: row.id,
         name: row.name,
-        description: row.description,
+        description: row.description ?? undefined,
         workflow: workflowData.workflow,
         contextFields: row.context_fields ? JSON.parse(row.context_fields) : undefined,
-        outputPath: row.output_path,
+        outputPath: row.output_path ?? undefined,
         created: new Date(row.created),
         updated: new Date(row.updated),
       };
@@ -86,14 +97,14 @@ export class WorkflowManager {
       SELECT id, name, description, context_fields, output_path, created, updated
       FROM workflows
       ORDER BY updated DESC
-    `).all() as any[];
+    `).all() as WorkflowRow[];
 
     return rows.map(row => ({
       id: row.id,
       name: row.name,
-      description: row.description,
+      description: row.description ?? undefined,
       contextFields: row.context_fields ? JSON.parse(row.context_fields) : undefined,
-      outputPath: row.output_path,
+      outputPath: row.output_path ?? undefined,
       created: new Date(row.created),
       updated: new Date(row.updated),
     }));
