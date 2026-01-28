@@ -1459,6 +1459,26 @@ class ValidationSidebarView extends ItemView {
   }
 }
 
+// Timeline interfaces
+interface TimelineItem {
+  id: string;
+  group: string;
+  content: string;
+  start: string;
+  end?: string;
+  type: 'box' | 'range';
+  className: string;
+  entityPath?: string;  // Store file path for navigation
+}
+
+interface TimelineEntity {
+  id: string;
+  name: string;
+  type: string;
+  path: string;
+  frontmatter: Record<string, unknown>;
+}
+
 class TimelineView extends ItemView {
   plugin: HivemindPlugin;
   private timeline: Timeline | null = null;
@@ -1490,6 +1510,63 @@ class TimelineView extends ItemView {
       cls: 'hvmd-scanning',
       text: 'Timeline view loading...'
     });
+  }
+
+  private async loadTimelineData(): Promise<TimelineItem[]> {
+    try {
+      // Query all timeline data using very broad date range
+      const response = await this.plugin.callMCPTool({
+        name: 'timeline_query_range',
+        arguments: {
+          startDate: '0001-01-01',
+          endDate: '9999-12-31',
+          sortOrder: 'asc'
+        }
+      });
+
+      if (response.isError || !response.content || response.content.length === 0) {
+        return [];
+      }
+
+      // Parse the response - MCP returns JSON string in content[0].text
+      const responseText = response.content[0].text;
+      const data = JSON.parse(responseText);
+
+      // Handle both direct array and {nodes: [...]} format
+      const entities: TimelineEntity[] = Array.isArray(data) ? data : (data.nodes || []);
+
+      // Transform to vis-timeline format
+      return entities.map((entity: TimelineEntity): TimelineItem => {
+        const fm = entity.frontmatter;
+
+        // Determine date fields - support multiple naming conventions
+        const startDate = fm.start_date || fm.date || fm.startDate;
+        const endDate = fm.end_date || fm.endDate;
+
+        // Build content label: name + short description
+        let content = entity.name;
+        if (fm.description && typeof fm.description === 'string') {
+          const shortDesc = fm.description.length > 50
+            ? fm.description.substring(0, 47) + '...'
+            : fm.description;
+          content = `${entity.name} - ${shortDesc}`;
+        }
+
+        return {
+          id: entity.id,
+          group: entity.type,
+          content,
+          start: String(startDate),
+          end: endDate ? String(endDate) : undefined,
+          type: endDate ? 'range' : 'box',
+          className: `timeline-${entity.type}`,
+          entityPath: entity.path
+        };
+      }).filter(item => item.start); // Filter out items without valid start date
+    } catch (error) {
+      console.error('[Timeline] Failed to load data:', error);
+      throw error;
+    }
   }
 
   async onClose() {
