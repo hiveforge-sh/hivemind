@@ -12,30 +12,31 @@
 
 ## Current Position
 
-**Phase:** 25 - Graph MCP Tools
-**Plan:** 3 of 3 complete
-**Status:** Phase complete
-**Last activity:** 2026-01-28 - Completed 25-03-PLAN.md (Graph MCP server integration)
+**Phase:** 26 - Timeline Obsidian View
+**Plan:** 1 of 3 complete
+**Status:** In progress
+**Last activity:** 2026-01-28 - Completed 26-01-PLAN.md (Timeline view infrastructure)
 
 **Progress:**
 ```
-[████----------------] 18/39 requirements complete (46%)
+[████▓---------------] 19/39 requirements complete (49%)
 ```
 
-**Phase Goal:** Add graph traversal MCP tools for relationship queries and pathfinding
+**Phase Goal:** Build interactive timeline visualization in Obsidian plugin using vis-timeline
 
 **Phase Success Criteria:**
-1. ✅ Graph database layer with recursive CTE traversal methods (25-01 complete)
-2. ✅ Graph tools use Zod schemas for input validation (25-02 complete)
-3. ✅ Tool definitions match MCP spec format (25-02 complete)
-4. ✅ Tool descriptions include available relationship types (25-02 complete)
-5. ✅ Four graph query tools working (neighbors, subgraph, path, list_types) (25-03 complete)
+1. ✅ TimelineView class registered with plugin (26-01 complete)
+2. ⏳ Timeline loads data from SearchEngine timeline methods
+3. ⏳ Timeline groups entities by type in swim lanes
+4. ⏳ Timeline filters by entity type
+5. ⏳ Clicking timeline item opens note
+6. ⏳ Timeline integrated with Obsidian theme
 
 ## Performance Metrics
 
 **v4.0 Progress:**
-- Phases complete: 3/6
-- Requirements complete: 18/39
+- Phases complete: 3/6 (working on 4th)
+- Requirements complete: 19/39
 - Days elapsed: 2 (started 2026-01-27)
 
 **Historical:**
@@ -72,6 +73,9 @@
 | Graph methods enrich with full node details (25-03) | SearchEngine delegates to database then fetches full GraphNode objects, matching timeline pattern | Complete |
 | Always-available graph tool registration (25-03) | Graph tools always registered (unlike conditional timeline tools), as relationships are core to all templates | Complete |
 | Entity ID resolution with multiple formats (25-03) | Support Type:name format, direct ID, and name search for flexible entity identification | Complete |
+| vis-timeline standalone build (26-01) | Use standalone import for ESNext bundler optimization, enabling tree-shaking via esbuild | Complete |
+| ItemView lifecycle pattern (26-01) | Follow ValidationSidebarView pattern for TimelineView: onOpen with placeholder, onClose with cleanup | Complete |
+| Timeline view placement (26-01) | Timeline opens in right sidebar via getRightLeaf matching existing validation sidebar | Complete |
 
 ### Active Concerns
 
@@ -113,6 +117,11 @@ None currently.
 - ✅ Plan 02: Graph MCP tool definitions (25-02)
 - ✅ Plan 03: Graph MCP server integration (25-03)
 
+**Phase 26 (In Progress):**
+- ✅ Plan 01: Timeline view infrastructure (vis-timeline install, TimelineView class)
+- ⏳ Plan 02: Timeline data loading
+- ⏳ Plan 03: Timeline interactions and filtering
+
 **Future:**
 - Add bundle size monitoring to CI (Phase 27)
 - Build cross-timezone test suite for date queries (Phase 24-03)
@@ -128,10 +137,10 @@ None currently.
 6. Phase 28: Community plugin submission (6 requirements)
 
 **Last session:** 2026-01-28
-**Stopped at:** Completed 25-03-PLAN.md (Graph MCP server integration)
+**Stopped at:** Completed 26-01-PLAN.md (Timeline view infrastructure)
 **Resume file:** None
 
-**Next action:** Phase 26 (Timeline Obsidian View) - timeline UI visualization
+**Next action:** Phase 26 Plan 02 (Timeline data loading) - load data from SearchEngine
 
 **Context for future sessions:**
 - Phase 23 complete: Template registry unified, plugin docs added, CLI test coverage 91%
@@ -152,6 +161,12 @@ None currently.
   - Result formatting grouped by relationship type/entity type
   - 26 integration tests using worldbuilding template
   - All four query tools working (neighbors, subgraph, path, list_types)
+- Phase 26 Plan 01 complete: Timeline view infrastructure (2 min)
+  - vis-timeline@8.5.0 and vis-data@8.0.3 installed
+  - TimelineView class created following ItemView pattern
+  - View registered with plugin, accessible via command palette
+  - Placeholder content ready for data loading
+  - Research: .planning/phases/26-timeline-obsidian-view/26-RESEARCH.md
 - Timeline and graph tools ready for Phase 26 & 27 (Obsidian UI layers)
 - All tech debt cleaned (DEBT-01 through DEBT-05)
 - Research context available at C:\Users\Preston\git\hivemind\.planning\research\SUMMARY.md
