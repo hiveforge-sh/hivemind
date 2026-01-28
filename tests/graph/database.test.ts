@@ -405,3 +405,409 @@ describe('HivemindDatabase Timeline Queries', () => {
     });
   });
 });
+
+describe('HivemindDatabase Graph Traversal', () => {
+  let db: HivemindDatabase;
+  let dbPath: string;
+
+  beforeEach(() => {
+    // Use in-memory database for fast tests
+    dbPath = ':memory:';
+    db = new HivemindDatabase({ path: dbPath });
+
+    // Create a test graph:
+    // alice -> knows -> bob
+    // alice -> manages -> team
+    // bob -> knows -> charlie
+    // bob -> member_of -> team
+    // team -> has_lead -> alice (creates a cycle)
+    // dave (isolated node)
+    const testNotes: VaultNote[] = [
+      {
+        id: 'alice',
+        filePath: '/vault/alice.md',
+        fileName: 'alice.md',
+        frontmatter: {
+          id: 'alice',
+          type: 'character',
+          status: 'canon',
+          title: 'Alice',
+        },
+        content: 'Alice is a team lead.',
+        links: [],
+        headings: [],
+        stats: {
+          size: 100,
+          created: new Date('2024-01-01'),
+          modified: new Date('2024-01-01'),
+        },
+      },
+      {
+        id: 'bob',
+        filePath: '/vault/bob.md',
+        fileName: 'bob.md',
+        frontmatter: {
+          id: 'bob',
+          type: 'character',
+          status: 'canon',
+          title: 'Bob',
+        },
+        content: 'Bob is a team member.',
+        links: [],
+        headings: [],
+        stats: {
+          size: 100,
+          created: new Date('2024-01-01'),
+          modified: new Date('2024-01-01'),
+        },
+      },
+      {
+        id: 'charlie',
+        filePath: '/vault/charlie.md',
+        fileName: 'charlie.md',
+        frontmatter: {
+          id: 'charlie',
+          type: 'character',
+          status: 'canon',
+          title: 'Charlie',
+        },
+        content: 'Charlie is friends with Alice and Bob.',
+        links: [],
+        headings: [],
+        stats: {
+          size: 100,
+          created: new Date('2024-01-01'),
+          modified: new Date('2024-01-01'),
+        },
+      },
+      {
+        id: 'team',
+        filePath: '/vault/team.md',
+        fileName: 'team.md',
+        frontmatter: {
+          id: 'team',
+          type: 'organization',
+          status: 'canon',
+          title: 'Engineering Team',
+        },
+        content: 'A software engineering team.',
+        links: [],
+        headings: [],
+        stats: {
+          size: 100,
+          created: new Date('2024-01-01'),
+          modified: new Date('2024-01-01'),
+        },
+      },
+      {
+        id: 'dave',
+        filePath: '/vault/dave.md',
+        fileName: 'dave.md',
+        frontmatter: {
+          id: 'dave',
+          type: 'character',
+          status: 'canon',
+          title: 'Dave',
+        },
+        content: 'Dave is isolated.',
+        links: [],
+        headings: [],
+        stats: {
+          size: 100,
+          created: new Date('2024-01-01'),
+          modified: new Date('2024-01-01'),
+        },
+      },
+    ];
+
+    testNotes.forEach(note => db.upsertNode(note));
+
+    // Insert relationships (creating the graph structure)
+    db.insertRelationship('alice', 'bob', 'knows');
+    db.insertRelationship('alice', 'team', 'manages');
+    db.insertRelationship('bob', 'charlie', 'knows');
+    db.insertRelationship('bob', 'team', 'member_of');
+    // Add a cycle via a different node for cycle testing
+    db.insertRelationship('team', 'alice', 'has_lead'); // Creates cycle: alice->team->alice
+  });
+
+  afterEach(() => {
+    db.close();
+  });
+
+  describe('queryNeighbors', () => {
+    it('should return immediate neighbors with relationship types and directions', () => {
+      const neighbors = db.queryNeighbors('alice');
+
+      // Default direction is 'both', so includes outgoing and incoming
+      expect(neighbors).toHaveLength(3);
+      expect(neighbors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            neighbor_id: 'bob',
+            rel_type: 'knows',
+            direction: 'outgoing',
+          }),
+          expect.objectContaining({
+            neighbor_id: 'team',
+            rel_type: 'manages',
+            direction: 'outgoing',
+          }),
+          expect.objectContaining({
+            neighbor_id: 'team',
+            rel_type: 'has_lead',
+            direction: 'incoming',
+          }),
+        ])
+      );
+    });
+
+    it('should handle bidirectional relationships (both directions)', () => {
+      const neighbors = db.queryNeighbors('alice', { direction: 'both' });
+
+      // Alice has outgoing: bob (knows), team (manages)
+      // Alice has incoming: team (has_lead)
+      expect(neighbors).toHaveLength(3);
+      expect(neighbors).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ neighbor_id: 'bob', direction: 'outgoing' }),
+          expect.objectContaining({ neighbor_id: 'team', direction: 'outgoing' }),
+          expect.objectContaining({ neighbor_id: 'team', direction: 'incoming' }),
+        ])
+      );
+    });
+
+    it('should filter by direction (outgoing only)', () => {
+      const neighbors = db.queryNeighbors('alice', { direction: 'outgoing' });
+
+      expect(neighbors).toHaveLength(2);
+      expect(neighbors.every(n => n.direction === 'outgoing')).toBe(true);
+    });
+
+    it('should filter by direction (incoming only)', () => {
+      const neighbors = db.queryNeighbors('alice', { direction: 'incoming' });
+
+      expect(neighbors).toHaveLength(1);
+      expect(neighbors[0]).toMatchObject({
+        neighbor_id: 'team',
+        direction: 'incoming',
+      });
+    });
+
+    it('should filter by relationship type (include)', () => {
+      const neighbors = db.queryNeighbors('bob', {
+        includeRelationships: ['knows'],
+      });
+
+      expect(neighbors).toHaveLength(2); // alice (incoming) and charlie (outgoing)
+      expect(neighbors.every(n => n.rel_type === 'knows')).toBe(true);
+    });
+
+    it('should filter by relationship type (exclude)', () => {
+      const neighbors = db.queryNeighbors('bob', {
+        excludeRelationships: ['knows'],
+      });
+
+      expect(neighbors).toHaveLength(1);
+      expect(neighbors[0]).toMatchObject({
+        neighbor_id: 'team',
+        rel_type: 'member_of',
+      });
+    });
+
+    it('should filter by entity type of neighbors', () => {
+      const neighbors = db.queryNeighbors('bob', {
+        includeEntityTypes: ['character'],
+      });
+
+      // Should only return charlie and alice (both characters)
+      expect(neighbors.length).toBeGreaterThanOrEqual(2);
+      // Verify no 'team' (organization) in results
+      expect(neighbors.every(n => n.neighbor_id !== 'team')).toBe(true);
+    });
+
+    it('should return empty array for entity with no relationships', () => {
+      const neighbors = db.queryNeighbors('dave');
+
+      expect(neighbors).toHaveLength(0);
+    });
+
+    it('should respect limit option', () => {
+      const neighbors = db.queryNeighbors('alice', { limit: 1 });
+
+      expect(neighbors).toHaveLength(1);
+    });
+  });
+
+  describe('querySubgraph', () => {
+    it('should return entities at specified depth', () => {
+      const subgraph = db.querySubgraph('alice', 1);
+
+      // At depth 1: bob, team
+      expect(subgraph).toHaveLength(2);
+      expect(subgraph.every(n => n.depth === 1)).toBe(true);
+    });
+
+    it('should traverse multiple hops', () => {
+      const subgraph = db.querySubgraph('alice', 2);
+
+      // At depth 2: charlie (via bob)
+      expect(subgraph).toHaveLength(1);
+      expect(subgraph[0]).toMatchObject({
+        entity_id: 'charlie',
+        depth: 2,
+      });
+    });
+
+    it('should prevent cycles (not revisit nodes)', () => {
+      // alice -> team -> alice (cycle via has_lead)
+      const subgraph = db.querySubgraph('alice', 3);
+
+      // Should not return alice again (cycle prevention)
+      expect(subgraph.every(n => n.entity_id !== 'alice')).toBe(true);
+    });
+
+    it('should cap depth at 5', () => {
+      // Request depth 10, should get capped at 5
+      const subgraph = db.querySubgraph('alice', 10);
+
+      expect(subgraph.every(n => n.depth <= 5)).toBe(true);
+    });
+
+    it('should include intermediate nodes when option is set', () => {
+      const subgraph = db.querySubgraph('alice', 2, {
+        includeIntermediateNodes: true,
+      });
+
+      // Should include depth 1 (bob, team) and depth 2 (charlie)
+      expect(subgraph.length).toBeGreaterThanOrEqual(3);
+      expect(subgraph.some(n => n.depth === 1)).toBe(true);
+      expect(subgraph.some(n => n.depth === 2)).toBe(true);
+    });
+
+    it('should filter by relationship type', () => {
+      const subgraph = db.querySubgraph('alice', 2, {
+        includeRelationships: ['knows'],
+      });
+
+      // Should traverse only 'knows' relationships: alice -> bob -> charlie
+      expect(subgraph.length).toBeGreaterThanOrEqual(1);
+      // team should not be included (manages relationship excluded)
+      expect(subgraph.every(n => n.entity_id !== 'team')).toBe(true);
+    });
+
+    it('should filter by direction', () => {
+      const subgraph = db.querySubgraph('alice', 1, {
+        direction: 'outgoing',
+      });
+
+      // Only outgoing from alice: bob, team
+      expect(subgraph).toHaveLength(2);
+      expect(subgraph.every(n => ['bob', 'team'].includes(n.entity_id))).toBe(true);
+    });
+
+    it('should return path to each node', () => {
+      const subgraph = db.querySubgraph('alice', 2, {
+        includeIntermediateNodes: true,
+      });
+
+      // Each node should have a path
+      expect(subgraph.every(n => n.path)).toBe(true);
+      // Path should start with alice
+      expect(subgraph.every(n => n.path.startsWith('alice'))).toBe(true);
+    });
+  });
+
+  describe('queryShortestPath', () => {
+    it('should find shortest path between two connected entities', () => {
+      const result = db.queryShortestPath('alice', 'charlie');
+
+      expect(result).toMatchObject({
+        found: true,
+        path: ['alice', 'bob', 'charlie'],
+      });
+      expect(result.edges).toHaveLength(2);
+    });
+
+    it('should return edges with relationship types', () => {
+      const result = db.queryShortestPath('alice', 'charlie');
+
+      expect(result.edges).toEqual([
+        { from: 'alice', to: 'bob', type: 'knows' },
+        { from: 'bob', to: 'charlie', type: 'knows' },
+      ]);
+    });
+
+    it('should return not found for disconnected entities', () => {
+      const result = db.queryShortestPath('alice', 'dave');
+
+      expect(result).toMatchObject({
+        found: false,
+        path: [],
+        edges: [],
+      });
+    });
+
+    it('should handle direct connection (1-hop path)', () => {
+      const result = db.queryShortestPath('alice', 'bob');
+
+      expect(result).toMatchObject({
+        found: true,
+        path: ['alice', 'bob'],
+      });
+      expect(result.edges).toHaveLength(1);
+    });
+
+    it('should filter by relationship type', () => {
+      const result = db.queryShortestPath('alice', 'team', {
+        includeRelationships: ['manages'],
+      });
+
+      expect(result).toMatchObject({
+        found: true,
+        path: ['alice', 'team'],
+      });
+      expect(result.edges[0].type).toBe('manages');
+    });
+
+    it('should return not found if no path exists within relationship filter', () => {
+      const result = db.queryShortestPath('alice', 'team', {
+        includeRelationships: ['knows'], // Only 'knows', but alice->team is 'manages'
+      });
+
+      expect(result.found).toBe(false);
+    });
+
+    it('should respect maxDepth limit', () => {
+      const result = db.queryShortestPath('alice', 'charlie', {
+        maxDepth: 1, // Only allow 1 hop, but charlie is 2 hops away
+      });
+
+      expect(result.found).toBe(false);
+    });
+  });
+
+  describe('getEdgeBetween', () => {
+    it('should return edge info for directly connected nodes', () => {
+      const edge = db.getEdgeBetween('alice', 'bob');
+
+      expect(edge).toMatchObject({
+        rel_type: 'knows',
+      });
+    });
+
+    it('should return null for non-connected nodes', () => {
+      const edge = db.getEdgeBetween('alice', 'charlie');
+
+      expect(edge).toBeNull();
+    });
+
+    it('should work in both directions (bidirectional query)', () => {
+      const edge1 = db.getEdgeBetween('alice', 'bob');
+      const edge2 = db.getEdgeBetween('bob', 'alice');
+
+      expect(edge1).toBeTruthy();
+      expect(edge2).toBeTruthy();
+    });
+  });
+});

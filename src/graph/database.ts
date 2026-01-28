@@ -38,6 +38,28 @@ interface CountRow {
   count: number;
 }
 
+// Graph traversal row interfaces
+interface NeighborRow {
+  neighbor_id: string;
+  rel_type: string;
+  direction: string;
+}
+
+interface SubgraphRow {
+  entity_id: string;
+  depth: number;
+  path: string;
+}
+
+interface ShortestPathRow {
+  path: string;
+  depth: number;
+}
+
+interface EdgeRow {
+  rel_type: string;
+}
+
 export class HivemindDatabase {
   public db: Database.Database;
 
@@ -606,6 +628,286 @@ export class HivemindDatabase {
     const stmt = this.db.prepare(sql);
     const rows = stmt.all(...params) as NodeRow[];
     return rows.map(row => this.rowToGraphNode(row));
+  }
+
+  /**
+   * Query immediate neighbors (1-hop connections) of an entity
+   *
+   * @param entityId - Entity to find neighbors for
+   * @param options - Filter options (direction, relationship types, entity types, limit)
+   * @returns Array of neighbors with relationship info
+   */
+  queryNeighbors(
+    entityId: string,
+    options?: {
+      direction?: 'outgoing' | 'incoming' | 'both';
+      includeRelationships?: string[];
+      excludeRelationships?: string[];
+      includeEntityTypes?: string[];
+      limit?: number;
+    }
+  ): NeighborRow[] {
+    const { direction = 'both', limit = 100 } = options || {};
+
+    let sql = `
+      SELECT
+        CASE
+          WHEN r.source_id = ? THEN r.target_id
+          ELSE r.source_id
+        END as neighbor_id,
+        r.rel_type,
+        CASE
+          WHEN r.source_id = ? THEN 'outgoing'
+          ELSE 'incoming'
+        END as direction
+      FROM relationships r
+      WHERE
+    `;
+
+    const params: unknown[] = [entityId, entityId];
+
+    // Direction filter
+    if (direction === 'outgoing') {
+      sql += `r.source_id = ?`;
+      params.push(entityId);
+    } else if (direction === 'incoming') {
+      sql += `r.target_id = ?`;
+      params.push(entityId);
+    } else {
+      sql += `(r.source_id = ? OR r.target_id = ?)`;
+      params.push(entityId, entityId);
+    }
+
+    // Relationship type filters
+    if (options?.includeRelationships?.length) {
+      sql += ` AND r.rel_type IN (${options.includeRelationships.map(() => '?').join(',')})`;
+      params.push(...options.includeRelationships);
+    } else if (options?.excludeRelationships?.length) {
+      sql += ` AND r.rel_type NOT IN (${options.excludeRelationships.map(() => '?').join(',')})`;
+      params.push(...options.excludeRelationships);
+    }
+
+    // Entity type filter - requires JOIN with nodes table
+    if (options?.includeEntityTypes?.length) {
+      sql = `
+        SELECT neighbor_id, rel_type, direction FROM (
+          ${sql}
+        ) filtered
+        JOIN nodes n ON n.id = filtered.neighbor_id
+        WHERE n.type IN (${options.includeEntityTypes.map(() => '?').join(',')})
+      `;
+      params.push(...options.includeEntityTypes);
+    }
+
+    sql += ` LIMIT ?`;
+    params.push(limit);
+
+    const stmt = this.db.prepare(sql);
+    return stmt.all(...params) as NeighborRow[];
+  }
+
+  /**
+   * Query multi-hop subgraph from a starting entity
+   *
+   * @param entityId - Starting entity
+   * @param depth - Number of hops (1-5, capped at 5)
+   * @param options - Filter options
+   * @returns Array of entities at specified depth(s) with path info
+   */
+  querySubgraph(
+    entityId: string,
+    depth: number,
+    options?: {
+      includeRelationships?: string[];
+      excludeRelationships?: string[];
+      includeEntityTypes?: string[];
+      direction?: 'outgoing' | 'incoming' | 'both';
+      includeIntermediateNodes?: boolean;
+    }
+  ): SubgraphRow[] {
+    const { direction = 'both', includeIntermediateNodes = false } = options || {};
+    const maxDepth = Math.min(depth, 5); // Cap at 5 for safety
+
+    // Build relationship type filter
+    let relFilter = '';
+    const relFilterParams: string[] = [];
+    if (options?.includeRelationships?.length) {
+      relFilter = `AND r.rel_type IN (${options.includeRelationships.map(() => '?').join(',')})`;
+      relFilterParams.push(...options.includeRelationships);
+    } else if (options?.excludeRelationships?.length) {
+      relFilter = `AND r.rel_type NOT IN (${options.excludeRelationships.map(() => '?').join(',')})`;
+      relFilterParams.push(...options.excludeRelationships);
+    }
+
+    // Build direction filter
+    let directionJoin = '(r.source_id = t.entity_id OR r.target_id = t.entity_id)';
+    if (direction === 'outgoing') {
+      directionJoin = 'r.source_id = t.entity_id';
+    } else if (direction === 'incoming') {
+      directionJoin = 'r.target_id = t.entity_id';
+    }
+
+    let sql = `
+      WITH RECURSIVE traversal(entity_id, depth, path) AS (
+        -- Base case: starting entity
+        SELECT ?, 0, ?
+
+        UNION ALL
+
+        -- Recursive case: traverse edges
+        SELECT
+          CASE WHEN r.source_id = t.entity_id THEN r.target_id ELSE r.source_id END,
+          t.depth + 1,
+          t.path || ',' || CASE WHEN r.source_id = t.entity_id THEN r.target_id ELSE r.source_id END
+        FROM traversal t
+        JOIN relationships r ON ${directionJoin}
+        WHERE t.depth < ?
+          ${relFilter}
+          -- Cycle prevention: don't revisit nodes in current path
+          AND t.path NOT LIKE '%' ||
+              CASE WHEN r.source_id = t.entity_id THEN r.target_id ELSE r.source_id END || '%'
+      ),
+      shortest_paths AS (
+        SELECT entity_id, MIN(depth) as depth,
+               (SELECT path FROM traversal t2 WHERE t2.entity_id = traversal.entity_id ORDER BY depth LIMIT 1) as path
+        FROM traversal
+        WHERE depth > 0
+        GROUP BY entity_id
+      )
+      SELECT entity_id, depth, path
+      FROM shortest_paths
+      ${includeIntermediateNodes ? '' : `WHERE depth = ?`}
+      ORDER BY depth
+    `;
+
+    const params: unknown[] = [
+      entityId,
+      entityId,
+      maxDepth,
+      ...relFilterParams
+    ];
+
+    if (!includeIntermediateNodes) {
+      params.push(maxDepth);
+    }
+
+    // Add entity type filter if specified
+    if (options?.includeEntityTypes?.length) {
+      sql = `
+        SELECT entity_id, depth, path FROM (
+          ${sql}
+        ) filtered
+        JOIN nodes n ON n.id = filtered.entity_id
+        WHERE n.type IN (${options.includeEntityTypes.map(() => '?').join(',')})
+      `;
+      params.push(...options.includeEntityTypes);
+    }
+
+    const stmt = this.db.prepare(sql);
+    return stmt.all(...params) as SubgraphRow[];
+  }
+
+  /**
+   * Find shortest path between two entities using BFS
+   *
+   * @param fromEntityId - Starting entity
+   * @param toEntityId - Target entity
+   * @param options - Filter options (relationship types, max depth)
+   * @returns Path info or not found
+   */
+  queryShortestPath(
+    fromEntityId: string,
+    toEntityId: string,
+    options?: {
+      includeRelationships?: string[];
+      maxDepth?: number;
+    }
+  ): { found: boolean; path: string[]; edges: Array<{ from: string; to: string; type: string }> } {
+    const maxDepth = options?.maxDepth || 10;
+
+    // Build relationship filter
+    let relFilter = '';
+    const relFilterParams: string[] = [];
+    if (options?.includeRelationships?.length) {
+      relFilter = `AND r.rel_type IN (${options.includeRelationships.map(() => '?').join(',')})`;
+      relFilterParams.push(...options.includeRelationships);
+    }
+
+    // BFS finds shortest path naturally - first time we reach target is shortest
+    const sql = `
+      WITH RECURSIVE path_search(entity_id, path, depth) AS (
+        -- Start from source
+        SELECT ?, ?, 0
+
+        UNION ALL
+
+        -- Explore neighbors
+        SELECT
+          CASE WHEN r.source_id = p.entity_id THEN r.target_id ELSE r.source_id END as next_id,
+          p.path || ',' || CASE WHEN r.source_id = p.entity_id THEN r.target_id ELSE r.source_id END,
+          p.depth + 1
+        FROM path_search p
+        JOIN relationships r ON (r.source_id = p.entity_id OR r.target_id = p.entity_id)
+        WHERE p.depth < ?
+          ${relFilter}
+          -- Don't revisit nodes (check if next node is already in path)
+          AND p.path NOT LIKE '%' ||
+              CASE WHEN r.source_id = p.entity_id THEN r.target_id ELSE r.source_id END || '%'
+      )
+      SELECT path, depth
+      FROM path_search
+      WHERE entity_id = ?
+      ORDER BY depth
+      LIMIT 1
+    `;
+
+    const params: unknown[] = [
+      fromEntityId,
+      fromEntityId,
+      maxDepth,
+      ...relFilterParams,
+      toEntityId
+    ];
+
+    const stmt = this.db.prepare(sql);
+    const result = stmt.get(...params) as ShortestPathRow | undefined;
+
+    if (!result) {
+      return { found: false, path: [], edges: [] };
+    }
+
+    const pathIds = result.path.split(',');
+
+    // Build edge list from path
+    const edges: Array<{ from: string; to: string; type: string }> = [];
+    for (let i = 0; i < pathIds.length - 1; i++) {
+      const edge = this.getEdgeBetween(pathIds[i], pathIds[i + 1]);
+      if (edge) {
+        edges.push({ from: pathIds[i], to: pathIds[i + 1], type: edge.rel_type });
+      }
+    }
+
+    return { found: true, path: pathIds, edges };
+  }
+
+  /**
+   * Get edge information between two directly connected nodes
+   *
+   * @param nodeA - First node ID
+   * @param nodeB - Second node ID
+   * @returns Edge info or null if no direct connection
+   */
+  getEdgeBetween(nodeA: string, nodeB: string): EdgeRow | null {
+    const stmt = this.db.prepare(`
+      SELECT rel_type
+      FROM relationships
+      WHERE (source_id = ? AND target_id = ?)
+         OR (source_id = ? AND target_id = ?)
+      LIMIT 1
+    `);
+
+    const result = stmt.get(nodeA, nodeB, nodeB, nodeA) as EdgeRow | undefined;
+    return result || null;
   }
 
   /**
