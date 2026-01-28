@@ -44,6 +44,8 @@ coverage/
 *.lcov
 .hypothesis/
 .pytest_cache/
+.stryker-tmp/
+reports/
 
 # Environment & Secrets
 .env

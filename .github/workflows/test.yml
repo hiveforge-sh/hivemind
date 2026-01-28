@@ -138,3 +138,75 @@ jobs:
         run: |
           ls -la main.js manifest.json
         shell: bash
+
+  license-compliance:
+    name: License Compliance
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check licenses
+        run: |
+          npx license-checker-rseidelsohn --production --failOn \
+            "GPL-2.0-only;GPL-2.0-or-later;GPL-3.0-only;GPL-3.0-or-later;AGPL-1.0-only;AGPL-1.0-or-later;AGPL-3.0-only;AGPL-3.0-or-later" \
+            --summary
+        shell: bash
+
+      - name: Generate license report
+        if: always()
+        run: |
+          npx license-checker-rseidelsohn --production --csv --out license-report.csv
+          echo "## License Summary"
+          npx license-checker-rseidelsohn --production --summary
+        shell: bash
+
+      - name: Upload license report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: license-report
+          path: license-report.csv
+
+  mutation-testing:
+    name: Mutation Testing
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    needs: test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run mutation testing
+        run: npx stryker run
+        shell: bash
+
+      - name: Upload mutation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-report
+          path: reports/mutation/
