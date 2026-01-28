@@ -1815,6 +1815,7 @@ class GraphView extends ItemView {
   plugin: HivemindPlugin;
   private renderer: Sigma | null = null;
   private graph: Graph | null = null;
+  private hoveredEdge: string | null = null;
 
   constructor(leaf: WorkspaceLeaf, plugin: HivemindPlugin) {
     super(leaf);
@@ -1901,6 +1902,9 @@ class GraphView extends ItemView {
         renderLabels: true,
         labelSize: 12,
         labelWeight: 'normal',
+        renderEdgeLabels: true,
+        edgeLabelSize: 10,
+        edgeLabelWeight: 'normal',
         nodeReducer: this.getNodeReducer(),
         edgeReducer: this.getEdgeReducer()
       });
@@ -1997,10 +2001,12 @@ class GraphView extends ItemView {
    */
   private getEdgeReducer() {
     return (edge: string, data: any) => {
+      const isHovered = this.hoveredEdge === edge;
       return {
         ...data,
-        color: '#cccccc',
-        size: 1
+        color: isHovered ? '#666666' : '#cccccc',
+        size: isHovered ? 2 : 1,
+        label: isHovered ? (data.relationshipType || '') : ''
       };
     };
   }
@@ -2205,6 +2211,17 @@ class GraphView extends ItemView {
       });
 
       menu.showAtMouseEvent(event.event as MouseEvent);
+    });
+
+    // Edge hover to show relationship type label (GVIEW-03)
+    this.renderer.on('enterEdge', (event) => {
+      this.hoveredEdge = event.edge;
+      this.renderer?.refresh();
+    });
+
+    this.renderer.on('leaveEdge', () => {
+      this.hoveredEdge = null;
+      this.renderer?.refresh();
     });
   }
 
