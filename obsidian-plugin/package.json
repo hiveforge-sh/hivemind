@@ -32,5 +32,9 @@
     "tslib": "^2.6.2",
     "typescript": "^5.3.3",
     "typescript-eslint": "^8.54.0"
+  },
+  "dependencies": {
+    "vis-data": "^8.0.3",
+    "vis-timeline": "^8.5.0"
   }
 }

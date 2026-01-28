@@ -145,6 +145,13 @@ Plans:
 
 **Requirements:** TVIEW-01, TVIEW-02, TVIEW-03, TVIEW-04, TVIEW-05, TVIEW-06
 
+**Plans:** 3 plans
+
+Plans:
+- [ ] 26-01-PLAN.md — Install vis-timeline and create TimelineView class skeleton
+- [ ] 26-02-PLAN.md — Wire MCP data loading and vis-timeline rendering
+- [ ] 26-03-PLAN.md — Add filtering, swim lanes, click navigation, and styling
+
 **Success Criteria:**
 1. User opens timeline panel and sees entities with dates displayed on chronological axis
 2. Range items (start and end dates) displayed as spans, not just points
@@ -153,7 +160,7 @@ Plans:
 5. User filters timeline by entity type and sees only selected types
 6. Swim lanes group entities by type for easier visual scanning
 
-**Status:** Pending
+**Status:** Planned
 
 ---
 
@@ -214,6 +221,6 @@ Plans:
 | 23 | v4.0 | 3/3 | Complete | 2026-01-28 |
 | 24 | v4.0 | 3/3 | Complete | 2026-01-28 |
 | 25 | v4.0 | 3/3 | Complete | 2026-01-28 |
-| 26 | v4.0 | 0/? | Pending | — |
+| 26 | v4.0 | 0/3 | Planned | — |
 | 27 | v4.0 | 0/? | Pending | — |
 | 28 | v4.0 | 0/? | Pending | — |
