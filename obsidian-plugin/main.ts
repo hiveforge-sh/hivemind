@@ -1505,11 +1505,82 @@ class TimelineView extends ItemView {
     container.empty();
     container.addClass('hivemind-timeline-view');
 
-    // Placeholder until data loading is implemented
-    container.createDiv({
-      cls: 'hvmd-scanning',
-      text: 'Timeline view loading...'
+    // Create timeline container div with explicit height
+    const timelineContainer = container.createDiv({
+      cls: 'hvmd-timeline-container'
     });
+    timelineContainer.style.height = '100%';
+    timelineContainer.style.minHeight = '400px';
+
+    // Show loading state
+    timelineContainer.setText('Loading timeline data...');
+
+    try {
+      const items = await this.loadTimelineData();
+
+      if (items.length === 0) {
+        container.empty();
+        container.createDiv({
+          cls: 'hvmd-no-issues',
+          text: 'No entities with dates found. Add date, start_date, or end_date fields to your frontmatter.'
+        });
+        return;
+      }
+
+      // Clear loading message
+      timelineContainer.empty();
+
+      // Create vis-timeline DataSet
+      const dataSet = new DataSet(items);
+
+      // Configure timeline options
+      // TVIEW-03: Auto-scaling handled by vis-timeline automatically
+      const options = {
+        editable: false,
+        selectable: true,
+        zoomable: true,
+        moveable: true,
+        orientation: 'top',
+        // Performance: limit zoom out to prevent rendering too many items
+        zoomMax: 1000 * 60 * 60 * 24 * 365 * 100, // 100 years max view
+        zoomMin: 1000 * 60 * 60 * 24,              // 1 day min view
+        // Fit all items initially
+        start: undefined,
+        end: undefined
+      };
+
+      // Create timeline
+      this.timeline = new Timeline(timelineContainer, dataSet, options);
+
+      // Fit to show all items
+      this.timeline.fit();
+
+    } catch (error) {
+      container.empty();
+      const errorEl = container.createDiv({ cls: 'hvmd-no-issues' });
+      const errorMsg = (error as Error).message;
+
+      errorEl.createEl('p', {
+        text: `Failed to load timeline: ${errorMsg}`,
+        cls: 'hvmd-text-warning'
+      });
+
+      // If error is about MCP connection, show connect button
+      if (errorMsg.includes('MCP server not connected')) {
+        const connectBtn = errorEl.createEl('button', {
+          text: 'Connect to MCP',
+          cls: 'mod-cta'
+        });
+        connectBtn.addEventListener('click', () => {
+          void this.plugin.startMCPServer();
+          // Retry after short delay
+          setTimeout(() => void this.onOpen(), 2000);
+        });
+      } else {
+        const retryBtn = errorEl.createEl('button', { text: 'Retry' });
+        retryBtn.addEventListener('click', () => void this.onOpen());
+      }
+    }
   }
 
   private async loadTimelineData(): Promise<TimelineItem[]> {
