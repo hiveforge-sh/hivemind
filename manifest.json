@@ -1,7 +1,7 @@
 {
   "id": "hivemind-mcp",
   "name": "Hivemind",
-  "version": "3.3.0",
+  "version": "3.3.1",
   "minAppVersion": "1.4.0",
   "description": "MCP server that gives AI tools structured context from your vault, with pluggable templates, HybridRAG search, and ComfyUI image generation.",
   "author": "HiveForge",

@@ -1,3 +1,12 @@
+## [3.3.1](https://github.com/hiveforge-sh/hivemind/compare/3.3.0...3.3.1) (2026-01-28)
+
+
+### Bug Fixes
+
+* **obsidian-plugin:** resolve all community plugin scanner issues ([48b6bba](https://github.com/hiveforge-sh/hivemind/commit/48b6bba539ae7273950028fd51719aee1683b495))
+* resolve Obsidian community plugin scanner issues in server code ([e62495e](https://github.com/hiveforge-sh/hivemind/commit/e62495e12865546e68124826e3c45ed594a261b6))
+* revert console.warn to console.log in CLI files ([9659bc8](https://github.com/hiveforge-sh/hivemind/commit/9659bc8e020249abe8496268163b0d39864d4340))
+
 # [3.3.0](https://github.com/hiveforge-sh/hivemind/compare/3.2.0...3.3.0) (2026-01-28)
 
 
