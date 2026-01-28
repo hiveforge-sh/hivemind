@@ -11,6 +11,7 @@ import type {
   EntityTypeConfig,
   RelationshipTypeConfig,
   FolderMappingRule,
+  FieldConfig,
 } from './types.js';
 
 /**
@@ -241,6 +242,127 @@ export class TemplateRegistry {
         rel.targetTypes === 'any' || rel.targetTypes.includes(targetType);
       return sourceValid && targetValid;
     });
+  }
+
+  /**
+   * Builds a frontmatter template object for a specific entity type.
+   *
+   * Creates a complete frontmatter object with:
+   * - Base fields (id, type, status, title, importance, tags, aliases)
+   * - Custom fields from entity type config with default values
+   *
+   * @param entityTypeName - Name of entity type to build template for
+   * @returns Frontmatter template object
+   * @throws {Error} If no template is active or entity type not found
+   */
+  buildFrontmatterTemplate(entityTypeName: string): Record<string, unknown> {
+    const entityType = this.getEntityType(entityTypeName);
+    if (!entityType) {
+      throw new Error(
+        `Cannot build frontmatter template: entity type "${entityTypeName}" not found in active template`
+      );
+    }
+
+    // Base fields common to all entity types
+    const baseFields: Record<string, unknown> = {
+      id: '',
+      type: entityTypeName,
+      status: 'draft',
+      title: '',
+      tags: [],
+      aliases: [],
+    };
+
+    // Asset type doesn't have importance field
+    if (entityTypeName !== 'asset') {
+      baseFields.importance = 'minor';
+    }
+
+    // Build custom fields from entity type config
+    const customFields: Record<string, unknown> = {};
+    for (const field of entityType.fields) {
+      customFields[field.name] = this.getFieldDefaultValue(field);
+    }
+
+    return { ...baseFields, ...customFields };
+  }
+
+  /**
+   * Builds frontmatter templates for all entity types in the active template.
+   *
+   * @returns Map of entity type names to their frontmatter templates
+   * @throws {Error} If no template is active
+   */
+  buildAllFrontmatterTemplates(): Record<string, Record<string, unknown>> {
+    const entityTypes = this.getEntityTypes();
+    const templates: Record<string, Record<string, unknown>> = {};
+
+    for (const entityType of entityTypes) {
+      templates[entityType.name] = this.buildFrontmatterTemplate(entityType.name);
+    }
+
+    return templates;
+  }
+
+  /**
+   * Gets the default value for a field based on its configuration.
+   *
+   * Uses field.default if provided, otherwise derives from field type.
+   *
+   * @param field - Field configuration
+   * @returns Default value for the field
+   */
+  private getFieldDefaultValue(field: FieldConfig): unknown {
+    // Use explicit default if provided
+    if (field.default !== undefined) {
+      return field.default;
+    }
+
+    // Derive default from field type
+    switch (field.type) {
+      case 'string':
+        return '';
+      case 'number':
+        return null;
+      case 'boolean':
+        return false;
+      case 'enum':
+        return '';
+      case 'array':
+        return [];
+      case 'date':
+        return '';
+      case 'record':
+        // For record types, check if there are known nested structures
+        // Character-specific nested objects
+        if (field.name === 'appearance') {
+          return {
+            height: '',
+            build: '',
+            hair: '',
+            eyes: '',
+            distinctive_features: ''
+          };
+        }
+        if (field.name === 'personality') {
+          return {
+            traits: [],
+            motivations: [],
+            flaws: []
+          };
+        }
+        if (field.name === 'background') {
+          return {
+            birthplace: '',
+            occupation: '',
+            affiliations: []
+          };
+        }
+        // Default record is empty object
+        return {};
+      default:
+        return null;
+    }
   }
 
   /**

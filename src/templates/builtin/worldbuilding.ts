@@ -264,6 +264,11 @@ export const worldbuildingTemplate: TemplateDefinition = {
           description: 'Personality traits and characteristics',
         },
         {
+          name: 'background',
+          type: 'record',
+          description: 'Character background and history',
+        },
+        {
           name: 'relationships',
           type: 'array',
           arrayItemType: 'record',
