@@ -96,18 +96,18 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 24-01-PLAN.md — Date field discovery and validation schemas (TDD)
-- [ ] 24-02-PLAN.md — Database timeline query methods with generated columns (TDD)
-- [ ] 24-03-PLAN.md — MCP tool registration, server wiring, and integration tests
+- [x] 24-01-PLAN.md — Date field discovery and validation schemas (TDD)
+- [x] 24-02-PLAN.md — Database timeline query methods with generated columns (TDD)
+- [x] 24-03-PLAN.md — MCP tool registration, server wiring, and integration tests
 
 **Success Criteria:**
-1. Claude can query "show me all events between June 2024 and August 2024" and receive sorted results
-2. MCP tool validates ISO8601 date format (YYYY-MM-DD) and rejects malformed input with clear error
-3. Results include date field with full entity context (name, type, description)
-4. Timeline queries only work on entity types with date fields (skip types without dates)
-5. Queries return results in ascending or descending order based on user preference
+1. ✅ Claude can query "show me all events between June 2024 and August 2024" and receive sorted results
+2. ✅ MCP tool validates ISO8601 date format (YYYY-MM-DD) and rejects malformed input with clear error
+3. ✅ Results include date field with full entity context (name, type, description)
+4. ✅ Timeline queries only work on entity types with date fields (skip types without dates)
+5. ✅ Queries return results in ascending or descending order based on user preference
 
-**Status:** Planned
+**Status:** Complete (2026-01-28)
 
 ---
 
@@ -119,6 +119,13 @@ Plans:
 
 **Requirements:** GRAPH-01, GRAPH-02, GRAPH-03, GRAPH-04, GRAPH-05
 
+**Plans:** 3 plans
+
+Plans:
+- [ ] 25-01-PLAN.md — Graph traversal database methods (TDD)
+- [ ] 25-02-PLAN.md — Graph MCP tool definitions and Zod schemas
+- [ ] 25-03-PLAN.md — MCP server integration and integration tests
+
 **Success Criteria:**
 1. Claude can query "show me all entities connected to Character:john" and receive neighbors with relationship types
 2. Subgraph queries support configurable depth (1-hop, 2-hop, 3-hop) with reasonable performance
@@ -126,7 +133,7 @@ Plans:
 4. Shortest path tool finds path between any two entities in vault graph
 5. Graph traversal filtered by relationship type (e.g., only "manages" edges, skip "allies_with")
 
-**Status:** Pending
+**Status:** Planned
 
 ---
 
@@ -205,8 +212,8 @@ Plans:
 | 12-16 | v3.0 | 19/19 | Complete | 2026-01-27 |
 | 17-22 | v3.1 | 8/8 | Complete | 2026-01-27 |
 | 23 | v4.0 | 3/3 | Complete | 2026-01-28 |
-| 24 | v4.0 | 0/3 | Planned | — |
-| 25 | v4.0 | 0/? | Pending | — |
+| 24 | v4.0 | 3/3 | Complete | 2026-01-28 |
+| 25 | v4.0 | 0/3 | Planned | — |
 | 26 | v4.0 | 0/? | Pending | — |
 | 27 | v4.0 | 0/? | Pending | — |
 | 28 | v4.0 | 0/? | Pending | — |
