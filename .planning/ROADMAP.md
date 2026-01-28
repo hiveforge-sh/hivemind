@@ -148,19 +148,19 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 26-01-PLAN.md — Install vis-timeline and create TimelineView class skeleton
-- [ ] 26-02-PLAN.md — Wire MCP data loading and vis-timeline rendering
-- [ ] 26-03-PLAN.md — Add filtering, swim lanes, click navigation, and styling
+- [x] 26-01-PLAN.md — Install vis-timeline and create TimelineView class skeleton
+- [x] 26-02-PLAN.md — Wire MCP data loading and vis-timeline rendering
+- [x] 26-03-PLAN.md — Add filtering, swim lanes, click navigation, and styling
 
 **Success Criteria:**
-1. User opens timeline panel and sees entities with dates displayed on chronological axis
-2. Range items (start and end dates) displayed as spans, not just points
-3. Timeline auto-adjusts scale based on data (days for short ranges, years for long ranges)
-4. Clicking timeline item opens corresponding note in active pane
-5. User filters timeline by entity type and sees only selected types
-6. Swim lanes group entities by type for easier visual scanning
+1. ✅ User opens timeline panel and sees entities with dates displayed on chronological axis
+2. ✅ Range items (start and end dates) displayed as spans, not just points
+3. ✅ Timeline auto-adjusts scale based on data (days for short ranges, years for long ranges)
+4. ✅ Clicking timeline item opens corresponding note in active pane
+5. ✅ User filters timeline by entity type and sees only selected types
+6. ✅ Swim lanes group entities by type for easier visual scanning
 
-**Status:** Planned
+**Status:** Complete (2026-01-28)
 
 ---
 
@@ -221,6 +221,6 @@ Plans:
 | 23 | v4.0 | 3/3 | Complete | 2026-01-28 |
 | 24 | v4.0 | 3/3 | Complete | 2026-01-28 |
 | 25 | v4.0 | 3/3 | Complete | 2026-01-28 |
-| 26 | v4.0 | 0/3 | Planned | — |
+| 26 | v4.0 | 3/3 | Complete | 2026-01-28 |
 | 27 | v4.0 | 0/? | Pending | — |
 | 28 | v4.0 | 0/? | Pending | — |
