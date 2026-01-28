@@ -1,3 +1,10 @@
+# [3.4.0](https://github.com/hiveforge-sh/hivemind/compare/3.3.1...3.4.0) (2026-01-28)
+
+
+### Features
+
+* **22:** add license compliance and mutation testing CI gates ([8bf1677](https://github.com/hiveforge-sh/hivemind/commit/8bf1677bae56bb642167ec9960dc963e6fe865f8))
+
 ## [3.3.1](https://github.com/hiveforge-sh/hivemind/compare/3.3.0...3.3.1) (2026-01-28)
 
 
