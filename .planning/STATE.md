@@ -12,33 +12,31 @@
 
 ## Current Position
 
-**Phase:** 26 - Timeline Obsidian View
-**Plan:** 3 of 3 complete
-**Status:** Phase complete
-**Last activity:** 2026-01-28 - Completed 26-03-PLAN.md (Timeline interactions and filtering)
+**Phase:** 27 - Graph Obsidian View
+**Plan:** 1 of 3 complete
+**Status:** In progress
+**Last activity:** 2026-01-28 - Completed 27-01-PLAN.md (Graph view infrastructure)
 
 **Progress:**
 ```
-[██████--------------] 28/39 requirements complete (72%)
+[██████--------------] 30/39 requirements complete (77%)
 ```
 
-**Phase Goal:** Build interactive timeline visualization in Obsidian plugin using vis-timeline
+**Phase Goal:** Build interactive graph visualization in Obsidian plugin using sigma.js
 
 **Phase Success Criteria:**
-1. ✅ TimelineView class registered with plugin (26-01 complete)
-2. ✅ Timeline loads data from MCP timeline_query_range (26-02 complete)
-3. ✅ Timeline groups entities by type in swim lanes (26-03 complete)
-4. ✅ Timeline filters by entity type (26-03 complete)
-5. ✅ Clicking timeline item opens note (26-03 complete)
-6. ✅ Timeline integrated with Obsidian theme (26-03 complete)
-
-**Phase 26 COMPLETE - All requirements met**
+1. ✅ GraphView class registered with plugin (27-01 complete)
+2. ⬜ Graph loads data from MCP graph tools (27-02 planned)
+3. ⬜ Graph interactions: click to open, drag to pan, zoom (27-03 planned)
+4. ⬜ Graph layout: force-directed with forceAtlas2 (27-03 planned)
+5. ⬜ Node/edge styling integrated with Obsidian theme (27-03 planned)
+6. ⬜ Graph filters by relationship type (27-03 planned)
 
 ## Performance Metrics
 
 **v4.0 Progress:**
 - Phases complete: 4/6 (66%)
-- Requirements complete: 28/39 (72%)
+- Requirements complete: 30/39 (77%)
 - Days elapsed: 2 (started 2026-01-27)
 
 **Historical:**
@@ -86,6 +84,9 @@
 | Filter state persistence (26-03) | Persist timeline filter preferences in plugin settings (timelineFilterTypes array) for session continuity | Complete |
 | Okabe-Ito color palette (26-03) | Use scientifically validated color-blind accessible palette (8 distinct colors) for entity types | Complete |
 | MCP error via exception (26-03) | Catch "MCP server not connected" from callMCPTool rather than checking private mcpProcess field | Complete |
+| sigma.js v3.0.2 for graph rendering (27-01) | Use sigma.js WebGL renderer for high performance with large graphs, well-maintained library | Complete |
+| Pre-installed graph algorithm packages (27-01) | Install graphology-shortest-path and graphology-communities-louvain upfront for future features (GVIEW-10, GVIEW-11) to avoid dependency churn | Complete |
+| Memory-safe renderer cleanup (27-01) | Add renderer.kill() and graph.clear() in GraphView.onClose() to prevent memory leaks per sigma.js best practices | Complete |
 
 ### Active Concerns
 
@@ -132,6 +133,11 @@ None currently.
 - ✅ Plan 02: Timeline data loading (MCP integration, vis-timeline rendering)
 - ✅ Plan 03: Timeline interactions and filtering (click navigation, swim lanes, Okabe-Ito colors)
 
+**Phase 27 (In Progress):**
+- ✅ Plan 01: Graph view infrastructure (sigma.js install, GraphView class)
+- ⬜ Plan 02: Graph data loading (MCP integration, sigma.js rendering)
+- ⬜ Plan 03: Graph interactions and layout (click navigation, force-directed layout, theming)
+
 **Future:**
 - Add bundle size monitoring to CI (Phase 27)
 - Build cross-timezone test suite for date queries (Phase 24-03)
@@ -147,10 +153,10 @@ None currently.
 6. Phase 28: Community plugin submission (6 requirements)
 
 **Last session:** 2026-01-28
-**Stopped at:** Completed 26-03-PLAN.md (Timeline interactions and filtering)
+**Stopped at:** Completed 27-01-PLAN.md (Graph view infrastructure)
 **Resume file:** None
 
-**Next action:** Phase 27 Plan 01 (Graph view infrastructure) - install sigma.js and create GraphView class
+**Next action:** Phase 27 Plan 02 (Graph data loading) - load graph data from MCP and render with sigma.js
 
 **Context for future sessions:**
 - Phase 23 complete: Template registry unified, plugin docs added, CLI test coverage 91%
@@ -195,7 +201,14 @@ None currently.
   - Okabe-Ito accessible color palette for entity types (8 colors)
   - Summary: .planning/phases/26-timeline-obsidian-view/26-03-SUMMARY.md
 - Phase 26 COMPLETE: All 6 requirements met (9 min total)
-- Graph MCP tools ready for Phase 27 (Graph Obsidian UI)
+- Phase 27 Plan 01 complete: Graph view infrastructure (4 min)
+  - sigma.js@3.0.2 and graphology@0.26.0 installed
+  - Graph algorithm packages pre-installed (forceAtlas2, shortest-path, louvain)
+  - GraphView class created following ItemView pattern
+  - Command palette integration ("Hivemind: Open graph view")
+  - Memory-safe lifecycle with renderer.kill() in onClose()
+  - Summary: .planning/phases/27-graph-obsidian-view/27-01-SUMMARY.md
+- Graph MCP tools ready for Phase 27-02 (data loading)
 - All tech debt cleaned (DEBT-01 through DEBT-05)
 - Research context available at C:\Users\Preston\git\hivemind\.planning\research\SUMMARY.md
 

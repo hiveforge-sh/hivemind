@@ -42,6 +42,8 @@ interface HivemindSettings {
   validationSeverity: 'error' | 'warning';
   showValidationNotices: boolean;
   timelineFilterTypes: string[];  // Persisted filter state
+  graphFilterTypes: string[];  // Persisted graph entity type filter state
+  graphViewMode: 'local' | 'full';  // Local (active note) or full vault graph
 }
 
 const DEFAULT_SETTINGS: HivemindSettings = {
@@ -54,6 +56,8 @@ const DEFAULT_SETTINGS: HivemindSettings = {
   validationSeverity: 'warning',
   showValidationNotices: false,
   timelineFilterTypes: [],  // Empty means "all types active"
+  graphFilterTypes: [],
+  graphViewMode: 'local',
 };
 
 interface MCPToolCall {
@@ -1513,6 +1517,26 @@ interface TimelineEntity {
   frontmatter: Record<string, unknown>;
 }
 
+// Graph interfaces
+interface GraphNode {
+  id: string;
+  title: string;
+  type: string;
+  path: string;
+  description?: string;
+}
+
+interface GraphEdge {
+  source: string;
+  target: string;
+  relationshipType: string;
+}
+
+interface GraphData {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+}
+
 class TimelineView extends ItemView {
   plugin: HivemindPlugin;
   private timeline: Timeline | null = null;
@@ -1817,6 +1841,129 @@ class GraphView extends ItemView {
     // Placeholder content for now - data loading in 27-02
     const placeholderEl = container.createDiv({ cls: 'hvmd-graph-placeholder' });
     placeholderEl.setText('Graph view loading...');
+  }
+
+  /**
+   * Load graph data from MCP graph tools
+   * Uses either hvmd_graph_get_neighbors (local mode) or full vault subgraph
+   */
+  private async loadGraphData(): Promise<GraphData> {
+    try {
+      const viewMode = this.plugin.settings.graphViewMode;
+
+      if (viewMode === 'local') {
+        // Get active file to show its neighbors
+        const activeFile = this.app.workspace.getActiveFile();
+        if (!activeFile) {
+          return { nodes: [], edges: [] };
+        }
+
+        // Extract entity ID from active file
+        const baseName = activeFile.basename;
+        const response = await this.plugin.callMCPTool({
+          name: 'hvmd_graph_get_neighbors',
+          arguments: {
+            entity_id: baseName,
+            depth: 1,
+            direction: 'both'
+          }
+        });
+
+        const responseText = response.content[0].text;
+        const data = JSON.parse(responseText);
+        return this.transformNeighborsResponse(data);
+      } else {
+        // Full vault graph - use subgraph with a central node
+        // For now, get all nodes via a broad query
+        // TODO: Implement full vault subgraph in future phase
+        return { nodes: [], edges: [] };
+      }
+    } catch (error) {
+      console.error('[Graph] Failed to load data:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Transform hvmd_graph_get_neighbors response to GraphData format
+   */
+  private transformNeighborsResponse(data: any): GraphData {
+    const nodes: GraphNode[] = [];
+    const edges: GraphEdge[] = [];
+
+    // Response format: { center: {...}, neighbors: {relationshipType: [nodes]} }
+    if (data.center) {
+      nodes.push({
+        id: data.center.id,
+        title: data.center.title,
+        type: data.center.type,
+        path: data.center.path,
+        description: data.center.description
+      });
+    }
+
+    // Process neighbors grouped by relationship type
+    if (data.neighbors) {
+      for (const [relType, neighborList] of Object.entries(data.neighbors)) {
+        if (Array.isArray(neighborList)) {
+          for (const neighbor of neighborList) {
+            // Add node if not already present
+            if (!nodes.find(n => n.id === neighbor.id)) {
+              nodes.push({
+                id: neighbor.id,
+                title: neighbor.title,
+                type: neighbor.type,
+                path: neighbor.path,
+                description: neighbor.description
+              });
+            }
+
+            // Add edge from center to neighbor
+            edges.push({
+              source: data.center.id,
+              target: neighbor.id,
+              relationshipType: relType
+            });
+          }
+        }
+      }
+    }
+
+    return { nodes, edges };
+  }
+
+  /**
+   * Transform hvmd_graph_get_subgraph response to GraphData format
+   * Currently unused but prepared for full vault mode
+   */
+  private transformSubgraphResponse(data: any): GraphData {
+    const nodes: GraphNode[] = [];
+    const edges: GraphEdge[] = [];
+
+    // Response format: { nodes: [...], edges: [...] }
+    if (data.nodes && Array.isArray(data.nodes)) {
+      for (const node of data.nodes) {
+        nodes.push({
+          id: node.id,
+          title: node.title,
+          type: node.type,
+          path: node.path,
+          description: node.description
+        });
+      }
+    }
+
+    if (data.edges && Array.isArray(data.edges)) {
+      for (const edge of data.edges) {
+        edges.push({
+          source: edge.source,
+          target: edge.target,
+          relationshipType: edge.relationshipType
+        });
+      }
+    }
+
+    return { nodes, edges };
   }
 
   async onClose() {
