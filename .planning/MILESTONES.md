@@ -4,6 +4,63 @@ Completed milestones for reference.
 
 ---
 
+## v3.1 — Type Safety & Quality ✓
+
+**Completed:** 2026-01-27
+
+### What Shipped
+
+**Phase 17: Foundation Types**
+- Zero `any` types in types/index.ts, parser/markdown.ts, vault/reader.ts
+- Zod generics (`ZodObject<ZodRawShape>`) and mdast type guards
+
+**Phase 18: Template System & Data Layer**
+- Zero `any` types in schema-factory, loader, database, builder, engine
+- SQLite row interfaces for type-safe queries
+
+**Phase 19: Server & MCP**
+- Zero `any` types in server.ts and tool-generator.ts
+- Typed MCP handlers, search filters, graph node/edge generics
+
+**Phase 20: ComfyUI, CLI & Enforcement**
+- Zero `any` types across all remaining files
+- Replaced axios with native fetch in ComfyUI client
+- ESLint `no-explicit-any` reports zero warnings
+
+**Phase 21: Test Coverage**
+- comfyui/client.ts: 62% → 98%, search/engine.ts: 72% → 97%
+- mcp/tool-generator.ts: 75% → 100%, vault/watcher.ts: 47% → 100%
+
+**Phase 22: CI Quality Gates**
+- License compliance job (fails on GPL/AGPL)
+- Stryker mutation testing on 7 core modules (843 mutants)
+
+### Validated Requirements
+
+- [x] Zero `any` types across all 16 source files (18 type requirements)
+- [x] ESLint enforcement with zero warnings
+- [x] Test coverage improvements for 4 under-tested modules
+- [x] License compliance and mutation testing CI gates (4 requirements)
+
+### Key Decisions
+
+| Decision | Rationale | Outcome |
+|----------|-----------|---------|
+| `unknown` over `any` | Safer — forces type narrowing at usage | ✓ Good |
+| axios → native fetch | Fewer deps, ComfyUI client simpler | ✓ Good |
+| gray-matter → native parsing | gray-matter uses Node.js fs internally | ✓ Good |
+| Stryker for mutation testing | Vitest runner available, good threshold config | ✓ Good |
+
+### Stats
+
+- **Phases:** 6 (phases 17-22)
+- **Plans:** 8 total
+- **Files:** 29 modified (+5,136 / -1,867 lines)
+- **Tests:** 642 passing, 12,479 lines TypeScript
+- **Duration:** 1 day (2026-01-27)
+
+---
+
 ## v3.0 — Developer Experience ✓
 
 **Completed:** 2026-01-27

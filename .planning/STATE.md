@@ -5,33 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-01-27)
 
 **Core value:** Consistent AI output. Give any AI tool context from your canon, get results that belong in your world — every time, across every tool.
-**Current focus:** v3.1 Type Safety
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-**Milestone**: 3.1 (Type Safety)
-**Phase**: 18 (Template System Data Layer)
-**Plan**: 02 of 02 (complete)
-**Status**: Phase 18 complete, ready for Phase 19
-**Last activity**: 2026-01-27 — Completed 18-02-PLAN.md
+**Milestone**: v3.1 (Type Safety & Quality) — SHIPPED
+**Phase**: 22 of 22 (CI Quality Gates) — complete
+**Status**: All milestones complete, ready for next milestone
+**Last activity**: 2026-01-27 — v3.1 milestone archived
 
 ## Progress
 
 ```
-Milestone 1.0: MVP + Core      [##########] 100% SHIPPED 2026-01-25
-Milestone 2.0: Template System [##########] 100% SHIPPED 2026-01-26
+Milestone 1.0: MVP + Core          [##########] 100% SHIPPED 2026-01-25
+Milestone 2.0: Template System     [##########] 100% SHIPPED 2026-01-26
 Milestone 3.0: Developer Experience [##########] 100% SHIPPED 2026-01-27
-Milestone 3.1: Type Safety     [█████░░░░░] 50% (Phase 18/20)
+Milestone 3.1: Type Safety         [##########] 100% SHIPPED 2026-01-27
 ```
-
-## Performance Metrics
-
-**v3.1 Type Safety:**
-- Phases: 4 (17-20)
-- Requirements: 18 total
-- Coverage: 18/18 (100%)
-- Files to modify: 16
-- Lint warnings: 79 → 0 (target)
 
 ## Accumulated Context
 
@@ -39,33 +29,13 @@ Milestone 3.1: Type Safety     [█████░░░░░] 50% (Phase 18/20
 
 See PROJECT.md Key Decisions table for full log.
 
-**v3.1 specific:**
-- Use `unknown` instead of `any` where true type is unknowable (e.g., external API responses)
-- Use `Record<string, unknown>` for frontmatter parsing
-- Use Zod generics for schema operations
-- Target enforcement via ESLint `@typescript-eslint/no-explicit-any` rule
-- Use `ZodObject<ZodRawShape>` for generic Zod object schema parameters (Phase 17)
-- Use mdast `Root | RootContent` with type guards for AST traversal (Phase 17)
-- Replace error: any with error: unknown for better error handling (Phase 17)
-- Use z.unknown() instead of z.any() for dynamic field values in schemas (Phase 18)
-- Add type guards after JSON.parse before property access (Phase 18)
-- Define SQLite row interfaces for type-safe database queries (Phase 18)
-- Use type assertions for database string → literal type conversions when safe (Phase 18)
-- Use Record<string, unknown> with type narrowing for dynamic frontmatter access (Phase 18)
-
 ### Tech Debt
 
 - Hardcoded FRONTMATTER_TEMPLATES in plugin duplicates template registry schema data
 - Template registry initialization pattern differs between CLI (per-command) and plugin (on-load)
-
-### Todos
-
-- [x] Run ESLint to get baseline of 79 warnings across 16 files
-- [x] Plan Phase 17 (Foundation Types)
-- [x] Execute Phase 17
-- [x] Plan and execute Phase 18 (Template System Data Layer)
-- [ ] Plan and execute Phase 19 (Query + Tool Types)
-- [ ] Plan and execute Phase 20 (ESLint Enforcement)
+- TEST-01 (cli/init coverage) deferred — zero coverage for init modules
+- `process.chdir()` test excluded from Stryker (worker thread incompatibility)
+- Obsidian plugin `child_process` import needs review team exception
 
 ### Blockers/Concerns
 
@@ -74,9 +44,8 @@ None currently blocking.
 ## Session Continuity
 
 Last session: 2026-01-27
-Stopped at: Completed Phase 18 (Template System Data Layer)
-Resume file: .planning/phases/18-template-system-data-layer/18-02-SUMMARY.md
-Next action: Plan Phase 19 (Query + Tool Types) with `/gsd:plan-phase 19`
+Stopped at: v3.1 milestone archived
+Next action: Start next milestone with `/gsd:new-milestone`
 
 ---
-*Updated: 2026-01-27 — Phase 18 complete*
+*Updated: 2026-01-27 — v3.1 milestone complete*

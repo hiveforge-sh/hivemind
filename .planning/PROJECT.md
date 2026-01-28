@@ -8,22 +8,30 @@ A domain-agnostic MCP server for knowledge management with pluggable templates. 
 
 Consistent AI output. Give any AI tool context from your canon, get results that belong in your world — every time, across every tool.
 
-## Current State: v3.0 Shipped
+## Current State: v3.1 Shipped
 
 **Shipped:** 2026-01-27
-**Tagged:** v3.0
+**Tagged:** v3.1
 
-**What's in v3.0:**
+**What's in v3.1:**
+- Zero `any` types across entire codebase (79 warnings eliminated)
+- ESLint `no-explicit-any` enforcement with zero warnings
+- Test coverage improvements: client 98%, engine 97%, tool-generator 100%, watcher 100%
+- License compliance CI gate (fails on GPL/AGPL)
+- Stryker mutation testing on 7 core modules
+- Obsidian plugin review compliance (CSS classes, sentence case, requestUrl, vault API)
+- axios replaced with native fetch, gray-matter replaced with native parsing
+- 642 tests passing, 12,479 lines TypeScript
+
+## Previous: v3.0 Developer Experience
+
+**Shipped:** 2026-01-27
+
+**What shipped:**
 - `npx hivemind init` — interactive setup wizard with config generation
 - `npx hivemind validate` — scan vault, report missing/invalid frontmatter
 - `npx hivemind fix` — interactive wizard to add frontmatter to files
-- Folder-to-type mapping (People/ → character, Places/ → location)
-- Obsidian commands: Add/Fix/Validate frontmatter (Ctrl+P)
-- Validation sidebar panel for vault-wide frontmatter overview
-- Settings tab for frontmatter command configuration
-- Folder context menus for bulk operations
-- Better error messages when config missing or vault misconfigured
-- Claude Desktop config snippet generation
+- Folder-to-type mapping, Obsidian commands, validation sidebar, settings tab
 - 502 tests passing, 12,438 lines TypeScript
 
 ## Previous: v2.0 Template System
@@ -68,13 +76,14 @@ Consistent AI output. Give any AI tool context from your canon, get results that
 - ✓ Validation sidebar panel for vault-wide overview — v3.0
 - ✓ CI-compatible output (JSON, exit codes) — v3.0
 - ✓ Non-interactive mode for automation — v3.0
+- ✓ Zero `any` types across entire codebase — v3.1
+- ✓ ESLint `no-explicit-any` enforcement — v3.1
+- ✓ Test coverage improvements for under-tested modules — v3.1
+- ✓ License compliance and mutation testing CI gates — v3.1
 
 ### Active
 
-<!-- Current scope for v3.1 Type Safety milestone -->
-
-- [ ] Eliminate all `any` types from codebase with strict replacements
-- [ ] Zero `@typescript-eslint/no-explicit-any` warnings
+<!-- Next milestone scope TBD -->
 
 ### Deferred
 
@@ -105,7 +114,7 @@ Consistent AI output. Give any AI tool context from your canon, get results that
 - Researchers managing papers, citations, concepts
 - Knowledge workers with Zettelkasten-style PKM
 
-**Current architecture:** Template system complete with config-driven entity definitions. CLI has init, validate, fix commands with interactive wizards. Obsidian plugin has full frontmatter authoring and validation commands with sidebar panel and settings UI.
+**Current architecture:** Template system complete with config-driven entity definitions. CLI has init, validate, fix commands with interactive wizards. Obsidian plugin has full frontmatter authoring and validation commands with sidebar panel and settings UI. Codebase has zero `any` types with strict TypeScript enforcement. CI pipeline includes license compliance and mutation testing.
 
 ## Constraints
 
@@ -131,6 +140,10 @@ Consistent AI output. Give any AI tool context from your canon, get results that
 | Shared FolderMapper | No logic duplication between CLI and plugin | ✓ Good |
 | Inline validation in plugin | Avoid Node fs dependencies in Obsidian | ✓ Good |
 | Picomatch for glob matching | Already in dep tree, 4x faster than minimatch | ✓ Good |
+| `unknown` over `any` | Safer type handling, forces narrowing | ✓ Good |
+| axios → native fetch | Fewer deps for ComfyUI client | ✓ Good |
+| gray-matter → native parsing | gray-matter uses Node.js fs internally | ✓ Good |
+| Stryker mutation testing | Vitest runner, configurable thresholds | ✓ Good |
 
 ---
-*Last updated: 2026-01-27 after v3.1 milestone started*
+*Last updated: 2026-01-27 after v3.1 milestone*
