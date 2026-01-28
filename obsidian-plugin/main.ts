@@ -1838,9 +1838,168 @@ class GraphView extends ItemView {
     container.empty();
     container.addClass('hivemind-graph-view');
 
-    // Placeholder content for now - data loading in 27-02
-    const placeholderEl = container.createDiv({ cls: 'hvmd-graph-placeholder' });
-    placeholderEl.setText('Graph view loading...');
+    // Show loading state
+    const loadingEl = container.createDiv({ cls: 'hvmd-graph-placeholder' });
+    loadingEl.setText('Loading graph data...');
+
+    try {
+      // Load graph data from MCP
+      const graphData = await this.loadGraphData();
+
+      // Clear loading state
+      container.empty();
+
+      // Check if we have data
+      if (graphData.nodes.length === 0) {
+        const emptyEl = container.createDiv({ text: 'No graph data available. Open a note to see its connections.' });
+        return;
+      }
+
+      // Show warning for large graphs (>100 nodes)
+      if (graphData.nodes.length > 100) {
+        const warningEl = container.createDiv({ cls: 'hvmd-graph-warning' });
+        warningEl.setText(`⚠️ Large graph detected (${graphData.nodes.length} nodes). Performance may be affected.`);
+      }
+
+      // Create toolbar with Local/Full toggle
+      this.createToolbar(container);
+
+      // Create graph container
+      const graphContainer = container.createDiv({ cls: 'hvmd-graph-container' });
+
+      // Create graphology graph instance
+      this.graph = new Graph();
+
+      // Add nodes with attributes
+      graphData.nodes.forEach(node => {
+        this.graph!.addNode(node.id, {
+          label: node.title,
+          type: node.type,
+          path: node.path,
+          description: node.description,
+          size: 10,
+          x: Math.random() * 100,
+          y: Math.random() * 100
+        });
+      });
+
+      // Add edges
+      graphData.edges.forEach(edge => {
+        if (!this.graph!.hasEdge(edge.source, edge.target)) {
+          this.graph!.addEdge(edge.source, edge.target, {
+            relationshipType: edge.relationshipType
+          });
+        }
+      });
+
+      // Apply ForceAtlas2 layout
+      const settings = forceAtlas2.inferSettings(this.graph);
+      forceAtlas2.assign(this.graph, { settings, iterations: 50 });
+
+      // Create sigma renderer with Okabe-Ito coloring
+      this.renderer = new Sigma(this.graph, graphContainer, {
+        renderLabels: true,
+        labelSize: 12,
+        labelWeight: 'normal',
+        nodeReducer: this.getNodeReducer(),
+        edgeReducer: this.getEdgeReducer()
+      });
+
+    } catch (error) {
+      container.empty();
+      const errorEl = container.createDiv({ cls: 'hvmd-graph-error' });
+      errorEl.setText('Failed to load graph data.');
+
+      // Check if it's an MCP connection error
+      if (error instanceof Error && error.message.includes('MCP server not connected')) {
+        const connectBtn = errorEl.createEl('button', {
+          text: 'Connect to MCP',
+          cls: 'mod-cta'
+        });
+        connectBtn.addEventListener('click', () => {
+          void this.plugin.startMCPServer();
+          setTimeout(() => void this.onOpen(), 2000);
+        });
+      } else {
+        const retryBtn = errorEl.createEl('button', { text: 'Retry' });
+        retryBtn.addEventListener('click', () => void this.onOpen());
+      }
+    }
+  }
+
+  /**
+   * Create toolbar with Local/Full view mode toggle
+   */
+  private createToolbar(container: HTMLElement) {
+    const toolbar = container.createDiv({ cls: 'hvmd-graph-toolbar' });
+
+    const label = toolbar.createEl('span', { text: 'View: ' });
+
+    // Local mode button
+    const localBtn = toolbar.createEl('button', {
+      text: 'Local',
+      cls: this.plugin.settings.graphViewMode === 'local'
+        ? 'hvmd-graph-btn hvmd-graph-btn-active'
+        : 'hvmd-graph-btn'
+    });
+    localBtn.addEventListener('click', () => {
+      this.plugin.settings.graphViewMode = 'local';
+      void this.plugin.saveSettings();
+      void this.onOpen(); // Reload view
+    });
+
+    // Full mode button
+    const fullBtn = toolbar.createEl('button', {
+      text: 'Full',
+      cls: this.plugin.settings.graphViewMode === 'full'
+        ? 'hvmd-graph-btn hvmd-graph-btn-active'
+        : 'hvmd-graph-btn'
+    });
+    fullBtn.addEventListener('click', () => {
+      this.plugin.settings.graphViewMode = 'full';
+      void this.plugin.saveSettings();
+      void this.onOpen(); // Reload view
+    });
+  }
+
+  /**
+   * Get node reducer for Okabe-Ito entity type coloring (GVIEW-09)
+   * Uses scientifically validated color-blind accessible palette
+   */
+  private getNodeReducer() {
+    // Okabe-Ito palette mapping entity types to colors
+    const colorMap: Record<string, string> = {
+      'Event': '#E69F00',      // Orange
+      'Character': '#56B4E9',  // Sky blue
+      'Location': '#009E73',   // Bluish green
+      'Faction': '#F0E442',    // Yellow
+      'Item': '#0072B2',       // Blue
+      'Concept': '#D55E00',    // Vermillion
+      'Timeline': '#CC79A7',   // Reddish purple
+    };
+
+    return (node: string, data: any) => {
+      const type = data.type || 'default';
+      const color = colorMap[type] || '#999999'; // Gray fallback
+      return {
+        ...data,
+        color,
+        label: data.label
+      };
+    };
+  }
+
+  /**
+   * Get edge reducer for edge styling
+   */
+  private getEdgeReducer() {
+    return (edge: string, data: any) => {
+      return {
+        ...data,
+        color: '#cccccc',
+        size: 1
+      };
+    };
   }
 
   /**
