@@ -230,14 +230,31 @@ export type QueryTimelineExactArgs = z.infer<typeof QueryTimelineExactArgsSchema
  */
 export function generateTimelineTools(temporalTypes: TemporalTypeInfo[]): ToolDefinition[] {
   // Build description of available date fields
-  let dateFieldsDescription = '';
-  if (temporalTypes.length > 0) {
-    dateFieldsDescription = '\n\nAvailable date fields:\n';
-    for (const typeInfo of temporalTypes) {
-      const fieldNames = typeInfo.dateFields.map((f) => f.name).join(', ');
-      dateFieldsDescription += `- ${typeInfo.entityType}: ${fieldNames}\n`;
-    }
-  }
+  const dateFieldsDescription = buildDateFieldsDescription(temporalTypes);
+
+  // Common properties shared by all timeline tools
+  const commonProperties = {
+    dateField: {
+      type: 'string',
+      description: 'Name of the date field to query',
+    },
+    entityType: {
+      type: 'string',
+      description: 'Optional: filter to specific entity type',
+    },
+    sortOrder: {
+      type: 'string',
+      enum: ['asc', 'desc'],
+      description: 'Sort order for results',
+    },
+    limit: {
+      type: 'number',
+      description: 'Maximum number of results to return (1-1000, default: 100)',
+      minimum: 1,
+      maximum: 1000,
+      default: 100,
+    },
+  };
 
   const tools: ToolDefinition[] = [
     {
@@ -254,27 +271,7 @@ export function generateTimelineTools(temporalTypes: TemporalTypeInfo[]): ToolDe
             type: 'string',
             description: 'End date in YYYY-MM-DD format (inclusive)',
           },
-          dateField: {
-            type: 'string',
-            description: 'Name of the date field to query (e.g., start_date, end_date)',
-          },
-          entityType: {
-            type: 'string',
-            description: 'Optional: filter to specific entity type',
-          },
-          sortOrder: {
-            type: 'string',
-            enum: ['asc', 'desc'],
-            description: 'Sort order for results (default: asc)',
-            default: 'asc',
-          },
-          limit: {
-            type: 'number',
-            description: 'Maximum number of results to return (1-1000, default: 100)',
-            minimum: 1,
-            maximum: 1000,
-            default: 100,
-          },
+          ...commonProperties,
         },
         required: ['startDate', 'endDate', 'dateField'],
       },
@@ -289,26 +286,11 @@ export function generateTimelineTools(temporalTypes: TemporalTypeInfo[]): ToolDe
             type: 'string',
             description: 'Date in YYYY-MM-DD format (exclusive upper bound)',
           },
-          dateField: {
-            type: 'string',
-            description: 'Name of the date field to query',
-          },
-          entityType: {
-            type: 'string',
-            description: 'Optional: filter to specific entity type',
-          },
+          ...commonProperties,
           sortOrder: {
-            type: 'string',
-            enum: ['asc', 'desc'],
-            description: 'Sort order for results (default: desc)',
+            ...commonProperties.sortOrder,
             default: 'desc',
-          },
-          limit: {
-            type: 'number',
-            description: 'Maximum number of results to return (1-1000, default: 100)',
-            minimum: 1,
-            maximum: 1000,
-            default: 100,
+            description: 'Sort order for results (default: desc)',
           },
         },
         required: ['date', 'dateField'],
@@ -324,26 +306,11 @@ export function generateTimelineTools(temporalTypes: TemporalTypeInfo[]): ToolDe
             type: 'string',
             description: 'Date in YYYY-MM-DD format (exclusive lower bound)',
           },
-          dateField: {
-            type: 'string',
-            description: 'Name of the date field to query',
-          },
-          entityType: {
-            type: 'string',
-            description: 'Optional: filter to specific entity type',
-          },
+          ...commonProperties,
           sortOrder: {
-            type: 'string',
-            enum: ['asc', 'desc'],
-            description: 'Sort order for results (default: asc)',
+            ...commonProperties.sortOrder,
             default: 'asc',
-          },
-          limit: {
-            type: 'number',
-            description: 'Maximum number of results to return (1-1000, default: 100)',
-            minimum: 1,
-            maximum: 1000,
-            default: 100,
+            description: 'Sort order for results (default: asc)',
           },
         },
         required: ['date', 'dateField'],
@@ -359,26 +326,11 @@ export function generateTimelineTools(temporalTypes: TemporalTypeInfo[]): ToolDe
             type: 'string',
             description: 'Date in YYYY-MM-DD format (exact match)',
           },
-          dateField: {
-            type: 'string',
-            description: 'Name of the date field to query',
-          },
-          entityType: {
-            type: 'string',
-            description: 'Optional: filter to specific entity type',
-          },
+          ...commonProperties,
           sortOrder: {
-            type: 'string',
-            enum: ['asc', 'desc'],
-            description: 'Sort order for results (default: asc)',
+            ...commonProperties.sortOrder,
             default: 'asc',
-          },
-          limit: {
-            type: 'number',
-            description: 'Maximum number of results to return (1-1000, default: 100)',
-            minimum: 1,
-            maximum: 1000,
-            default: 100,
+            description: 'Sort order for results (default: asc)',
           },
         },
         required: ['date', 'dateField'],
@@ -387,4 +339,23 @@ export function generateTimelineTools(temporalTypes: TemporalTypeInfo[]): ToolDe
   ];
 
   return tools;
+}
+
+/**
+ * Builds the date fields description section for tool descriptions.
+ *
+ * @param temporalTypes - Entity types with date fields
+ * @returns Formatted description of available date fields
+ */
+function buildDateFieldsDescription(temporalTypes: TemporalTypeInfo[]): string {
+  if (temporalTypes.length === 0) {
+    return '';
+  }
+
+  let description = '\n\nAvailable date fields:\n';
+  for (const typeInfo of temporalTypes) {
+    const fieldNames = typeInfo.dateFields.map((f) => f.name).join(', ');
+    description += `- ${typeInfo.entityType}: ${fieldNames}\n`;
+  }
+  return description;
 }
