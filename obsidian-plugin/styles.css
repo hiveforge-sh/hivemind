@@ -292,3 +292,216 @@
 .hvmd-close-btn-margin {
   margin-top: 15px;
 }
+
+/* === Timeline View === */
+
+.hivemind-timeline-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 8px;
+}
+
+.hvmd-timeline-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 0;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.hvmd-timeline-filter-label {
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-right: 4px;
+}
+
+/* Toggle chips for filtering */
+.hvmd-timeline-chip {
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 0.85em;
+  cursor: pointer;
+  background-color: var(--background-secondary);
+  color: var(--text-muted);
+  border: 1px solid var(--background-modifier-border);
+  transition: all 0.15s ease;
+}
+
+.hvmd-timeline-chip:hover {
+  background-color: var(--background-modifier-hover);
+}
+
+.hvmd-timeline-chip-active {
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+}
+
+.hvmd-timeline-container {
+  flex: 1;
+  min-height: 300px;
+  overflow: hidden;
+}
+
+/* === vis-timeline Obsidian Theme Integration === */
+
+.vis-timeline {
+  background-color: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  font-family: var(--font-interface);
+}
+
+.vis-panel.vis-center,
+.vis-panel.vis-left,
+.vis-panel.vis-right,
+.vis-panel.vis-top,
+.vis-panel.vis-bottom {
+  background-color: var(--background-primary);
+}
+
+/* Time axis */
+.vis-time-axis .vis-text {
+  color: var(--text-muted);
+  font-size: 0.85em;
+}
+
+.vis-time-axis .vis-grid.vis-minor {
+  border-color: var(--background-modifier-border);
+}
+
+.vis-time-axis .vis-grid.vis-major {
+  border-color: var(--background-modifier-border-hover);
+}
+
+/* Swim lane labels (groups) */
+.vis-labelset .vis-label {
+  background-color: var(--background-secondary);
+  color: var(--text-normal);
+  border-bottom: 1px solid var(--background-modifier-border);
+  font-weight: 500;
+}
+
+.vis-labelset .vis-label .vis-inner {
+  padding: 8px 12px;
+}
+
+/* Group backgrounds */
+.vis-foreground .vis-group {
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+/* Default item styling */
+.vis-item {
+  background-color: var(--interactive-normal);
+  border-color: var(--background-modifier-border);
+  color: var(--text-normal);
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.vis-item.vis-selected {
+  background-color: var(--interactive-accent);
+  border-color: var(--interactive-accent-hover);
+  color: var(--text-on-accent);
+}
+
+.vis-item .vis-item-content {
+  padding: 4px 8px;
+}
+
+/* Range items (spans) */
+.vis-item.vis-range {
+  border-radius: 4px;
+}
+
+/* Point items (boxes) */
+.vis-item.vis-box {
+  border-radius: 4px;
+}
+
+/* === Entity Type Colors (Okabe-Ito color-blind safe palette) === */
+/* Per research: scientifically validated for color vision accessibility */
+
+.vis-item.timeline-event {
+  background-color: #E69F00;
+  border-color: #cc8e00;
+  color: #000;
+}
+
+.vis-item.timeline-character {
+  background-color: #56B4E9;
+  border-color: #4a9fd1;
+  color: #000;
+}
+
+.vis-item.timeline-location {
+  background-color: #009E73;
+  border-color: #008a65;
+  color: #fff;
+}
+
+.vis-item.timeline-faction {
+  background-color: #F0E442;
+  border-color: #d9ce3b;
+  color: #000;
+}
+
+.vis-item.timeline-item {
+  background-color: #0072B2;
+  border-color: #00659e;
+  color: #fff;
+}
+
+.vis-item.timeline-concept {
+  background-color: #D55E00;
+  border-color: #bf5400;
+  color: #fff;
+}
+
+.vis-item.timeline-timeline {
+  background-color: #CC79A7;
+  border-color: #b86d96;
+  color: #000;
+}
+
+/* Fallback for unknown types */
+.vis-item.timeline-default,
+.vis-item[class*="timeline-"] {
+  background-color: var(--interactive-normal);
+  border-color: var(--background-modifier-border);
+}
+
+/* Selected states preserve type color with brightness adjustment */
+.vis-item.vis-selected.timeline-event,
+.vis-item.vis-selected.timeline-character,
+.vis-item.vis-selected.timeline-location,
+.vis-item.vis-selected.timeline-faction,
+.vis-item.vis-selected.timeline-item,
+.vis-item.vis-selected.timeline-concept,
+.vis-item.vis-selected.timeline-timeline {
+  filter: brightness(0.85);
+  box-shadow: 0 0 0 2px var(--interactive-accent);
+}
+
+/* Current time indicator */
+.vis-current-time {
+  background-color: var(--text-accent);
+}
+
+/* Scrollbar styling for timeline */
+.vis-timeline::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.vis-timeline::-webkit-scrollbar-track {
+  background: var(--background-secondary);
+}
+
+.vis-timeline::-webkit-scrollbar-thumb {
+  background: var(--background-modifier-border-hover);
+  border-radius: 4px;
+}
