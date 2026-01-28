@@ -19,9 +19,9 @@ export async function detectAndConfirmTemplate(vaultPath: string): Promise<strin
 
   // If detection found (any confidence level - 2+ matching folders is enough to ask)
   if (detection) {
-    console.log(`\nDetected: ${bold(detection.templateId)} template`);
-    console.log(dim(`Matched folders: ${detection.matchedPatterns.join(', ')}`));
-    console.log(dim(`Confidence: ${detection.confidence}`));
+    console.warn(`\nDetected: ${bold(detection.templateId)} template`);
+    console.warn(dim(`Matched folders: ${detection.matchedPatterns.join(', ')}`));
+    console.warn(dim(`Confidence: ${detection.confidence}`));
 
     const useDetected = await promptConfirm(
       `Use ${detection.templateId} template?`,

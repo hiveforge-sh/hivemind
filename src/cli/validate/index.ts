@@ -99,18 +99,18 @@ export async function validateCommand(): Promise<void> {
 
   if (!options.quiet) {
     if (options.json) {
-      console.log(formatJsonOutput(results, summary, vaultPath));
+      console.warn(formatJsonOutput(results, summary, vaultPath));
     } else {
-      console.log(formatTextOutput(results, summary));
+      console.warn(formatTextOutput(results, summary));
 
       // ERR-03: Suggestions when vault has no valid entities
       if (summary.validFiles === 0 && summary.totalFiles > 0) {
-        console.log('');
-        console.log('Your vault has no files with valid frontmatter.');
-        console.log('Try:');
-        console.log('  1. Run "npx hivemind fix" to add frontmatter to existing files');
-        console.log('  2. Check that your templates match your content types');
-        console.log('  3. Run "npx hivemind init" to reconfigure if needed');
+        console.warn('');
+        console.warn('Your vault has no files with valid frontmatter.');
+        console.warn('Try:');
+        console.warn('  1. Run "npx hivemind fix" to add frontmatter to existing files');
+        console.warn('  2. Check that your templates match your content types');
+        console.warn('  3. Run "npx hivemind init" to reconfigure if needed');
       }
     }
   }

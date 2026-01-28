@@ -1,4 +1,3 @@
-import axios, { AxiosInstance } from 'axios';
 import WebSocket from 'ws';
 import { ComfyUIConfig } from '../types/index.js';
 
@@ -73,33 +72,49 @@ export interface ComfyUIProgress {
 }
 
 export class ComfyUIClient {
-  private httpClient: AxiosInstance;
-  private wsClient?: WebSocket;
   private endpoint: string;
   private timeout: number;
   private clientId: string;
+  private wsClient?: WebSocket;
 
   constructor(config: ComfyUIConfig) {
     this.endpoint = config.endpoint || 'http://127.0.0.1:8188';
     this.timeout = config.timeout || 300000; // 5 minutes default
     this.clientId = this.generateClientId();
-
-    this.httpClient = axios.create({
-      baseURL: this.endpoint,
-      timeout: this.timeout,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
   }
 
   private generateClientId(): string {
     return `hivemind-${Date.now()}-${Math.random().toString(36).substring(7)}`;
   }
 
+  private async fetchJson<T>(path: string, options?: RequestInit): Promise<T> {
+    const url = `${this.endpoint}${path}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          ...options?.headers,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      return await response.json() as T;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
   async ping(): Promise<boolean> {
     try {
-      await this.httpClient.get('/system_stats');
+      await this.fetchJson('/system_stats');
       return true;
     } catch (_error) {
       return false;
@@ -107,8 +122,7 @@ export class ComfyUIClient {
   }
 
   async getSystemStats(): Promise<ComfyUISystemStats> {
-    const response = await this.httpClient.get('/system_stats');
-    return response.data;
+    return this.fetchJson<ComfyUISystemStats>('/system_stats');
   }
 
   async queuePrompt(workflow: Record<string, unknown>): Promise<ComfyUIQueueResponse> {
@@ -117,13 +131,14 @@ export class ComfyUIClient {
       client_id: this.clientId,
     };
 
-    const response = await this.httpClient.post('/prompt', payload);
-    return response.data;
+    return this.fetchJson<ComfyUIQueueResponse>('/prompt', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
   }
 
   async getHistory(promptId: string): Promise<ComfyUIHistory> {
-    const response = await this.httpClient.get(`/history/${promptId}`);
-    return response.data;
+    return this.fetchJson<ComfyUIHistory>(`/history/${promptId}`);
   }
 
   async downloadImage(filename: string, subfolder: string = '', type: string = 'output'): Promise<Buffer> {
@@ -133,11 +148,22 @@ export class ComfyUIClient {
       type,
     });
 
-    const response = await this.httpClient.get(`/view?${params.toString()}`, {
-      responseType: 'arraybuffer',
-    });
+    const url = `${this.endpoint}/view?${params.toString()}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
-    return Buffer.from(response.data);
+    try {
+      const response = await fetch(url, { signal: controller.signal });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+      return Buffer.from(arrayBuffer);
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   connectWebSocket(onProgress: (progress: ComfyUIProgress) => void): void {
@@ -169,34 +195,34 @@ export class ComfyUIClient {
     workflow: Record<string, unknown>,
     onProgress?: (progress: ComfyUIProgress) => void
   ): Promise<ComfyUIHistoryEntry> {
-    return new Promise(async (resolve, reject) => {
-      try {
-        if (onProgress) {
-          this.connectWebSocket(onProgress);
-        }
+    if (onProgress) {
+      this.connectWebSocket(onProgress);
+    }
 
-        const queueResponse = await this.queuePrompt(workflow);
-        const promptId = queueResponse.prompt_id;
+    try {
+      const queueResponse = await this.queuePrompt(workflow);
+      const promptId = queueResponse.prompt_id;
 
-        if (Object.keys(queueResponse.node_errors).length > 0) {
-          this.disconnectWebSocket();
-          return reject(new Error(`Node errors: ${JSON.stringify(queueResponse.node_errors)}`));
-        }
+      if (Object.keys(queueResponse.node_errors).length > 0) {
+        this.disconnectWebSocket();
+        throw new Error(`Node errors: ${JSON.stringify(queueResponse.node_errors)}`);
+      }
 
-        const checkInterval = setInterval(async () => {
-          try {
-            const history = await this.getHistory(promptId);
-            
-            if (history[promptId]) {
+      return await new Promise<ComfyUIHistoryEntry>((resolve, reject) => {
+        const checkInterval = setInterval(() => {
+          this.getHistory(promptId)
+            .then((history) => {
+              if (history[promptId]) {
+                clearInterval(checkInterval);
+                this.disconnectWebSocket();
+                resolve(history[promptId]);
+              }
+            })
+            .catch((error: unknown) => {
               clearInterval(checkInterval);
               this.disconnectWebSocket();
-              resolve(history[promptId]);
-            }
-          } catch (error) {
-            clearInterval(checkInterval);
-            this.disconnectWebSocket();
-            reject(error);
-          }
+              reject(error instanceof Error ? error : new Error(String(error)));
+            });
         }, 1000);
 
         setTimeout(() => {
@@ -204,12 +230,11 @@ export class ComfyUIClient {
           this.disconnectWebSocket();
           reject(new Error('Workflow execution timed out'));
         }, this.timeout);
-
-      } catch (error) {
-        this.disconnectWebSocket();
-        reject(error);
-      }
-    });
+      });
+    } catch (error) {
+      this.disconnectWebSocket();
+      throw error;
+    }
   }
 
   injectContext(
@@ -223,7 +248,7 @@ export class ComfyUIClient {
     for (const nodeId of nodesToUpdate) {
       if (workflowCopy[nodeId] && workflowCopy[nodeId].inputs) {
         const inputs = workflowCopy[nodeId].inputs;
-        
+
         if (typeof inputs.text === 'string') {
           inputs.text = this.interpolateContext(inputs.text, context);
         }
@@ -259,12 +284,12 @@ export class ComfyUIClient {
     return text.replace(/\{\{([^}]+)\}\}/g, (_match, path) => {
       const trimmedPath = path.trim();
       const value = this.getNestedValue(context, trimmedPath);
-      
+
       // If value is found, use it
       if (value !== undefined && value !== null && value !== '') {
         return String(value);
       }
-      
+
       // Provide sensible defaults for common missing fields instead of leaving template vars
       const defaults: Record<string, string> = {
         'name': (typeof context.title === 'string' ? context.title : '') || 'character',
@@ -279,7 +304,7 @@ export class ComfyUIClient {
         'appearance.skin': 'skin',
         'appearance.distinctive_features': '',
       };
-      
+
       return defaults[trimmedPath] || '';
     });
   }

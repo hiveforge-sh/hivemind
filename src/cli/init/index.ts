@@ -50,7 +50,7 @@ export function parseInitArgs(): InitOptions {
  * Run init from preset file (--config flag).
  */
 async function initFromPreset(presetPath: string): Promise<void> {
-  console.log(dim(`Loading preset from: ${presetPath}\n`));
+  console.warn(dim(`Loading preset from: ${presetPath}\n`));
 
   const preset = validatePresetFile(presetPath);
 

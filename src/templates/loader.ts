@@ -253,7 +253,7 @@ export function pregenerateSchemas(): void {
  * ```ts
  * // At application startup
  * const config = initializeTemplates();
- * console.log(`Loaded template: ${config.activeTemplate}`);
+ * console.debug(`Loaded template: ${config.activeTemplate}`);
  * ```
  */
 export function initializeTemplates(configPath?: string): TemplateConfig {
@@ -292,7 +292,7 @@ export function initializeTemplates(configPath?: string): TemplateConfig {
  * @example
  * ```ts
  * const template = loadTemplateFile('./template.json');
- * console.log(`Loaded template: ${template.name}`);
+ * console.debug(`Loaded template: ${template.name}`);
  * ```
  */
 export function loadTemplateFile(filePath: string): TemplateDefinition {
@@ -339,7 +339,7 @@ export function loadTemplateFile(filePath: string): TemplateDefinition {
  * ```ts
  * try {
  *   const template = validateTemplateFile('./template.json');
- *   console.log(`Template "${template.name}" is valid!`);
+ *   console.debug(`Template "${template.name}" is valid!`);
  * } catch (err) {
  *   if (err instanceof TemplateValidationError) {
  *     console.error(err.toUserMessage());

@@ -1,26 +1,25 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { ComfyUIClient } from '../../src/comfyui/client.js';
-import axios from 'axios';
 
-// Mock axios
-vi.mock('axios');
-const mockedAxios = vi.mocked(axios, true);
+// Mock global fetch
+const mockFetch = vi.fn();
+vi.stubGlobal('fetch', mockFetch);
+
+function mockJsonResponse(data: unknown, ok = true, status = 200) {
+  return {
+    ok,
+    status,
+    statusText: ok ? 'OK' : 'Error',
+    json: () => Promise.resolve(data),
+    arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
+  };
+}
 
 describe('ComfyUIClient', () => {
   let client: ComfyUIClient;
-  let mockAxiosInstance: any;
 
   beforeEach(() => {
-    // Reset mocks
     vi.clearAllMocks();
-
-    // Create mock axios instance
-    mockAxiosInstance = {
-      get: vi.fn(),
-      post: vi.fn(),
-    };
-
-    mockedAxios.create.mockReturnValue(mockAxiosInstance);
 
     client = new ComfyUIClient({
       enabled: true,
@@ -29,56 +28,38 @@ describe('ComfyUIClient', () => {
     });
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   describe('constructor', () => {
-    it('should create axios instance with correct config', () => {
-      expect(mockedAxios.create).toHaveBeenCalledWith({
-        baseURL: 'http://127.0.0.1:8188',
-        timeout: 30000,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-    });
-
     it('should use default endpoint if not provided', () => {
-      vi.clearAllMocks();
-      mockedAxios.create.mockReturnValue(mockAxiosInstance);
-      
-      new ComfyUIClient({ enabled: true });
-
-      expect(mockedAxios.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          baseURL: 'http://127.0.0.1:8188',
-        })
-      );
-    });
-
-    it('should use default timeout if not provided', () => {
-      vi.clearAllMocks();
-      mockedAxios.create.mockReturnValue(mockAxiosInstance);
-      
-      new ComfyUIClient({ enabled: true });
-
-      expect(mockedAxios.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          timeout: 300000, // 5 minutes
-        })
+      const c = new ComfyUIClient({ enabled: true });
+      // Verify by calling ping which uses the endpoint
+      mockFetch.mockResolvedValue(mockJsonResponse({}));
+      void c.ping();
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('http://127.0.0.1:8188'),
+        expect.anything()
       );
     });
   });
 
   describe('ping', () => {
     it('should return true when server is reachable', async () => {
-      mockAxiosInstance.get.mockResolvedValue({ data: {} });
+      mockFetch.mockResolvedValue(mockJsonResponse({}));
 
       const result = await client.ping();
 
       expect(result).toBe(true);
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/system_stats');
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://127.0.0.1:8188/system_stats',
+        expect.anything()
+      );
     });
 
     it('should return false when server is unreachable', async () => {
-      mockAxiosInstance.get.mockRejectedValue(new Error('Network error'));
+      mockFetch.mockRejectedValue(new Error('Network error'));
 
       const result = await client.ping();
 
@@ -89,12 +70,15 @@ describe('ComfyUIClient', () => {
   describe('getSystemStats', () => {
     it('should fetch and return system stats', async () => {
       const mockStats = { cpu: 50, memory: 8000 };
-      mockAxiosInstance.get.mockResolvedValue({ data: mockStats });
+      mockFetch.mockResolvedValue(mockJsonResponse(mockStats));
 
       const result = await client.getSystemStats();
 
       expect(result).toEqual(mockStats);
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/system_stats');
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://127.0.0.1:8188/system_stats',
+        expect.anything()
+      );
     });
   });
 
@@ -107,15 +91,16 @@ describe('ComfyUIClient', () => {
         node_errors: {},
       };
 
-      mockAxiosInstance.post.mockResolvedValue({ data: mockResponse });
+      mockFetch.mockResolvedValue(mockJsonResponse(mockResponse));
 
       const result = await client.queuePrompt(workflow);
 
       expect(result).toEqual(mockResponse);
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
-        '/prompt',
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://127.0.0.1:8188/prompt',
         expect.objectContaining({
-          prompt: workflow,
+          method: 'POST',
+          body: expect.stringContaining('"prompt"'),
         })
       );
     });
@@ -126,49 +111,52 @@ describe('ComfyUIClient', () => {
       const promptId = 'test-prompt-id';
       const mockHistory = { [promptId]: { outputs: {} } };
 
-      mockAxiosInstance.get.mockResolvedValue({ data: mockHistory });
+      mockFetch.mockResolvedValue(mockJsonResponse(mockHistory));
 
       const result = await client.getHistory(promptId);
 
       expect(result).toEqual(mockHistory);
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith(`/history/${promptId}`);
+      expect(mockFetch).toHaveBeenCalledWith(
+        `http://127.0.0.1:8188/history/${promptId}`,
+        expect.anything()
+      );
     });
   });
 
   describe('downloadImage', () => {
     it('should download image as buffer', async () => {
-      const mockBuffer = Buffer.from('fake-image-data');
-      mockAxiosInstance.get.mockResolvedValue({ data: mockBuffer });
+      const fakeData = new Uint8Array([1, 2, 3, 4]).buffer;
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        arrayBuffer: () => Promise.resolve(fakeData),
+      });
 
       const result = await client.downloadImage('test.png');
 
       expect(result).toBeInstanceOf(Buffer);
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('/view?'),
-        expect.objectContaining({
-          responseType: 'arraybuffer',
-        })
+        expect.anything()
       );
     });
 
     it('should include subfolder and type in request', async () => {
-      const mockBuffer = Buffer.from('fake-image-data');
-      mockAxiosInstance.get.mockResolvedValue({ data: mockBuffer });
+      const fakeData = new Uint8Array([1, 2, 3, 4]).buffer;
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        arrayBuffer: () => Promise.resolve(fakeData),
+      });
 
       await client.downloadImage('test.png', 'characters', 'output');
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith(
-        expect.stringContaining('filename=test.png'),
-        expect.anything()
-      );
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith(
-        expect.stringContaining('subfolder=characters'),
-        expect.anything()
-      );
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith(
-        expect.stringContaining('type=output'),
-        expect.anything()
-      );
+      const calledUrl = mockFetch.mock.calls[0][0] as string;
+      expect(calledUrl).toContain('filename=test.png');
+      expect(calledUrl).toContain('subfolder=characters');
+      expect(calledUrl).toContain('type=output');
     });
   });
 

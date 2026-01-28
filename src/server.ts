@@ -898,14 +898,16 @@ File watcher keeps index updated automatically.
 
   private setupVaultWatcher(): void {
     // Register change handler
-    this.vaultWatcher.onChange(async (event, filePath) => {
+    this.vaultWatcher.onChange((event, filePath) => {
       console.error(`Vault change detected: ${event} - ${filePath}`);
-      
+
       // Re-index on changes
       if (event === 'add' || event === 'change') {
-        await this.vaultReader.scanVault();
-        const allNotes = this.vaultReader.getAllNotes();
-        this.graphBuilder.buildGraph(allNotes);
+        void (async () => {
+          await this.vaultReader.scanVault();
+          const allNotes = this.vaultReader.getAllNotes();
+          this.graphBuilder.buildGraph(allNotes);
+        })();
       }
     });
   }

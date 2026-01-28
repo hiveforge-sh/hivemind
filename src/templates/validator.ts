@@ -138,8 +138,8 @@ export const TemplateCategorySchema = z.enum([
  */
 export const TemplateAuthorSchema = z.object({
   name: z.string().min(1, 'Author name cannot be empty'),
-  url: z.string().url('Author URL must be a valid URL').optional(),
-  email: z.string().email('Author email must be a valid email').optional(),
+  url: z.url('Author URL must be a valid URL').optional(),
+  email: z.email('Author email must be a valid email').optional(),
 }) satisfies z.ZodType<TemplateAuthor>;
 
 /**
@@ -182,7 +182,7 @@ export const TemplateDefinitionSchema = z.object({
   category: TemplateCategorySchema.optional(),
   tags: z.array(z.string()).optional(),
   author: TemplateAuthorSchema.optional(),
-  repository: z.string().url('Repository must be a valid URL').optional(),
+  repository: z.url('Repository must be a valid URL').optional(),
   sampleVault: z.string().optional(),
   license: z.string().optional(),
   minHivemindVersion: z
@@ -212,7 +212,7 @@ export const TemplateConfigSchema = z.object({
 export class TemplateValidationError extends Error {
   constructor(
     message: string,
-    public readonly issues: z.ZodIssue[]
+    public readonly issues: z.core.$ZodIssue[]
   ) {
     super(message);
     this.name = 'TemplateValidationError';

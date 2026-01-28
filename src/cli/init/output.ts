@@ -141,15 +141,15 @@ export async function outputNextSteps(
   configPath: string,
   isInteractive: boolean
 ): Promise<void> {
-  console.log('\n' + success('Setup complete!'));
-  console.log(`\nCreated: ${bold(configPath)}`);
-  console.log(`Template: ${templateId}`);
+  console.warn('\n' + success('Setup complete!'));
+  console.warn(`\nCreated: ${bold(configPath)}`);
+  console.warn(`Template: ${templateId}`);
 
   // Generate and display Claude Desktop snippet
   const snippet = generateClaudeDesktopSnippet(vaultPath);
-  console.log('\n' + bold('Claude Desktop configuration:'));
-  console.log(dim('Add this to your claude_desktop_config.json:\n'));
-  console.log(snippet);
+  console.warn('\n' + bold('Claude Desktop configuration:'));
+  console.warn(dim('Add this to your claude_desktop_config.json:\n'));
+  console.warn(snippet);
 
   // Offer to copy to clipboard (only in interactive mode)
   if (isInteractive && process.stdin.isTTY) {
@@ -157,35 +157,35 @@ export async function outputNextSteps(
     if (shouldCopy) {
       const copied = await copyToClipboard(snippet);
       if (copied) {
-        console.log(success('\nCopied to clipboard!'));
+        console.warn(success('\nCopied to clipboard!'));
 
         // Offer to open Claude Desktop config location
         const claudeConfigPath = getClaudeDesktopConfigPath();
-        console.log(dim(`\nClaude Desktop config: ${claudeConfigPath}`));
+        console.warn(dim(`\nClaude Desktop config: ${claudeConfigPath}`));
 
         const shouldOpen = await promptConfirm('Open config folder?', true);
         if (shouldOpen) {
           const opened = await openInExplorer(claudeConfigPath);
           if (opened) {
-            console.log(success('Opened config folder.'));
+            console.warn(success('Opened config folder.'));
           } else {
-            console.log(dim('Could not open folder automatically.'));
+            console.warn(dim('Could not open folder automatically.'));
           }
         }
       } else {
-        console.log(dim('\nCould not copy to clipboard (clipboard may not be available).'));
+        console.warn(dim('\nCould not copy to clipboard (clipboard may not be available).'));
       }
     }
   }
 
   // Next steps
-  console.log('\n' + bold('Next steps:'));
-  console.log('  1. Paste the config into Claude Desktop settings');
-  console.log('  2. Restart Claude Desktop');
-  console.log('  3. Add frontmatter to your vault files');
-  console.log('  4. Start querying via Claude!\n');
+  console.warn('\n' + bold('Next steps:'));
+  console.warn('  1. Paste the config into Claude Desktop settings');
+  console.warn('  2. Restart Claude Desktop');
+  console.warn('  3. Add frontmatter to your vault files');
+  console.warn('  4. Start querying via Claude!\n');
 
-  console.log(dim('Run `npx @hiveforge/hivemind-mcp validate` to check your setup.'));
+  console.warn(dim('Run `npx @hiveforge/hivemind-mcp validate` to check your setup.'));
 }
 
 /**

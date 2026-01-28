@@ -14,7 +14,7 @@ import { BaseFrontmatterSchema } from '../types/index.js';
  * Build a Zod schema for a primitive field type.
  * Used for array item types and standalone fields.
  */
-function buildPrimitiveSchema(type: FieldType): z.ZodTypeAny {
+function buildPrimitiveSchema(type: FieldType): z.ZodType {
   switch (type) {
     case 'string':
       return z.string();
@@ -38,8 +38,8 @@ function buildPrimitiveSchema(type: FieldType): z.ZodTypeAny {
  * Handles all field types: string, number, boolean, enum, array, date, record.
  * Applies required/optional modifiers and default values.
  */
-function buildFieldSchema(field: FieldConfig): z.ZodTypeAny {
-  let schema: z.ZodTypeAny;
+function buildFieldSchema(field: FieldConfig): z.ZodType {
+  let schema: z.ZodType;
 
   switch (field.type) {
     case 'string':
@@ -110,7 +110,7 @@ function buildFieldSchema(field: FieldConfig): z.ZodTypeAny {
  */
 export function createEntitySchema(config: EntityTypeConfig): z.ZodObject<z.ZodRawShape> {
   // Build the shape for custom fields
-  const customFields: Record<string, z.ZodTypeAny> = {};
+  const customFields: Record<string, z.ZodType> = {};
 
   for (const field of config.fields) {
     customFields[field.name] = buildFieldSchema(field);
