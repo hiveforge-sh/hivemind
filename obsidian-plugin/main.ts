@@ -68,129 +68,6 @@ interface MCPMessage {
   error?: { message?: string };
 }
 
-// Frontmatter template definitions
-const FRONTMATTER_TEMPLATES: Record<string, Record<string, unknown>> = {
-  character: {
-    id: '',
-    type: 'character',
-    status: 'draft',
-    title: '',
-    importance: 'minor',
-    tags: [],
-    aliases: [],
-    name: '',
-    age: null,
-    gender: '',
-    race: '',
-    appearance: {
-      height: '',
-      build: '',
-      hair: '',
-      eyes: '',
-      distinctive_features: ''
-    },
-    personality: {
-      traits: [],
-      motivations: [],
-      flaws: []
-    },
-    background: {
-      birthplace: '',
-      occupation: '',
-      affiliations: []
-    },
-    relationships: [],
-    assets: []
-  },
-  location: {
-    id: '',
-    type: 'location',
-    status: 'draft',
-    title: '',
-    importance: 'minor',
-    tags: [],
-    aliases: [],
-    location_type: '',
-    parent_location: '',
-    population: null,
-    notable_features: [],
-    climate: '',
-    resources: [],
-    factions: [],
-    assets: []
-  },
-  event: {
-    id: '',
-    type: 'event',
-    status: 'draft',
-    title: '',
-    importance: 'minor',
-    tags: [],
-    aliases: [],
-    date: '',
-    location: '',
-    participants: [],
-    outcome: '',
-    consequences: [],
-    assets: []
-  },
-  faction: {
-    id: '',
-    type: 'faction',
-    status: 'draft',
-    title: '',
-    importance: 'minor',
-    tags: [],
-    aliases: [],
-    faction_type: '',
-    leader: '',
-    members: [],
-    goals: [],
-    resources: [],
-    territory: [],
-    assets: []
-  },
-  lore: {
-    id: '',
-    type: 'lore',
-    status: 'draft',
-    title: '',
-    importance: 'minor',
-    tags: [],
-    aliases: [],
-    name: '',
-    category: '',
-    related_entities: [],
-    source: ''
-  },
-  asset: {
-    id: '',
-    type: 'asset',
-    status: 'draft',
-    title: '',
-    tags: [],
-    aliases: [],
-    asset_type: 'image',
-    file_path: '',
-    depicts: []
-  },
-  reference: {
-    id: '',
-    type: 'reference',
-    status: 'draft',
-    title: '',
-    importance: 'minor',
-    tags: [],
-    aliases: [],
-    name: '',
-    category: '',
-    source_url: '',
-    related_entities: [],
-    author: '',
-    date_accessed: ''
-  }
-};
-
 export default class HivemindPlugin extends Plugin {
   settings: HivemindSettings;
   private mcpProcess?: ChildProcess;
@@ -623,8 +500,8 @@ export default class HivemindPlugin extends Plugin {
           // Single type - check autoMergeFrontmatter setting
           if (this.settings.autoMergeFrontmatter) {
             // Auto-merge: apply frontmatter immediately
-            const template = FRONTMATTER_TEMPLATES[result.types[0]];
-            if (template) {
+            try {
+              const template = templateRegistry.buildFrontmatterTemplate(result.types[0]);
               const fileName = file.basename;
               const id = this.generateId(fileName, result.types[0]);
               const autoFilledTemplate = {
@@ -640,6 +517,9 @@ export default class HivemindPlugin extends Plugin {
               } else {
                 new Notice('All frontmatter fields already present');
               }
+            } catch (error) {
+              console.error('Failed to build frontmatter template:', error);
+              new Notice(`Failed to build frontmatter template: ${(error as Error).message}`);
             }
             return;
           } else {
@@ -740,8 +620,7 @@ export default class HivemindPlugin extends Plugin {
           const existingFrontmatter = this.extractFrontmatter(content);
 
           // Skip if already has all fields
-          const template = FRONTMATTER_TEMPLATES[entityType];
-          if (!template) continue;
+          const template = templateRegistry.buildFrontmatterTemplate(entityType);
 
           const fileName = file.basename;
           const id = this.generateId(fileName, entityType);
@@ -1092,8 +971,10 @@ export default class HivemindPlugin extends Plugin {
       }
 
       // Get template for this type
-      const template = FRONTMATTER_TEMPLATES[entityType];
-      if (!template) {
+      let template: Record<string, unknown>;
+      try {
+        template = templateRegistry.buildFrontmatterTemplate(entityType);
+      } catch (error) {
         new Notice(`Unknown entity type: ${entityType}`);
         return;
       }
@@ -1155,8 +1036,10 @@ export default class HivemindPlugin extends Plugin {
           }
 
           // Get template
-          const template = FRONTMATTER_TEMPLATES[entityType];
-          if (!template) {
+          let template: Record<string, unknown>;
+          try {
+            template = templateRegistry.buildFrontmatterTemplate(entityType);
+          } catch (error) {
             skippedCount++;
             continue;
           }
@@ -1306,8 +1189,10 @@ export default class HivemindPlugin extends Plugin {
             continue;
           }
 
-          const template = FRONTMATTER_TEMPLATES[entityType];
-          if (!template) {
+          let template: Record<string, unknown>;
+          try {
+            template = templateRegistry.buildFrontmatterTemplate(entityType);
+          } catch (error) {
             skippedCount++;
             continue;
           }
@@ -2315,8 +2200,10 @@ class AddFrontmatterModal extends Modal {
     typeBadge.setText(`Type: ${this.entityType}`);
 
     // Get template for this type
-    const template = FRONTMATTER_TEMPLATES[this.entityType];
-    if (!template) {
+    let template: Record<string, unknown>;
+    try {
+      template = templateRegistry.buildFrontmatterTemplate(this.entityType);
+    } catch (error) {
       contentEl.createEl('p', {
         text: `Error: Unknown entity type "${this.entityType}"`,
         cls: 'mod-error'
@@ -2599,12 +2486,7 @@ class TypeSelectionModal extends Modal {
 
     // Default behavior: directly apply frontmatter
     try {
-      const template = FRONTMATTER_TEMPLATES[entityType];
-      if (!template) {
-        new Notice(`Unknown type: ${entityType}`);
-        return;
-      }
-
+      const template = templateRegistry.buildFrontmatterTemplate(entityType);
       const fileName = this.file.basename;
       const id = this.generateId(fileName, entityType);
 
