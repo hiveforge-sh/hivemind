@@ -172,6 +172,15 @@ Plans:
 
 **Requirements:** GVIEW-01, GVIEW-02, GVIEW-03, GVIEW-04, GVIEW-05, GVIEW-06, GVIEW-07, GVIEW-08, GVIEW-09, GVIEW-10, GVIEW-11, GVIEW-12
 
+**Plans:** 5 plans
+
+Plans:
+- [ ] 27-01-PLAN.md — Install sigma.js/graphology and create GraphView class skeleton
+- [ ] 27-02-PLAN.md — Wire MCP data loading and sigma.js rendering with ForceAtlas2 layout
+- [ ] 27-03-PLAN.md — Add click-to-open, right-click context menu, and edge labels on hover
+- [ ] 27-04-PLAN.md — Add entity type filtering, relationship filtering, and node search
+- [ ] 27-05-PLAN.md — Add shortest path highlighting, cluster detection, and layout persistence
+
 **Success Criteria:**
 1. User opens graph panel and sees interactive node-link diagram with smooth pan and zoom
 2. Node labels show entity names clearly at default zoom level
@@ -222,5 +231,5 @@ Plans:
 | 24 | v4.0 | 3/3 | Complete | 2026-01-28 |
 | 25 | v4.0 | 3/3 | Complete | 2026-01-28 |
 | 26 | v4.0 | 3/3 | Complete | 2026-01-28 |
-| 27 | v4.0 | 0/? | Pending | — |
+| 27 | v4.0 | 0/5 | Pending | — |
 | 28 | v4.0 | 0/? | Pending | — |
