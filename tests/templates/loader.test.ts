@@ -429,4 +429,247 @@ describe('Template Loader', () => {
       expect(() => registerCommunityTemplates()).not.toThrow();
     });
   });
+
+  describe('Template Inheritance', () => {
+    beforeEach(() => {
+      templateRegistry.clear();
+      registerBuiltinTemplates();
+    });
+
+    it('should extend parent template entity types with additionalFields', () => {
+      const childTemplate: TemplateDefinition = {
+        id: 'dnd-5e',
+        name: 'D&D 5e',
+        version: '1.0.0',
+        extendsTemplate: 'worldbuilding',
+        entityTypes: [
+          {
+            name: 'character',
+            displayName: 'Character',
+            pluralName: 'Characters',
+            fields: [], // Empty because we're using additionalFields
+            additionalFields: [
+              { name: 'character_class', type: 'string', required: true },
+              { name: 'level', type: 'number' },
+              { name: 'hit_points', type: 'number' },
+            ],
+          },
+        ],
+      };
+
+      templateRegistry.register(childTemplate, 'config');
+      templateRegistry.activate('dnd-5e');
+
+      const charType = templateRegistry.getEntityType('character');
+      expect(charType).toBeDefined();
+
+      // Should have parent fields (name, age, race, etc.)
+      const fieldNames = charType!.fields.map(f => f.name);
+      expect(fieldNames).toContain('name'); // From parent
+      expect(fieldNames).toContain('age'); // From parent
+      expect(fieldNames).toContain('race'); // From parent
+
+      // Should also have child additional fields
+      expect(fieldNames).toContain('character_class');
+      expect(fieldNames).toContain('level');
+      expect(fieldNames).toContain('hit_points');
+    });
+
+    it('should inherit parent entity types not in child', () => {
+      const childTemplate: TemplateDefinition = {
+        id: 'simple-child',
+        name: 'Simple Child',
+        version: '1.0.0',
+        extendsTemplate: 'worldbuilding',
+        entityTypes: [], // No entity types - inherit all from parent
+      };
+
+      templateRegistry.register(childTemplate, 'config');
+      templateRegistry.activate('simple-child');
+
+      // Should have all parent types
+      const entityTypes = templateRegistry.getEntityTypes();
+      const typeNames = entityTypes.map(t => t.name);
+      expect(typeNames).toContain('character');
+      expect(typeNames).toContain('location');
+      expect(typeNames).toContain('event');
+      expect(typeNames).toContain('faction');
+    });
+
+    it('should add new entity types from child', () => {
+      const childTemplate: TemplateDefinition = {
+        id: 'with-spell',
+        name: 'With Spell Type',
+        version: '1.0.0',
+        extendsTemplate: 'worldbuilding',
+        entityTypes: [
+          {
+            name: 'spell',
+            displayName: 'Spell',
+            pluralName: 'Spells',
+            fields: [
+              { name: 'name', type: 'string', required: true },
+              { name: 'spell_level', type: 'number' },
+              { name: 'school', type: 'string' },
+            ],
+          },
+        ],
+      };
+
+      templateRegistry.register(childTemplate, 'config');
+      templateRegistry.activate('with-spell');
+
+      // Should have parent types plus new spell type
+      const spellType = templateRegistry.getEntityType('spell');
+      expect(spellType).toBeDefined();
+      expect(spellType!.fields.map(f => f.name)).toContain('spell_level');
+
+      // Parent types should still be there
+      expect(templateRegistry.getEntityType('character')).toBeDefined();
+    });
+
+    it('should inherit relationship types from parent', () => {
+      const childTemplate: TemplateDefinition = {
+        id: 'inherits-rels',
+        name: 'Inherits Relationships',
+        version: '1.0.0',
+        extendsTemplate: 'worldbuilding',
+        entityTypes: [],
+      };
+
+      templateRegistry.register(childTemplate, 'config');
+      templateRegistry.activate('inherits-rels');
+
+      // Should have parent relationship types
+      const relTypes = templateRegistry.getRelationshipTypes();
+      const relIds = relTypes.map(r => r.id);
+      expect(relIds).toContain('knows');
+      expect(relIds).toContain('located_in');
+      expect(relIds).toContain('member_of');
+    });
+
+    it('should add child relationship types', () => {
+      const childTemplate: TemplateDefinition = {
+        id: 'with-new-rel',
+        name: 'With New Relationship',
+        version: '1.0.0',
+        extendsTemplate: 'worldbuilding',
+        entityTypes: [],
+        relationshipTypes: [
+          {
+            id: 'knows_spell',
+            displayName: 'Knows Spell',
+            sourceTypes: ['character'],
+            targetTypes: ['spell'],
+            bidirectional: false,
+          },
+        ],
+      };
+
+      templateRegistry.register(childTemplate, 'config');
+      templateRegistry.activate('with-new-rel');
+
+      const knowsSpell = templateRegistry.getRelationshipType('knows_spell');
+      expect(knowsSpell).toBeDefined();
+      expect(knowsSpell!.sourceTypes).toEqual(['character']);
+
+      // Parent types still there
+      expect(templateRegistry.getRelationshipType('knows')).toBeDefined();
+    });
+
+    it('should throw error when parent template not found', () => {
+      const childTemplate: TemplateDefinition = {
+        id: 'orphan',
+        name: 'Orphan Template',
+        version: '1.0.0',
+        extendsTemplate: 'nonexistent-parent',
+        entityTypes: [],
+      };
+
+      expect(() => {
+        templateRegistry.register(childTemplate, 'config');
+      }).toThrow(/not registered/);
+    });
+
+    it('should sort templates by inheritance order during registration', () => {
+      // Register parent first (already done in beforeEach with builtin)
+      // Then child should work
+      const childTemplate: TemplateDefinition = {
+        id: 'child-of-worldbuilding',
+        name: 'Child',
+        version: '1.0.0',
+        extendsTemplate: 'worldbuilding',
+        entityTypes: [],
+      };
+
+      // Should not throw - parent is registered
+      expect(() => {
+        registerUserTemplates({
+          activeTemplate: 'child-of-worldbuilding',
+          templates: [childTemplate],
+        });
+      }).not.toThrow();
+
+      expect(templateRegistry.has('child-of-worldbuilding')).toBe(true);
+    });
+
+    it('should handle child fields overriding parent fields', () => {
+      const childTemplate: TemplateDefinition = {
+        id: 'override-test',
+        name: 'Override Test',
+        version: '1.0.0',
+        extendsTemplate: 'worldbuilding',
+        entityTypes: [
+          {
+            name: 'character',
+            displayName: 'Character',
+            pluralName: 'Characters',
+            fields: [],
+            additionalFields: [
+              // Override parent's 'age' field with different type
+              { name: 'age', type: 'string', description: 'Age as string' },
+            ],
+          },
+        ],
+      };
+
+      templateRegistry.register(childTemplate, 'config');
+      templateRegistry.activate('override-test');
+
+      const charType = templateRegistry.getEntityType('character');
+      const ageField = charType!.fields.find(f => f.name === 'age');
+
+      // Should use child's version
+      expect(ageField).toBeDefined();
+      expect(ageField!.type).toBe('string');
+      expect(ageField!.description).toBe('Age as string');
+    });
+
+    it('should inherit folder mappings from parent', () => {
+      const childTemplate: TemplateDefinition = {
+        id: 'inherits-mappings',
+        name: 'Inherits Mappings',
+        version: '1.0.0',
+        extendsTemplate: 'worldbuilding',
+        entityTypes: [],
+        folderMappings: [
+          { folder: '**/Spells/**', types: ['spell'] },
+        ],
+      };
+
+      templateRegistry.register(childTemplate, 'config');
+      templateRegistry.activate('inherits-mappings');
+
+      const mappings = templateRegistry.getFolderMappings();
+      expect(mappings).toBeDefined();
+
+      // Should have parent mappings
+      const charMapping = mappings!.find(m => m.folder === '**/Characters/**');
+      expect(charMapping).toBeDefined();
+
+      // And child mappings
+      const spellMapping = mappings!.find(m => m.folder === '**/Spells/**');
+      expect(spellMapping).toBeDefined();
+    });
+  });
 });

@@ -345,6 +345,7 @@ export default class HivemindPlugin extends Plugin {
       this.mcpProcess = spawn(command, args, {
         cwd: (this.app.vault.adapter as unknown as {basePath: string}).basePath,
         stdio: ['pipe', 'pipe', 'pipe'],
+        shell: true,  // Required on Windows to resolve PATH for npx/node
       });
 
       this.mcpStdin = this.mcpProcess.stdin;
@@ -800,6 +801,7 @@ export default class HivemindPlugin extends Plugin {
 
     for (const [key, value] of Object.entries(obj)) {
       if (value === null || value === undefined) {
+        // Null/undefined - show field with empty value
         lines.push(`${indentStr}${key}:`);
       } else if (value instanceof Date) {
         // Preserve Date objects as ISO date string
@@ -807,13 +809,15 @@ export default class HivemindPlugin extends Plugin {
         lines.push(`${indentStr}${key}: ${iso}`);
       } else if (Array.isArray(value)) {
         if (value.length === 0) {
-          lines.push(`${indentStr}${key}: []`);
+          // Empty array - use YAML null instead of [] to avoid parsing issues
+          // User can add items in proper YAML list format
+          lines.push(`${indentStr}${key}:`);
         } else {
           lines.push(`${indentStr}${key}:`);
           for (const item of value) {
-            if (typeof item === 'object') {
+            if (typeof item === 'object' && item !== null) {
               lines.push(`${indentStr}  -`);
-              const subYaml = this.objectToYaml(item, indent + 2);
+              const subYaml = this.objectToYaml(item as Record<string, unknown>, indent + 2);
               lines.push(subYaml.split('\n').map(l => '  ' + l).join('\n'));
             } else {
               lines.push(`${indentStr}  - ${item}`);
@@ -821,20 +825,32 @@ export default class HivemindPlugin extends Plugin {
           }
         }
       } else if (typeof value === 'object') {
-        lines.push(`${indentStr}${key}:`);
-        lines.push(this.objectToYaml(value as Record<string, unknown>, indent + 1));
+        const objValue = value as Record<string, unknown>;
+        const keys = Object.keys(objValue);
+        if (keys.length === 0) {
+          // Empty object - use YAML null instead of {} to avoid parsing issues
+          lines.push(`${indentStr}${key}:`);
+        } else {
+          lines.push(`${indentStr}${key}:`);
+          lines.push(this.objectToYaml(objValue, indent + 1));
+        }
       } else if (typeof value === 'string') {
-        // Escape strings that might need quotes
-        if (value.includes(':') || value.includes('#') || value.startsWith('[')) {
-          lines.push(`${indentStr}${key}: "${value}"`);
+        if (value === '') {
+          // Empty string - show field with empty value
+          lines.push(`${indentStr}${key}:`);
+        } else if (value.includes(':') || value.includes('#') || value.startsWith('[') || value.includes('\n')) {
+          // Escape strings that might need quotes
+          lines.push(`${indentStr}${key}: "${value.replace(/"/g, '\\"')}"`);
         } else {
           lines.push(`${indentStr}${key}: ${value}`);
         }
+      } else if (typeof value === 'boolean') {
+        lines.push(`${indentStr}${key}: ${value}`);
+      } else if (typeof value === 'number') {
+        lines.push(`${indentStr}${key}: ${value}`);
       } else {
-        const stringified = typeof value === 'object' && value !== null
-          ? JSON.stringify(value)
-          : String(value);
-        lines.push(`${indentStr}${key}: ${stringified}`);
+        // Fallback for any other types
+        lines.push(`${indentStr}${key}: ${String(value)}`);
       }
     }
 
@@ -1543,6 +1559,34 @@ interface GraphData {
   edges: GraphEdge[];
 }
 
+// Node and Edge attribute types for Sigma/Graphology
+interface NodeAttributes {
+  label: string;
+  x: number;
+  y: number;
+  size: number;
+  color: string;
+  type: string;
+  path?: string;
+}
+
+interface EdgeAttributes {
+  size: number;
+  color: string;
+  label?: string;
+  relationshipType?: string;
+}
+
+// Sigma click event types
+interface SigmaNodeEvent {
+  node: string;
+}
+
+interface SigmaEdgeEvent {
+  edge: string;
+  event: MouseEvent;
+}
+
 class TimelineView extends ItemView {
   plugin: HivemindPlugin;
   private timeline: Timeline | null = null;
@@ -1560,7 +1604,7 @@ class TimelineView extends ItemView {
   }
 
   getDisplayText(): string {
-    return 'Hivemind Timeline';
+    return 'Hivemind timeline';
   }
 
   getIcon(): string {
@@ -1842,7 +1886,7 @@ class GraphView extends ItemView {
   }
 
   getDisplayText(): string {
-    return 'Hivemind Graph';
+    return 'Hivemind graph';
   }
 
   getIcon(): string {
@@ -1940,7 +1984,7 @@ class GraphView extends ItemView {
           }
         });
         if (restoredCount > 0) {
-          console.log(`[Graph] Auto-restored layout for ${restoredCount} nodes`);
+          console.debug(`[Graph] Auto-restored layout for ${restoredCount} nodes`);
         }
       }
 
@@ -2025,9 +2069,8 @@ class GraphView extends ItemView {
     if (availableTypes.length > 0) {
       const filterLabel = toolbar.createEl('span', {
         text: 'Types:',
-        cls: 'hvmd-graph-filter-label'
+        cls: 'hvmd-graph-filter-label hvmd-margin-left-16'
       });
-      filterLabel.style.marginLeft = '16px';
 
       // Get entity type counts
       const typeCounts = new Map<string, number>();
@@ -2065,9 +2108,11 @@ class GraphView extends ItemView {
           if (this.activeFilters.has(type)) {
             this.activeFilters.delete(type);
             chip.removeClass('hvmd-graph-chip-active');
-            chip.style.backgroundColor = '';
-            chip.style.borderColor = '';
-            chip.style.color = '';
+            chip.setCssProps({
+              'background-color': '',
+              'border-color': '',
+              'color': ''
+            });
           } else {
             this.activeFilters.add(type);
             chip.addClass('hvmd-graph-chip-active');
@@ -2081,9 +2126,11 @@ class GraphView extends ItemView {
               'Timeline': '#CC79A7',
             };
             const color = colorMap[type] || '#999999';
-            chip.style.backgroundColor = color;
-            chip.style.borderColor = color;
-            chip.style.color = this.getContrastColor(color);
+            chip.setCssProps({
+              'background-color': color,
+              'border-color': color,
+              'color': this.getContrastColor(color)
+            });
           }
           this.applyFilters();
           void this.saveFilterState();
@@ -2092,8 +2139,7 @@ class GraphView extends ItemView {
     }
 
     // Add search section (GVIEW-07)
-    const searchContainer = toolbar.createDiv({ cls: 'hvmd-graph-search-container' });
-    searchContainer.style.marginLeft = '16px';
+    const searchContainer = toolbar.createDiv({ cls: 'hvmd-graph-search-container hvmd-margin-left-16' });
 
     const searchLabel = searchContainer.createEl('span', {
       text: 'Search:',
@@ -2133,10 +2179,9 @@ class GraphView extends ItemView {
 
     // Add "Clear Path" button for shortest path feature (GVIEW-10)
     const clearPathBtn = toolbar.createEl('button', {
-      text: 'Clear Path',
-      cls: 'hvmd-graph-btn'
+      text: 'Clear path',
+      cls: 'hvmd-graph-btn hvmd-margin-left-16'
     });
-    clearPathBtn.style.marginLeft = '16px';
     clearPathBtn.addEventListener('click', () => {
       this.pathNodes.clear();
       this.pathEdges.clear();
@@ -2150,12 +2195,11 @@ class GraphView extends ItemView {
     // Add color mode toggle: By Type vs Clusters (GVIEW-11)
     const colorLabel = toolbar.createEl('span', {
       text: 'Color:',
-      cls: 'hvmd-graph-filter-label'
+      cls: 'hvmd-graph-filter-label hvmd-margin-left-16'
     });
-    colorLabel.style.marginLeft = '16px';
 
     const byTypeBtn = toolbar.createEl('button', {
-      text: 'By Type',
+      text: 'By type',
       cls: !this.showClusters ? 'hvmd-graph-btn hvmd-graph-btn-active' : 'hvmd-graph-btn'
     });
     byTypeBtn.addEventListener('click', () => {
@@ -2191,9 +2235,8 @@ class GraphView extends ItemView {
     // Add layout persistence buttons (GVIEW-12)
     const layoutLabel = toolbar.createEl('span', {
       text: 'Layout:',
-      cls: 'hvmd-graph-filter-label'
+      cls: 'hvmd-graph-filter-label hvmd-margin-left-16'
     });
-    layoutLabel.style.marginLeft = '16px';
 
     const saveLayoutBtn = toolbar.createEl('button', {
       text: 'Save',
@@ -2238,7 +2281,7 @@ class GraphView extends ItemView {
       // Store community assignments
       this.communities.clear();
       for (const [nodeId, communityId] of Object.entries(communityAssignments)) {
-        this.communities.set(nodeId, communityId as number);
+        this.communities.set(nodeId, communityId);
       }
 
       new Notice(`Detected ${new Set(Object.values(communityAssignments)).size} communities`);
@@ -2336,7 +2379,7 @@ class GraphView extends ItemView {
 
     const communityColors = this.getCommunityColors();
 
-    return (node: string, data: any) => {
+    return (node: string, data: NodeAttributes) => {
       const type = data.type || 'default';
       const isHighlighted = this.highlightedNodes.has(node);
       const isInPath = this.pathNodes.has(node);
@@ -2390,7 +2433,7 @@ class GraphView extends ItemView {
    * Get edge reducer for edge styling and path highlighting (GVIEW-10)
    */
   private getEdgeReducer() {
-    return (edge: string, data: any) => {
+    return (edge: string, data: EdgeAttributes) => {
       const isHovered = this.hoveredEdge === edge;
       const isInPath = this.pathEdges.has(edge);
 
@@ -2535,7 +2578,7 @@ class GraphView extends ItemView {
     if (firstMatch && this.graph.hasNode(firstMatch)) {
       const nodeAttributes = this.graph.getNodeAttributes(firstMatch);
       const camera = this.renderer.getCamera();
-      camera.animate({
+      void camera.animate({
         x: nodeAttributes.x,
         y: nodeAttributes.y,
         ratio: 0.3
@@ -2551,7 +2594,7 @@ class GraphView extends ItemView {
 
   /**
    * Load graph data from MCP graph tools
-   * Uses either hvmd_graph_get_neighbors (local mode) or full vault subgraph
+   * Uses either query_graph_neighbors (local mode) or full vault subgraph
    */
   private async loadGraphData(): Promise<GraphData> {
     try {
@@ -2567,15 +2610,21 @@ class GraphView extends ItemView {
         // Extract entity ID from active file
         const baseName = activeFile.basename;
         const response = await this.plugin.callMCPTool({
-          name: 'hvmd_graph_get_neighbors',
+          name: 'query_graph_neighbors',
           arguments: {
-            entity_id: baseName,
-            depth: 1,
+            entityId: baseName,
             direction: 'both'
           }
         });
 
         const responseText = response.content[0].text;
+
+        // Check if response is JSON (success) or plain text (error/not found)
+        if (!responseText.startsWith('{') && !responseText.startsWith('[')) {
+          console.debug('[Graph] Entity not found or no neighbors:', responseText.substring(0, 100));
+          return { nodes: [], edges: [] };
+        }
+
         const data = JSON.parse(responseText);
         return this.transformNeighborsResponse(data);
       } else {
@@ -2591,9 +2640,9 @@ class GraphView extends ItemView {
   }
 
   /**
-   * Transform hvmd_graph_get_neighbors response to GraphData format
+   * Transform query_graph_neighbors response to GraphData format
    */
-  private transformNeighborsResponse(data: any): GraphData {
+  private transformNeighborsResponse(data: { center?: GraphNode; neighbors?: Record<string, GraphNode[]> }): GraphData {
     const nodes: GraphNode[] = [];
     const edges: GraphEdge[] = [];
 
@@ -2609,7 +2658,7 @@ class GraphView extends ItemView {
     }
 
     // Process neighbors grouped by relationship type
-    if (data.neighbors) {
+    if (data.neighbors && data.center) {
       for (const [relType, neighborList] of Object.entries(data.neighbors)) {
         if (Array.isArray(neighborList)) {
           for (const neighbor of neighborList) {
@@ -2639,10 +2688,10 @@ class GraphView extends ItemView {
   }
 
   /**
-   * Transform hvmd_graph_get_subgraph response to GraphData format
+   * Transform query_graph_subgraph response to GraphData format.
    * Currently unused but prepared for full vault mode
    */
-  private transformSubgraphResponse(data: any): GraphData {
+  private transformSubgraphResponse(data: { nodes?: GraphNode[]; edges?: GraphEdge[] }): GraphData {
     const nodes: GraphNode[] = [];
     const edges: GraphEdge[] = [];
 
@@ -2772,15 +2821,21 @@ class GraphView extends ItemView {
 
       // Call MCP to get neighbors
       const response = await this.plugin.callMCPTool({
-        name: 'hvmd_graph_get_neighbors',
+        name: 'query_graph_neighbors',
         arguments: {
-          entity_id: nodeId,
-          depth: 1,
+          entityId: nodeId,
           direction: 'both'
         }
       });
 
       const responseText = response.content[0].text;
+
+      // Check if response is JSON (success) or plain text (error/not found)
+      if (!responseText.startsWith('{') && !responseText.startsWith('[')) {
+        console.debug('[Graph] No neighbors found for expand:', nodeId);
+        return;
+      }
+
       const data = JSON.parse(responseText);
       const graphData = this.transformNeighborsResponse(data);
 
@@ -2858,7 +2913,7 @@ class GraphView extends ItemView {
 
     // Set up one-time click listener for target selection
     if (this.renderer) {
-      const clickHandler = (event: any) => {
+      const clickHandler = (event: SigmaNodeEvent) => {
         const targetId = event.node;
         if (targetId !== sourceNodeId) {
           void this.findShortestPath(sourceNodeId, targetId);

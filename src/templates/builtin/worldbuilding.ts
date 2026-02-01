@@ -55,19 +55,40 @@ export const worldbuildingTemplate: TemplateDefinition = {
     { folder: '**/Events/**', types: ['event'] },
     { folder: '**/Timeline/**', types: ['event'] },
     { folder: '**/History/**', types: ['event'] },
-    { folder: '**/Sessions/**', types: ['event'] },
+    // Session mappings (raw play notes, recaps, campaign logs)
+    { folder: '**/Sessions/**', types: ['session'] },
+    { folder: '**/Session Notes/**', types: ['session'] },
+    { folder: '**/Campaign Logs/**', types: ['session'] },
+    { folder: '**/Play Logs/**', types: ['session'] },
     // Faction mappings
     { folder: '**/Factions/**', types: ['faction'] },
     { folder: '**/Organizations/**', types: ['faction'] },
     { folder: '**/Groups/**', types: ['faction'] },
     { folder: '**/Guilds/**', types: ['faction'] },
     { folder: '**/Houses/**', types: ['faction'] },
+    // Item mappings (items, loot, artifacts are synonymous)
+    { folder: '**/Items/**', types: ['item'] },
+    { folder: '**/Loot/**', types: ['item'] },
+    { folder: '**/Artifacts/**', types: ['item'] },
+    { folder: '**/Equipment/**', types: ['item'] },
+    { folder: '**/Treasure/**', types: ['item'] },
     // Lore mappings
     { folder: '**/Lore/**', types: ['lore'] },
     { folder: '**/Mythology/**', types: ['lore'] },
     { folder: '**/Magic/**', types: ['lore'] },
     { folder: '**/Culture/**', types: ['lore'] },
     { folder: '**/Religion/**', types: ['lore'] },
+    // Quest mappings
+    { folder: '**/Quests/**', types: ['quest'] },
+    { folder: '**/Missions/**', types: ['quest'] },
+    { folder: '**/Adventures/**', types: ['quest'] },
+    { folder: '**/Objectives/**', types: ['quest'] },
+    // Creature mappings (monsters, beasts, animals - distinct from characters)
+    { folder: '**/Creatures/**', types: ['creature'] },
+    { folder: '**/Monsters/**', types: ['creature'] },
+    { folder: '**/Bestiary/**', types: ['creature'] },
+    { folder: '**/Beasts/**', types: ['creature'] },
+    { folder: '**/Animals/**', types: ['creature'] },
     // Asset mappings
     { folder: '**/Assets/**', types: ['asset'] },
     { folder: '**/Images/**', types: ['asset'] },
@@ -208,6 +229,114 @@ export const worldbuildingTemplate: TemplateDefinition = {
       description: 'Location hosted an event',
       sourceTypes: ['location'],
       targetTypes: ['event'],
+      bidirectional: false,
+    },
+
+    // Quest relationships
+    {
+      id: 'assigned_quest',
+      displayName: 'Assigned Quest',
+      description: 'Character is assigned to a quest',
+      sourceTypes: ['character'],
+      targetTypes: ['quest'],
+      bidirectional: true,
+      reverseId: 'assigned_to',
+    },
+    {
+      id: 'assigned_to',
+      displayName: 'Assigned To',
+      description: 'Quest is assigned to a character',
+      sourceTypes: ['quest'],
+      targetTypes: ['character'],
+      bidirectional: false,
+    },
+    {
+      id: 'quest_location',
+      displayName: 'Quest Location',
+      description: 'Quest takes place at location',
+      sourceTypes: ['quest'],
+      targetTypes: ['location'],
+      bidirectional: true,
+      reverseId: 'has_quest',
+    },
+    {
+      id: 'has_quest',
+      displayName: 'Has Quest',
+      description: 'Location has an active quest',
+      sourceTypes: ['location'],
+      targetTypes: ['quest'],
+      bidirectional: false,
+    },
+
+    // Creature relationships
+    {
+      id: 'inhabits',
+      displayName: 'Inhabits',
+      description: 'Creature inhabits a location',
+      sourceTypes: ['creature'],
+      targetTypes: ['location'],
+      bidirectional: true,
+      reverseId: 'has_creature',
+    },
+    {
+      id: 'has_creature',
+      displayName: 'Has Creature',
+      description: 'Location has creatures',
+      sourceTypes: ['location'],
+      targetTypes: ['creature'],
+      bidirectional: false,
+    },
+    {
+      id: 'drops',
+      displayName: 'Drops',
+      description: 'Creature drops an item',
+      sourceTypes: ['creature'],
+      targetTypes: ['item'],
+      bidirectional: true,
+      reverseId: 'dropped_by',
+    },
+    {
+      id: 'dropped_by',
+      displayName: 'Dropped By',
+      description: 'Item is dropped by creature',
+      sourceTypes: ['item'],
+      targetTypes: ['creature'],
+      bidirectional: false,
+    },
+
+    // Item relationships
+    {
+      id: 'owns',
+      displayName: 'Owns',
+      description: 'Character owns an item',
+      sourceTypes: ['character'],
+      targetTypes: ['item'],
+      bidirectional: true,
+      reverseId: 'owned_by',
+    },
+    {
+      id: 'owned_by',
+      displayName: 'Owned By',
+      description: 'Item is owned by a character',
+      sourceTypes: ['item'],
+      targetTypes: ['character'],
+      bidirectional: false,
+    },
+    {
+      id: 'stored_at',
+      displayName: 'Stored At',
+      description: 'Item is stored at a location',
+      sourceTypes: ['item'],
+      targetTypes: ['location'],
+      bidirectional: true,
+      reverseId: 'stores',
+    },
+    {
+      id: 'stores',
+      displayName: 'Stores',
+      description: 'Location stores an item',
+      sourceTypes: ['location'],
+      targetTypes: ['item'],
       bidirectional: false,
     },
 
@@ -510,6 +639,146 @@ export const worldbuildingTemplate: TemplateDefinition = {
       ],
     },
 
+    // Quest entity type
+    {
+      name: 'quest',
+      displayName: 'Quest',
+      pluralName: 'Quests',
+      description: 'Missions, adventures, objectives, and storylines',
+      icon: 'scroll',
+      fields: [
+        {
+          name: 'name',
+          type: 'string',
+          required: true,
+          description: 'Quest name',
+        },
+        {
+          name: 'status',
+          type: 'enum',
+          enumValues: ['available', 'active', 'completed', 'failed', 'abandoned'],
+          description: 'Current quest status',
+        },
+        {
+          name: 'quest_giver',
+          type: 'string',
+          description: 'Character ID who gave the quest',
+        },
+        {
+          name: 'location',
+          type: 'string',
+          description: 'Primary location ID for the quest',
+        },
+        {
+          name: 'objectives',
+          type: 'array',
+          arrayItemType: 'string',
+          description: 'Quest objectives',
+        },
+        {
+          name: 'rewards',
+          type: 'array',
+          arrayItemType: 'string',
+          description: 'Quest rewards (item IDs or descriptions)',
+        },
+        {
+          name: 'participants',
+          type: 'array',
+          arrayItemType: 'string',
+          description: 'Character IDs involved in quest',
+        },
+        {
+          name: 'related_quests',
+          type: 'array',
+          arrayItemType: 'string',
+          description: 'Related quest IDs (prerequisites, follow-ups)',
+        },
+        {
+          name: 'difficulty',
+          type: 'enum',
+          enumValues: ['trivial', 'easy', 'medium', 'hard', 'deadly'],
+          description: 'Quest difficulty level',
+        },
+        {
+          name: 'date_started',
+          type: 'string',
+          description: 'When quest was started',
+        },
+        {
+          name: 'date_completed',
+          type: 'string',
+          description: 'When quest was completed',
+        },
+      ],
+    },
+
+    // Creature entity type (monsters, beasts, animals - distinct from characters)
+    {
+      name: 'creature',
+      displayName: 'Creature',
+      pluralName: 'Creatures',
+      description: 'Monsters, beasts, animals, and non-character entities',
+      icon: 'bug',
+      fields: [
+        {
+          name: 'name',
+          type: 'string',
+          required: true,
+          description: 'Creature name or species',
+        },
+        {
+          name: 'creature_type',
+          type: 'enum',
+          enumValues: ['beast', 'monstrosity', 'dragon', 'undead', 'fiend', 'celestial', 'elemental', 'fey', 'aberration', 'construct', 'ooze', 'plant', 'humanoid', 'giant'],
+          description: 'Creature category',
+        },
+        {
+          name: 'challenge_rating',
+          type: 'string',
+          description: 'Challenge rating or threat level',
+        },
+        {
+          name: 'habitat',
+          type: 'array',
+          arrayItemType: 'string',
+          description: 'Location IDs where creature is found',
+        },
+        {
+          name: 'abilities',
+          type: 'record',
+          description: 'Special abilities and traits',
+        },
+        {
+          name: 'behavior',
+          type: 'string',
+          description: 'Typical behavior and temperament',
+        },
+        {
+          name: 'diet',
+          type: 'string',
+          description: 'What the creature eats',
+        },
+        {
+          name: 'loot',
+          type: 'array',
+          arrayItemType: 'string',
+          description: 'Item IDs dropped by creature',
+        },
+        {
+          name: 'weaknesses',
+          type: 'array',
+          arrayItemType: 'string',
+          description: 'Creature weaknesses',
+        },
+        {
+          name: 'resistances',
+          type: 'array',
+          arrayItemType: 'string',
+          description: 'Creature resistances and immunities',
+        },
+      ],
+    },
+
     // Lore entity type
     {
       name: 'lore',
@@ -630,6 +899,65 @@ export const worldbuildingTemplate: TemplateDefinition = {
       ],
     },
 
+    // Item entity type (covers items, loot, artifacts, equipment)
+    {
+      name: 'item',
+      displayName: 'Item',
+      pluralName: 'Items',
+      description: 'Physical objects, equipment, artifacts, loot, and treasure',
+      icon: 'package',
+      fields: [
+        {
+          name: 'name',
+          type: 'string',
+          required: true,
+          description: 'Item name',
+        },
+        {
+          name: 'category',
+          type: 'enum',
+          enumValues: ['weapon', 'armor', 'artifact', 'consumable', 'tool', 'treasure', 'misc'],
+          description: 'Item category',
+        },
+        {
+          name: 'rarity',
+          type: 'enum',
+          enumValues: ['common', 'uncommon', 'rare', 'very_rare', 'legendary', 'artifact'],
+          description: 'Item rarity level',
+        },
+        {
+          name: 'value',
+          type: 'string',
+          description: 'Item value or price',
+        },
+        {
+          name: 'owner',
+          type: 'string',
+          description: 'Current owner (character ID)',
+        },
+        {
+          name: 'location',
+          type: 'string',
+          description: 'Current location (location ID)',
+        },
+        {
+          name: 'origin',
+          type: 'string',
+          description: 'Where the item came from or who created it',
+        },
+        {
+          name: 'properties',
+          type: 'record',
+          description: 'Magical or special properties',
+        },
+        {
+          name: 'history',
+          type: 'string',
+          description: 'Notable history or lore about this item',
+        },
+      ],
+    },
+
     // Reference entity type
     {
       name: 'reference',
@@ -670,6 +998,80 @@ export const worldbuildingTemplate: TemplateDefinition = {
           name: 'date_accessed',
           type: 'string',
           description: 'When this reference was accessed or added',
+        },
+      ],
+    },
+
+    // Session entity type (raw play notes, recaps, campaign logs)
+    {
+      name: 'session',
+      displayName: 'Session',
+      pluralName: 'Sessions',
+      description: 'Campaign session logs, play notes, recaps, and DM planning',
+      icon: 'file-text',
+      fields: [
+        {
+          name: 'name',
+          type: 'string',
+          required: true,
+          description: 'Session title',
+        },
+        {
+          name: 'session_number',
+          type: 'number',
+          description: 'Session number in campaign sequence',
+        },
+        {
+          name: 'session_type',
+          type: 'enum',
+          enumValues: ['play', 'recap', 'summary', 'planning'],
+          description: 'Type of session content (play notes, recap, summary, or planning)',
+        },
+        {
+          name: 'date_played',
+          type: 'date',
+          description: 'Real-world date when session was played',
+        },
+        {
+          name: 'players',
+          type: 'array',
+          arrayItemType: 'string',
+          description: 'Players who attended this session',
+        },
+        {
+          name: 'summary',
+          type: 'string',
+          description: 'Brief summary of what happened',
+        },
+        {
+          name: 'npcs_met',
+          type: 'array',
+          arrayItemType: 'string',
+          description: 'Character IDs of NPCs encountered',
+        },
+        {
+          name: 'locations_visited',
+          type: 'array',
+          arrayItemType: 'string',
+          description: 'Location IDs visited during session',
+        },
+        {
+          name: 'quests_advanced',
+          type: 'array',
+          arrayItemType: 'string',
+          description: 'Quest IDs that progressed during session',
+        },
+        {
+          name: 'loot_gained',
+          type: 'array',
+          arrayItemType: 'string',
+          description: 'Item IDs acquired during session',
+        },
+        {
+          name: 'highlights',
+          type: 'array',
+          arrayItemType: 'string',
+          description: 'Key moments, memorable quotes, or important events',
         },
       ],
     },

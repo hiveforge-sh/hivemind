@@ -140,11 +140,15 @@ describe('Frontmatter Template Builder', () => {
       expect(Object.keys(templates).sort()).toEqual([
         'asset',
         'character',
+        'creature',
         'event',
         'faction',
+        'item',
         'location',
         'lore',
-        'reference'
+        'quest',
+        'reference',
+        'session'
       ]);
 
       // Spot check a few

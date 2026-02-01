@@ -25,6 +25,10 @@ export type ValidationIssue =
       expected: string;
       actual: string;
       matchedPattern: string;
+    }
+  | {
+      type: 'yaml_parse_error';
+      message: string;
     };
 
 /**

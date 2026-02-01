@@ -92,6 +92,10 @@ export interface RelationshipTypeConfig {
  *
  * Defines a new entity type (e.g., "character", "location") with its
  * custom fields and metadata.
+ *
+ * In child templates (templates with extendsTemplate), entity types can either:
+ * - Define new entity types with `fields` (not in parent)
+ * - Extend parent entity types with `additionalFields` (adds to parent's fields)
  */
 export interface EntityTypeConfig {
   /** Entity type name (lowercase, alphanumeric, e.g., "character") */
@@ -106,8 +110,18 @@ export interface EntityTypeConfig {
   /** Description of this entity type for documentation */
   description?: string;
 
-  /** Custom fields beyond base entity fields */
+  /**
+   * Custom fields beyond base entity fields.
+   * Required for new entity types, optional when extending parent types.
+   */
   fields: FieldConfig[];
+
+  /**
+   * Additional fields to add when extending a parent entity type.
+   * Only valid in child templates for entity types that exist in the parent.
+   * These fields are merged with the parent's fields during template registration.
+   */
+  additionalFields?: FieldConfig[];
 
   /** Optional icon identifier for UI rendering */
   icon?: string;
@@ -143,6 +157,13 @@ export interface TemplateAuthor {
  *
  * A template is a collection of entity types that work together
  * (e.g., "worldbuilding" template with characters, locations, events).
+ *
+ * Templates can extend other templates using `extendsTemplate`, which enables:
+ * - Inheriting all entity types from the parent
+ * - Extending parent entity types with additional fields
+ * - Adding new entity types specific to the child template
+ * - Inheriting and extending relationship types
+ * - Inheriting and extending folder mappings
  */
 export interface TemplateDefinition {
   /** Unique template identifier (e.g., "worldbuilding") */
@@ -156,6 +177,14 @@ export interface TemplateDefinition {
 
   /** Description of what this template is for */
   description?: string;
+
+  /**
+   * ID of the parent template to extend.
+   * When specified, this template inherits all entity types, relationship types,
+   * and folder mappings from the parent. Child definitions can override or extend
+   * parent definitions.
+   */
+  extendsTemplate?: string;
 
   /** Entity types included in this template */
   entityTypes: EntityTypeConfig[];

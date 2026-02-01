@@ -634,3 +634,8 @@
   padding: 40px 20px;
   color: var(--text-muted);
 }
+
+/* Utility spacing classes */
+.hvmd-margin-left-16 {
+  margin-left: 16px;
+}

@@ -140,6 +140,9 @@ CLOCK$
 *.heapsnapshot
 *.heapprofile
 
+# Local development scripts (contain user paths)
+scripts/deploy-plugin-local.bat
+
 # Misc
 *.orig
 .terraform/

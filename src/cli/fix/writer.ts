@@ -12,6 +12,19 @@ import matter from 'gray-matter';
 import type { FileOperation } from './types.js';
 
 /**
+ * Post-process YAML output to fix inline empty arrays/objects.
+ * Converts `: []` and `: {}` to just `:` (YAML null) which is more
+ * parser-friendly while still showing the field exists.
+ */
+function fixEmptyYamlValues(yaml: string): string {
+  // Replace inline empty arrays `: []` with just `:`
+  // Replace inline empty objects `: {}` with just `:`
+  return yaml
+    .replace(/: \[\]\s*$/gm, ':')
+    .replace(/: \{\}\s*$/gm, ':');
+}
+
+/**
  * Result of a single file write operation.
  */
 export interface WriteResult {
@@ -54,11 +67,78 @@ export async function writeFile(
     // Parse with gray-matter
     const file = matter(content);
 
-    // Merge frontmatter: existing values take precedence, add only missing fields
+    // Check for unparseable frontmatter: content starts with --- but data is empty
+    // This happens when YAML has syntax errors - gray-matter puts it in content
+    const hasUnparseableFrontmatter =
+      Object.keys(file.data).length === 0 &&
+      file.content.trimStart().startsWith('---');
+
+    if (hasUnparseableFrontmatter) {
+      // Extract and merge with existing frontmatter manually
+      const frontmatterMatch = file.content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+      if (frontmatterMatch) {
+        // Parse existing frontmatter as loose key-value pairs (tolerant parsing)
+        const existingLines = frontmatterMatch[1].split('\n');
+        const existingData: Record<string, unknown> = {};
+
+        for (const line of existingLines) {
+          const colonIndex = line.indexOf(':');
+          if (colonIndex > 0) {
+            const key = line.slice(0, colonIndex).trim();
+            let value: unknown = line.slice(colonIndex + 1).trim();
+
+            // Try to parse as JSON for arrays/objects, otherwise keep as string
+            if (value && typeof value === 'string') {
+              if (value.startsWith('[') || value.startsWith('{') || value.startsWith('"')) {
+                try {
+                  value = JSON.parse(value);
+                } catch {
+                  // Keep as string if JSON parse fails
+                }
+              } else if (value === 'true') {
+                value = true;
+              } else if (value === 'false') {
+                value = false;
+              } else if (/^-?\d+$/.test(value)) {
+                value = parseInt(value, 10);
+              } else if (/^-?\d+\.\d+$/.test(value)) {
+                value = parseFloat(value);
+              }
+            }
+
+            if (key) {
+              existingData[key] = value;
+            }
+          }
+        }
+
+        // Merge: new fields + existing fields (existing takes precedence)
+        const mergedData = { ...operation.frontmatter, ...existingData };
+
+        // Get content after the frontmatter block
+        const contentAfterFrontmatter = file.content.slice(frontmatterMatch[0].length).trimStart();
+
+        // Stringify and fix empty values format
+        const output = fixEmptyYamlValues(matter.stringify(contentAfterFrontmatter, mergedData));
+
+        // Write to temp file
+        await fs.writeFile(tempPath, output, 'utf-8');
+
+        // Atomic rename to target
+        await fs.rename(tempPath, targetPath);
+
+        return {
+          path: operation.path,
+          success: true,
+        };
+      }
+    }
+
+    // Normal case: merge frontmatter (existing values take precedence, add only missing fields)
     const mergedData = { ...operation.frontmatter, ...file.data };
 
-    // Stringify back to markdown
-    const output = matter.stringify(file.content, mergedData);
+    // Stringify back to markdown and fix empty values format
+    const output = fixEmptyYamlValues(matter.stringify(file.content, mergedData));
 
     // Write to temp file
     await fs.writeFile(tempPath, output, 'utf-8');

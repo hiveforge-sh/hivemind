@@ -185,19 +185,75 @@ export function registerCommunityTemplates(): void {
  * Register user-defined templates from config.
  *
  * Validates each template and registers it in the registry.
+ * Templates are sorted topologically to ensure parents are registered before children.
  *
  * @param config - Template configuration from config.json
  * @throws {Error} If any user template fails validation or has duplicate ID
+ * @throws {Error} If circular inheritance is detected
  */
 export function registerUserTemplates(config: TemplateConfig): void {
   if (!config.templates || config.templates.length === 0) {
     return;
   }
 
-  for (const template of config.templates) {
+  // Sort templates topologically so parents are registered before children
+  const sortedTemplates = sortTemplatesByInheritance(config.templates);
+
+  for (const template of sortedTemplates) {
     // Template already validated by loadTemplateConfig
     templateRegistry.register(template, 'config');
   }
+}
+
+/**
+ * Sorts templates topologically based on inheritance dependencies.
+ * Templates that extend other templates come after their parents.
+ *
+ * @param templates - Array of template definitions to sort
+ * @returns Sorted array with parent templates before children
+ * @throws {Error} If circular inheritance is detected
+ */
+function sortTemplatesByInheritance(templates: TemplateDefinition[]): TemplateDefinition[] {
+  // Build a map for quick lookup
+  const templateMap = new Map<string, TemplateDefinition>();
+  for (const template of templates) {
+    templateMap.set(template.id, template);
+  }
+
+  const sorted: TemplateDefinition[] = [];
+  const visited = new Set<string>();
+  const visiting = new Set<string>(); // For cycle detection
+
+  function visit(template: TemplateDefinition): void {
+    if (visited.has(template.id)) {
+      return;
+    }
+
+    if (visiting.has(template.id)) {
+      throw new Error(
+        `Circular template inheritance detected involving "${template.id}"`
+      );
+    }
+
+    visiting.add(template.id);
+
+    // If this template extends another user-defined template, visit parent first
+    if (template.extendsTemplate && templateMap.has(template.extendsTemplate)) {
+      const parent = templateMap.get(template.extendsTemplate)!;
+      visit(parent);
+    }
+    // If parent is a builtin template, it's already registered, no need to visit
+
+    visiting.delete(template.id);
+    visited.add(template.id);
+    sorted.push(template);
+  }
+
+  for (const template of templates) {
+    visit(template);
+  }
+
+  return sorted;
 }
 
 /**

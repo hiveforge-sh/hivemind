@@ -15,11 +15,11 @@
 **Phase:** 28 - Community Plugin Submission
 **Plan:** 2 of 4 complete
 **Status:** In progress
-**Last activity:** 2026-01-28 - Completed 28-02-PLAN.md (Release configuration validation)
+**Last activity:** 2026-01-29 - Completed 28-01-PLAN.md (README problem-solution positioning)
 
 **Progress:**
 ```
-[████████████████████] 44/48 requirements complete (92%)
+[████████████████████] 46/48 requirements complete (96%)
 ```
 
 **Phase Goal:** Submit Hivemind to Obsidian community plugin directory
@@ -110,6 +110,10 @@
 | Bare semver tag format maintained (28-02) | Kept ${version} format without v prefix matching manifest.json, established since 3.0.1 per PLUG-03 | Complete |
 | Kept hivemind-mcp plugin ID (28-02) | Existing ID meets all Obsidian validation rules (no obsidian/plugin keywords), no need to change | Complete |
 | License compliance verified (28-02) | All production dependencies MIT or Apache-2.0 compatible, zero GPL/AGPL per community requirements | Complete |
+| README leads with worldbuilder pain point (28-01) | Problem-solution structure targets worldbuilders (AI hallucination → AI Firewall), not technical features first | Complete |
+| AI Firewall terminology (28-01) | Memorable term for canon enforcement positioning, differentiates from other knowledge management plugins | Complete |
+| MCP setup guide separation (28-01) | Detailed MCP client configs moved to docs/MCP_SETUP_GUIDE.md to keep README scannable (<200 lines) | Complete |
+| Screenshot placeholders in README (28-01) | Marked exact insertion points for timeline-view.png and graph-view.png before submission | Complete |
 
 ### Active Concerns
 
@@ -164,7 +168,7 @@ None currently.
 - ✅ Plan 05: Shortest path, clusters, layout persistence (bidirectional Dijkstra, Louvain, layout save/restore)
 
 **Phase 28 (In progress):**
-- ✅ Plan 01: Research and preparation (Obsidian validation rules, license compliance requirements)
+- ✅ Plan 01: README problem-solution positioning (worldbuilder pain point, AI Firewall, MCP guide)
 - ✅ Plan 02: Release configuration validation (styles.css asset, manifest.json validation, license check)
 - ⬜ Plan 03: Documentation and README
 - ⬜ Plan 04: Plugin manifest and release artifacts
@@ -183,8 +187,8 @@ None currently.
 5. Phase 27: Graph Obsidian view (15 requirements, 15 complete) ✅ PHASE COMPLETE
 6. Phase 28: Community plugin submission (6 requirements)
 
-**Last session:** 2026-01-28
-**Stopped at:** Completed 28-02-PLAN.md (Release configuration validation)
+**Last session:** 2026-01-29
+**Stopped at:** Completed 28-01-PLAN.md (README problem-solution positioning)
 **Resume file:** None
 
 **Next action:** Phase 28 Plan 03 (Documentation and README) - prepare user-facing documentation
@@ -282,6 +286,13 @@ None currently.
 - Phase 27 COMPLETE: All 15 requirements met (22 min total)
 - Phase 28 Plan 01 complete: Research and preparation
   - Research: .planning/phases/28-community-plugin-submission/28-RESEARCH.md
+- Phase 28 Plan 01 complete: README problem-solution positioning (4 min)
+  - README.md rewritten with worldbuilder pain point (AI hallucination) leading
+  - "AI Firewall" terminology for canon enforcement positioning
+  - MCP setup guide extracted to docs/MCP_SETUP_GUIDE.md (Claude Desktop, GitHub Copilot configs)
+  - Screenshot placeholders for timeline and graph views
+  - README under 200 lines for quick scanning
+  - Summary: .planning/phases/28-community-plugin-submission/28-01-SUMMARY.md
 - Phase 28 Plan 02 complete: Release configuration validation (2.5 min)
   - Added styles.css to GitHub release assets in .releaserc.json
   - Validated manifest.json (hivemind-mcp ID meets all Obsidian rules)

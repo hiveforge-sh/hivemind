@@ -67,8 +67,40 @@ export async function validateFile(
   // 2. Parse frontmatter with gray-matter
   const { data: frontmatter } = matter(content);
 
-  // 3. Check for missing frontmatter
+  // 3. Check for missing or unparseable frontmatter
   if (!frontmatter || Object.keys(frontmatter).length === 0) {
+    // Check if file has frontmatter delimiters but they couldn't be parsed
+    const trimmedContent = content.trimStart();
+    const hasDelimiters = trimmedContent.startsWith('---');
+
+    if (hasDelimiters) {
+      // There's frontmatter syntax but it couldn't be parsed - likely YAML error
+      // Try to extract what went wrong
+      const endMatch = trimmedContent.slice(3).match(/\r?\n---/);
+      if (endMatch) {
+        // Has both delimiters - YAML syntax error inside
+        const yamlContent = trimmedContent.slice(3, 3 + (endMatch.index || 0));
+        return {
+          path,
+          valid: false,
+          issues: [{
+            type: 'yaml_parse_error',
+            message: `Frontmatter exists but has YAML syntax error. Check for: missing colons, bad indentation, unquoted special characters. Content starts with: "${yamlContent.slice(0, 50).replace(/\n/g, '\\n')}..."`,
+          }],
+        };
+      } else {
+        // Missing closing delimiter
+        return {
+          path,
+          valid: false,
+          issues: [{
+            type: 'yaml_parse_error',
+            message: 'Frontmatter has opening --- but missing closing ---',
+          }],
+        };
+      }
+    }
+
     if (options.skipMissing) {
       return { path, valid: true, issues: [] }; // Skip this file
     }

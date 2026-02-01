@@ -47,7 +47,8 @@ async function start() {
     }
   }
 
-  console.log('🚀 Starting Hivemind MCP Server...\n');
+  // Use stderr for startup message - stdout is reserved for MCP JSON-RPC
+  console.error('🚀 Starting Hivemind MCP Server...\n');
 
   // Import and start the server (index.js handles --vault flag parsing)
   const { startServer } = await import('./index.js');

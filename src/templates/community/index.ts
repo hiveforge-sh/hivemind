@@ -17,19 +17,37 @@ import type { TemplateDefinition } from '../types.js';
 import { architectureTemplate } from './architecture.js';
 import { uxResearchTemplate } from './ux-research.js';
 
+// TTRPG system templates (inheritance chain: worldbuilding -> ttrpg-base -> specific system)
+import { ttrpgBaseTemplate } from './ttrpg-base.js';
+import { dnd5eTemplate } from './dnd-5e.js';
+import { pathfinder2eTemplate } from './pathfinder-2e.js';
+import { dnd35eTemplate } from './dnd-35e.js';
+
 /**
  * All community-contributed templates.
  *
  * These templates are available for users to activate via config.json
  * by setting `activeTemplate` to the template's ID.
+ *
+ * IMPORTANT: Templates that use inheritance (extendsTemplate) must be
+ * listed AFTER their parent templates in this array. The loader will
+ * sort them topologically, but having parents first is clearer.
  */
 export const communityTemplates: TemplateDefinition[] = [
+  // Standalone templates
   architectureTemplate,
   uxResearchTemplate,
+
+  // TTRPG templates (ordered by inheritance hierarchy)
+  ttrpgBaseTemplate,    // Extends worldbuilding (builtin)
+  dnd5eTemplate,        // Extends ttrpg-base
+  pathfinder2eTemplate, // Extends ttrpg-base
+  dnd35eTemplate,       // Extends ttrpg-base
 ];
 
 // Re-export individual templates for direct import
 export { architectureTemplate, uxResearchTemplate };
+export { ttrpgBaseTemplate, dnd5eTemplate, pathfinder2eTemplate, dnd35eTemplate };
 
 /**
  * Get a community template by ID.

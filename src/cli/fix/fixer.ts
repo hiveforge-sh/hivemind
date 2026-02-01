@@ -244,7 +244,7 @@ export class FileFixer {
       result.status = 'draft';
     }
 
-    // Tags - default to empty array
+    // Tags - default to empty array (visible so users know it's available)
     if (!('tags' in result)) {
       result.tags = [];
     }

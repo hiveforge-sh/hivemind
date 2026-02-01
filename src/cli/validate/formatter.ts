@@ -22,6 +22,8 @@ export function formatIssueMessage(issue: ValidationIssue): string {
       return `${issue.field}: ${issue.message}`;
     case 'folder_mismatch':
       return `Folder suggests type "${issue.expected}" but file has type "${issue.actual}"`;
+    case 'yaml_parse_error':
+      return `YAML parse error: ${issue.message}`;
   }
 }
 
@@ -39,6 +41,7 @@ export function calculateSummary(results: ValidationResult[]): ValidationSummary
       invalid_type: 0,
       schema_error: 0,
       folder_mismatch: 0,
+      yaml_parse_error: 0,
     },
   };
 
@@ -71,6 +74,9 @@ export function formatTextOutput(results: ValidationResult[], summary: Validatio
     missing_frontmatter: invalidResults.filter((r) =>
       r.issues.some((i) => i.type === 'missing_frontmatter')
     ),
+    yaml_parse_error: invalidResults.filter((r) =>
+      r.issues.some((i) => i.type === 'yaml_parse_error')
+    ),
     invalid_type: invalidResults.filter((r) =>
       r.issues.some((i) => i.type === 'invalid_type')
     ),
@@ -92,6 +98,18 @@ export function formatTextOutput(results: ValidationResult[], summary: Validatio
     output.push(error('Missing frontmatter:'));
     for (const result of groups.missing_frontmatter) {
       output.push(`  ${result.path}`);
+    }
+    output.push('');
+  }
+
+  if (groups.yaml_parse_error.length > 0) {
+    output.push(error('YAML parse errors (frontmatter exists but has syntax issues):'));
+    for (const result of groups.yaml_parse_error) {
+      const issue = result.issues.find((i) => i.type === 'yaml_parse_error');
+      if (issue && issue.type === 'yaml_parse_error') {
+        output.push(`  ${result.path}:`);
+        output.push(`    ${issue.message}`);
+      }
     }
     output.push('');
   }
@@ -181,6 +199,7 @@ export function formatJsonOutput(
     files,
     summary: {
       missingFrontmatter: summary.issuesByType.missing_frontmatter || 0,
+      yamlParseErrors: summary.issuesByType.yaml_parse_error || 0,
       invalidType: summary.issuesByType.invalid_type || 0,
       missingField: summary.issuesByType.missing_field || 0,
       schemaErrors: summary.issuesByType.schema_error || 0,

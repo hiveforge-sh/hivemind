@@ -2,7 +2,8 @@
  * Template registry for managing template lifecycle.
  *
  * Provides centralized template management with O(1) lookups
- * and validation on registration.
+ * and validation on registration. Supports template inheritance
+ * via the `extendsTemplate` field.
  */
 
 import type {
@@ -20,6 +21,140 @@ import type {
 type TemplateSource = 'builtin' | 'config';
 
 /**
+ * Merges two arrays of field configs, with child fields taking precedence.
+ * Fields with the same name in the child override the parent field.
+ *
+ * @param parentFields - Fields from the parent entity type
+ * @param childFields - Additional fields from the child entity type
+ * @returns Merged array of field configs
+ */
+function mergeFields(parentFields: FieldConfig[], childFields: FieldConfig[]): FieldConfig[] {
+  const fieldMap = new Map<string, FieldConfig>();
+
+  // Add parent fields first
+  for (const field of parentFields) {
+    fieldMap.set(field.name, field);
+  }
+
+  // Child fields override parent fields with same name
+  for (const field of childFields) {
+    fieldMap.set(field.name, field);
+  }
+
+  return Array.from(fieldMap.values());
+}
+
+/**
+ * Merges entity type configs from parent and child templates.
+ *
+ * Rules:
+ * - Entity types only in parent: included as-is
+ * - Entity types only in child: included as-is
+ * - Entity types in both: child's additionalFields are merged with parent's fields
+ *
+ * @param parentTypes - Entity types from parent template
+ * @param childTypes - Entity types from child template
+ * @returns Merged array of entity type configs
+ */
+function mergeEntityTypes(
+  parentTypes: EntityTypeConfig[],
+  childTypes: EntityTypeConfig[]
+): EntityTypeConfig[] {
+  const typeMap = new Map<string, EntityTypeConfig>();
+
+  // Add all parent types
+  for (const parentType of parentTypes) {
+    typeMap.set(parentType.name, { ...parentType });
+  }
+
+  // Process child types
+  for (const childType of childTypes) {
+    const parentType = typeMap.get(childType.name);
+
+    if (parentType) {
+      // Extending existing type - merge fields
+      const mergedFields = mergeFields(
+        parentType.fields,
+        childType.additionalFields || childType.fields
+      );
+
+      typeMap.set(childType.name, {
+        ...parentType,
+        // Child can override display metadata
+        displayName: childType.displayName || parentType.displayName,
+        pluralName: childType.pluralName || parentType.pluralName,
+        description: childType.description || parentType.description,
+        icon: childType.icon || parentType.icon,
+        fields: mergedFields,
+        // Clear additionalFields after merge
+        additionalFields: undefined,
+      });
+    } else {
+      // New type from child - add as-is
+      typeMap.set(childType.name, { ...childType });
+    }
+  }
+
+  return Array.from(typeMap.values());
+}
+
+/**
+ * Merges relationship type configs from parent and child templates.
+ * Child relationship types with the same ID override parent types.
+ *
+ * @param parentTypes - Relationship types from parent template
+ * @param childTypes - Relationship types from child template
+ * @returns Merged array of relationship type configs
+ */
+function mergeRelationshipTypes(
+  parentTypes: RelationshipTypeConfig[] | undefined,
+  childTypes: RelationshipTypeConfig[] | undefined
+): RelationshipTypeConfig[] | undefined {
+  if (!parentTypes && !childTypes) {
+    return undefined;
+  }
+
+  const typeMap = new Map<string, RelationshipTypeConfig>();
+
+  // Add parent types first
+  if (parentTypes) {
+    for (const relType of parentTypes) {
+      typeMap.set(relType.id, relType);
+    }
+  }
+
+  // Child types override parent types with same ID
+  if (childTypes) {
+    for (const relType of childTypes) {
+      typeMap.set(relType.id, relType);
+    }
+  }
+
+  return Array.from(typeMap.values());
+}
+
+/**
+ * Merges folder mappings from parent and child templates.
+ * Child mappings are appended to parent mappings (child takes precedence
+ * when patterns match, since they come later in the array).
+ *
+ * @param parentMappings - Folder mappings from parent template
+ * @param childMappings - Folder mappings from child template
+ * @returns Merged array of folder mapping rules
+ */
+function mergeFolderMappings(
+  parentMappings: FolderMappingRule[] | undefined,
+  childMappings: FolderMappingRule[] | undefined
+): FolderMappingRule[] | undefined {
+  if (!parentMappings && !childMappings) {
+    return undefined;
+  }
+
+  // Child mappings come after parent, so they take precedence in matching
+  return [...(parentMappings || []), ...(childMappings || [])];
+}
+
+/**
  * Manages registered templates with fast lookups.
  *
  * Singleton pattern ensures consistent state across the application.
@@ -35,20 +170,29 @@ export class TemplateRegistry {
   /**
    * Registers a template in the registry.
    *
-   * Validates the template definition and creates optimized lookup maps.
+   * Validates the template definition, resolves inheritance if `extendsTemplate`
+   * is specified, and creates optimized lookup maps.
    *
    * @param template - Template definition to register
    * @param source - Source of the template (builtin or config)
    * @throws {Error} If template with this ID is already registered
+   * @throws {Error} If parent template is not found (when using extendsTemplate)
+   * @throws {Error} If circular inheritance is detected
    */
   register(template: TemplateDefinition, source: TemplateSource): void {
     if (this.templates.has(template.id)) {
       throw new Error(`Template "${template.id}" is already registered`);
     }
 
+    // Resolve template inheritance
+    let resolvedTemplate = template;
+    if (template.extendsTemplate) {
+      resolvedTemplate = this.resolveInheritance(template);
+    }
+
     // Create entity type lookup map for O(1) access
     const entityTypeMap = new Map<string, EntityTypeConfig>();
-    for (const entityType of template.entityTypes) {
+    for (const entityType of resolvedTemplate.entityTypes) {
       if (entityTypeMap.has(entityType.name)) {
         throw new Error(
           `Duplicate entity type "${entityType.name}" in template "${template.id}"`
@@ -59,8 +203,8 @@ export class TemplateRegistry {
 
     // Create relationship type lookup map for O(1) access
     const relationshipTypeMap = new Map<string, RelationshipTypeConfig>();
-    if (template.relationshipTypes) {
-      for (const relType of template.relationshipTypes) {
+    if (resolvedTemplate.relationshipTypes) {
+      for (const relType of resolvedTemplate.relationshipTypes) {
         if (relationshipTypeMap.has(relType.id)) {
           throw new Error(
             `Duplicate relationship type "${relType.id}" in template "${template.id}"`
@@ -71,13 +215,78 @@ export class TemplateRegistry {
     }
 
     const entry: TemplateRegistryEntry = {
-      ...template,
+      ...resolvedTemplate,
       source,
       entityTypeMap,
       relationshipTypeMap,
     };
 
     this.templates.set(template.id, entry);
+  }
+
+  /**
+   * Resolves template inheritance by merging with parent template(s).
+   *
+   * Handles multi-level inheritance (e.g., A extends B extends C) by
+   * recursively resolving the parent chain.
+   *
+   * @param template - Child template with extendsTemplate specified
+   * @param visited - Set of template IDs in the current inheritance chain (for cycle detection)
+   * @returns Resolved template with merged entity types, relationships, and mappings
+   * @throws {Error} If parent template is not found
+   * @throws {Error} If circular inheritance is detected
+   */
+  private resolveInheritance(
+    template: TemplateDefinition,
+    visited: Set<string> = new Set()
+  ): TemplateDefinition {
+    if (!template.extendsTemplate) {
+      return template;
+    }
+
+    // Check for circular inheritance
+    if (visited.has(template.id)) {
+      throw new Error(
+        `Circular template inheritance detected: ${Array.from(visited).join(' -> ')} -> ${template.id}`
+      );
+    }
+    visited.add(template.id);
+
+    // Get parent template
+    const parentEntry = this.templates.get(template.extendsTemplate);
+    if (!parentEntry) {
+      throw new Error(
+        `Template "${template.id}" extends "${template.extendsTemplate}", but parent template is not registered. ` +
+          `Make sure parent templates are registered before child templates.`
+      );
+    }
+
+    // If parent also extends another template, recursively resolve
+    // Note: Parent is already registered, so it's already resolved
+    // We just need to merge with the resolved parent
+
+    // Merge entity types
+    const mergedEntityTypes = mergeEntityTypes(parentEntry.entityTypes, template.entityTypes);
+
+    // Merge relationship types
+    const mergedRelationshipTypes = mergeRelationshipTypes(
+      parentEntry.relationshipTypes,
+      template.relationshipTypes
+    );
+
+    // Merge folder mappings
+    const mergedFolderMappings = mergeFolderMappings(
+      parentEntry.folderMappings,
+      template.folderMappings
+    );
+
+    // Return resolved template
+    return {
+      ...template,
+      entityTypes: mergedEntityTypes,
+      relationshipTypes: mergedRelationshipTypes,
+      folderMappings: mergedFolderMappings,
+    };
   }
 
   /**
@@ -308,6 +517,8 @@ export class TemplateRegistry {
    * Gets the default value for a field based on its configuration.
    *
    * Uses field.default if provided, otherwise derives from field type.
+   * Note: Empty values ([], {}) are returned here but should be filtered
+   * out when serializing to YAML to avoid parsing issues.
    *
    * @param field - Field configuration
    * @returns Default value for the field

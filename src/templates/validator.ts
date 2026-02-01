@@ -66,6 +66,7 @@ export const FieldConfigSchema = z
  * - Entity type names are lowercase alphanumeric
  * - Display names and plural names are provided
  * - Fields array is valid
+ * - Additional fields (for template inheritance) are valid
  */
 export const EntityTypeConfigSchema = z.object({
   name: z
@@ -79,6 +80,7 @@ export const EntityTypeConfigSchema = z.object({
   pluralName: z.string().min(1, 'Plural name cannot be empty'),
   description: z.string().optional(),
   fields: z.array(FieldConfigSchema),
+  additionalFields: z.array(FieldConfigSchema).optional(),
   icon: z.string().optional(),
 }) satisfies z.ZodType<EntityTypeConfig>;
 
@@ -156,41 +158,64 @@ export const FolderMappingRuleSchema = z.object({
  * Validates:
  * - Template ID is lowercase alphanumeric with hyphens
  * - Version follows semantic versioning (X.Y.Z)
- * - Entity types array is valid and non-empty
+ * - Entity types array is valid (can be empty for child templates that only extend)
+ * - Optional extendsTemplate for inheritance
  * - Optional metadata fields for discovery
  */
-export const TemplateDefinitionSchema = z.object({
-  // Required fields
-  id: z
-    .string()
-    .min(1, 'Template ID cannot be empty')
-    .regex(
-      /^[a-z][a-z0-9-]*$/,
-      'Template ID must be lowercase alphanumeric with hyphens (e.g., "worldbuilding", "game-design")'
-    ),
-  name: z.string().min(1, 'Template name cannot be empty'),
-  version: z
-    .string()
-    .regex(/^\d+\.\d+\.\d+$/, 'Version must follow semantic versioning (e.g., "1.0.0")'),
-  description: z.string().optional(),
-  entityTypes: z
-    .array(EntityTypeConfigSchema)
-    .min(1, 'Template must define at least one entity type'),
-  relationshipTypes: z.array(RelationshipTypeConfigSchema).optional(),
+export const TemplateDefinitionSchema = z
+  .object({
+    // Required fields
+    id: z
+      .string()
+      .min(1, 'Template ID cannot be empty')
+      .regex(
+        /^[a-z][a-z0-9-]*$/,
+        'Template ID must be lowercase alphanumeric with hyphens (e.g., "worldbuilding", "game-design")'
+      ),
+    name: z.string().min(1, 'Template name cannot be empty'),
+    version: z
+      .string()
+      .regex(/^\d+\.\d+\.\d+$/, 'Version must follow semantic versioning (e.g., "1.0.0")'),
+    description: z.string().optional(),
 
-  // Discovery metadata (optional)
-  category: TemplateCategorySchema.optional(),
-  tags: z.array(z.string()).optional(),
-  author: TemplateAuthorSchema.optional(),
-  repository: z.url('Repository must be a valid URL').optional(),
-  sampleVault: z.string().optional(),
-  license: z.string().optional(),
-  minHivemindVersion: z
-    .string()
-    .regex(/^\d+\.\d+\.\d+$/, 'minHivemindVersion must follow semantic versioning')
-    .optional(),
-  folderMappings: z.array(FolderMappingRuleSchema).optional(),
-}) satisfies z.ZodType<TemplateDefinition>;
+    // Template inheritance
+    extendsTemplate: z
+      .string()
+      .regex(
+        /^[a-z][a-z0-9-]*$/,
+        'extendsTemplate must be a valid template ID (lowercase alphanumeric with hyphens)'
+      )
+      .optional(),
+
+    entityTypes: z.array(EntityTypeConfigSchema),
+    relationshipTypes: z.array(RelationshipTypeConfigSchema).optional(),
+
+    // Discovery metadata (optional)
+    category: TemplateCategorySchema.optional(),
+    tags: z.array(z.string()).optional(),
+    author: TemplateAuthorSchema.optional(),
+    repository: z.url('Repository must be a valid URL').optional(),
+    sampleVault: z.string().optional(),
+    license: z.string().optional(),
+    minHivemindVersion: z
+      .string()
+      .regex(/^\d+\.\d+\.\d+$/, 'minHivemindVersion must follow semantic versioning')
+      .optional(),
+    folderMappings: z.array(FolderMappingRuleSchema).optional(),
+  })
+  .refine(
+    (template) => {
+      // Templates must have at least one entity type, unless they extend another template
+      if (!template.extendsTemplate && template.entityTypes.length === 0) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: 'Template must define at least one entity type (unless extending another template)',
+      path: ['entityTypes'],
+    }
+  ) satisfies z.ZodType<TemplateDefinition>;
 
 /**
  * Zod schema for full template configuration validation.
