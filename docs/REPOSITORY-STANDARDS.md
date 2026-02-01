@@ -4,7 +4,23 @@ This repository follows the `hiveforge-sh` organization standards for CI/CD, sec
 
 ## Quick Setup for New Repositories
 
-Apply these standards to a new repository:
+**Recommended:** Use the centralized [hiveforge-sh/scripts](https://github.com/hiveforge-sh/scripts) repository:
+
+**Windows (PowerShell):**
+```powershell
+# Download and run
+Invoke-WebRequest https://raw.githubusercontent.com/hiveforge-sh/scripts/master/setup-repo/setup-repo-standards.ps1 -OutFile setup.ps1
+./setup.ps1 -Repo your-repo-name
+Remove-Item setup.ps1
+```
+
+**macOS/Linux (Bash):**
+```bash
+# Download and run
+curl -sSL https://raw.githubusercontent.com/hiveforge-sh/scripts/master/setup-repo/setup-repo-standards.sh | bash -s your-repo-name
+```
+
+**Or use local scripts from this repository:**
 
 **Windows (PowerShell):**
 ```powershell
@@ -173,6 +189,7 @@ gh repo view OWNER/REPO --json autoMergeAllowed
 
 ## Further Reading
 
+- [HiveForge Scripts Repository](https://github.com/hiveforge-sh/scripts) - Centralized automation scripts
 - [GitHub Branch Protection Rules](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches)
 - [GitHub Auto-merge](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/incorporating-changes-from-a-pull-request/automatically-merging-a-pull-request)
 - [Dependabot Configuration](https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file)
