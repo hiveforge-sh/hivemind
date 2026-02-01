@@ -1,5 +1,6 @@
 import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { resolve, dirname } from 'path';
+import { win32, posix } from 'path';
 import { exec } from 'child_process';
 import { copyToClipboard } from '../shared/clipboard.js';
 import { promptConfirm } from './prompts.js';
@@ -12,15 +13,15 @@ export function getClaudeDesktopConfigPath(): string {
   const platform = process.platform;
 
   if (platform === 'win32') {
-    const appData = process.env.APPDATA || resolve(process.env.USERPROFILE || '', 'AppData', 'Roaming');
-    return resolve(appData, 'Claude', 'claude_desktop_config.json');
+    const appData = process.env.APPDATA || win32.resolve(process.env.USERPROFILE || '', 'AppData', 'Roaming');
+    return win32.resolve(appData, 'Claude', 'claude_desktop_config.json');
   } else if (platform === 'darwin') {
     const home = process.env.HOME || '';
-    return resolve(home, 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json');
+    return posix.resolve(home, 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json');
   } else {
     // Linux - use XDG config or fallback
-    const configHome = process.env.XDG_CONFIG_HOME || resolve(process.env.HOME || '', '.config');
-    return resolve(configHome, 'Claude', 'claude_desktop_config.json');
+    const configHome = process.env.XDG_CONFIG_HOME || posix.resolve(process.env.HOME || '', '.config');
+    return posix.resolve(configHome, 'Claude', 'claude_desktop_config.json');
   }
 }
 
