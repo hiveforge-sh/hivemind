@@ -55,6 +55,30 @@ We actively monitor dependencies for vulnerabilities using:
 - npm audit (run during CI/CD)
 - CodeQL analysis (static security scanning)
 
+### Known Issues
+
+#### tar < 7.5.7 (GHSA-34x7-hfp2-rc4v) - Accepted Risk
+
+**Status**: Monitoring  
+**Severity**: High  
+**Affected**: Development dependencies only  
+**Risk Assessment**: Low - Not exploitable in our context
+
+**Details**:
+- Vulnerability requires extracting malicious tar files
+- Only present in `@semantic-release/npm` → bundled `npm` → `tar`
+- semantic-release is a **dev dependency** used only in CI/CD for publishing
+- The tool doesn't extract user-provided tar files
+- Cannot be fixed: tar is bundled inside npm, which is bundled inside @semantic-release/npm
+- npm overrides don't work on bundled dependencies
+
+**Mitigation**:
+- CI/CD runs in isolated GitHub Actions environment
+- No untrusted tar files are extracted during releases
+- Will be automatically resolved when @semantic-release/npm updates their bundled npm dependency
+
+**Monitoring**: Tracking upstream issue for when a patched version becomes available.
+
 ## Changelog
 
 Security-related changes are noted in [CHANGELOG.md](CHANGELOG.md) with the `security` type.
