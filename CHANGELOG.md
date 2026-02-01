@@ -1,3 +1,38 @@
+# [3.5.0](https://github.com/hiveforge-sh/hivemind/compare/3.4.0...3.5.0) (2026-02-01)
+
+
+### Bug Fixes
+
+* resolve all linting and type errors in Obsidian plugin ([bd1a824](https://github.com/hiveforge-sh/hivemind/commit/bd1a8241990ea0bb3fbaad61f9599620ecb8f9b2))
+* **security:** resolve ReDoS vulnerability in YAML frontmatter parser ([fdbd3dd](https://github.com/hiveforge-sh/hivemind/commit/fdbd3dd4cd9fbab8bf3560f2b593d9941c0666fb))
+* use platform-specific path modules for cross-platform testing ([9d87824](https://github.com/hiveforge-sh/hivemind/commit/9d8782441f4563e19851bf3955dded5c850bbd25))
+
+
+### Features
+
+* **23-01:** add frontmatter template builder to registry ([a618ab2](https://github.com/hiveforge-sh/hivemind/commit/a618ab20e2d11f422e4a8bfd8e60449a94489562))
+* **23-01:** replace plugin FRONTMATTER_TEMPLATES with registry calls ([c43f899](https://github.com/hiveforge-sh/hivemind/commit/c43f89900aa75a799fd566c62f52cf6ef1d3d64d))
+* **24-01:** implement timeline date field discovery and validation ([c1b3dbf](https://github.com/hiveforge-sh/hivemind/commit/c1b3dbf70bd414e89d4e704403d64913aba5a148))
+* **24-02:** implement timeline database query methods ([b89325f](https://github.com/hiveforge-sh/hivemind/commit/b89325ff0cee9e4687cfbe8d37b903ecf905c116))
+* **24-03:** add timeline methods to SearchEngine and wire server ([62f7493](https://github.com/hiveforge-sh/hivemind/commit/62f7493f2688b6f30385e5062c793ad4bc833f93))
+* **25-02:** add Zod validation schemas for graph MCP tools ([aee189e](https://github.com/hiveforge-sh/hivemind/commit/aee189e02d755109226325058d21a4d1521548da))
+* **25-03:** add graph traversal methods to SearchEngine and wire server ([0aaced9](https://github.com/hiveforge-sh/hivemind/commit/0aaced906520625ac12637737f06b7ce00d15dc0))
+* **26-01:** add TimelineView class and register with plugin ([0c3af59](https://github.com/hiveforge-sh/hivemind/commit/0c3af599331bc8ff7ce1ae29b281ad6501f1f3d5))
+* **26-02:** add data loading method to TimelineView ([6b04362](https://github.com/hiveforge-sh/hivemind/commit/6b0436257f0f7a610fb946ca00b0b71c0d95b43e))
+* **26-02:** render vis-timeline in TimelineView onOpen ([e473c67](https://github.com/hiveforge-sh/hivemind/commit/e473c677f929d179df51c35b9ee4a99aff26181f))
+* **26-03:** add timeline click navigation and swim lanes ([a33e43f](https://github.com/hiveforge-sh/hivemind/commit/a33e43fbc6baa502eaee756735c2c4716f335ebf))
+* **26-03:** add timeline theming and entity type colors ([cb91139](https://github.com/hiveforge-sh/hivemind/commit/cb91139ea44592f2dc113256e59af576e6e14b03))
+* **27-01:** create GraphView class and register with plugin ([4423a47](https://github.com/hiveforge-sh/hivemind/commit/4423a476cab3d183a28c9d30ad601401224dc941))
+* **27-02:** add MCP data loading to GraphView ([b9893fd](https://github.com/hiveforge-sh/hivemind/commit/b9893fd874a15cbc73c0740067d21b49528e090f))
+* **27-02:** render graph with sigma.js and ForceAtlas2 ([8b5ba5a](https://github.com/hiveforge-sh/hivemind/commit/8b5ba5a4c0042f4d66276254758b8fcf369d86ba))
+* **27-03:** add click-to-open and right-click context menu ([8e079ea](https://github.com/hiveforge-sh/hivemind/commit/8e079ea10a55cccb2ff6a1555283558bb0021635))
+* **27-03:** add edge labels on hover ([b104dfe](https://github.com/hiveforge-sh/hivemind/commit/b104dfeece61c30a4b21e0b02afe8f2f9e8e17a8))
+* **27-04:** add entity type filter chips to graph view ([58bc38b](https://github.com/hiveforge-sh/hivemind/commit/58bc38b006c5594bd6eb1ef930ca9a9e36431805))
+* **27-04:** add search input with node highlighting to graph view ([03af464](https://github.com/hiveforge-sh/hivemind/commit/03af4645fae36cc32f16a9c2460034d8b734546f))
+* **27-05:** add cluster detection and layout persistence ([a31b503](https://github.com/hiveforge-sh/hivemind/commit/a31b503e4ed1c1b8e25dc350c60b42ad78aada32))
+* **27-05:** implement shortest path highlighting ([14a5831](https://github.com/hiveforge-sh/hivemind/commit/14a5831f17ee6161328640fc9fccfaf08cdec933))
+* **28-02:** add styles.css to GitHub release assets ([02eb1bb](https://github.com/hiveforge-sh/hivemind/commit/02eb1bb0d2e72e281d3ab0a47461c28621306972))
+
 # [3.4.0](https://github.com/hiveforge-sh/hivemind/compare/3.3.1...3.4.0) (2026-01-28)
 
 
