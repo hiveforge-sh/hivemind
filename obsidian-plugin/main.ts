@@ -862,7 +862,9 @@ export default class HivemindPlugin extends Plugin {
     const lines = yaml.split('\n');
 
     for (const line of lines) {
-      const match = line.match(/^(\w+):\s*(.+)$/);
+      // Use .* instead of .+ to avoid ReDoS vulnerability from backtracking
+      // between \s* and .+ when matching whitespace
+      const match = line.match(/^(\w+):\s*(.*)$/);
       if (match) {
         result[match[1]] = match[2].trim();
       }
