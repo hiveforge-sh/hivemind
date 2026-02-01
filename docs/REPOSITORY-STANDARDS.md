@@ -6,12 +6,22 @@ This repository follows the `hiveforge-sh` organization standards for CI/CD, sec
 
 Apply these standards to a new repository:
 
-```bash
+**Windows (PowerShell):**
+```powershell
 # From the hivemind repository
 ./scripts/setup-repo-standards.ps1 -Repo your-repo-name
 
 # For repositories with 'master' branch instead of 'main'
 ./scripts/setup-repo-standards.ps1 -Repo your-repo-name -Branch master
+```
+
+**macOS/Linux (Bash):**
+```bash
+# From the hivemind repository
+./scripts/setup-repo-standards.sh your-repo-name
+
+# For repositories with 'master' branch instead of 'main'
+./scripts/setup-repo-standards.sh your-repo-name master
 ```
 
 ## What Gets Configured
