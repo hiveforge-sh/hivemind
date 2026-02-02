@@ -97,8 +97,7 @@ indexes/
 .continue/
 .windsurf/
 
-# AI Session & Planning (user-specific)
-.planning/
+# AI Session artifacts (user-specific, often contain API keys or large data)
 .session/
 .checkpoints/
 conversation-history/
