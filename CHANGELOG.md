@@ -1,3 +1,17 @@
+# [3.6.0](https://github.com/hiveforge-sh/hivemind/compare/3.5.1...3.6.0) (2026-02-01)
+
+
+### Features
+
+* add cross-platform repository setup scripts ([ad0bd1b](https://github.com/hiveforge-sh/hivemind/commit/ad0bd1bad3672174e6376113dbc6bb00ced0ad82))
+
+## [3.5.1](https://github.com/hiveforge-sh/hivemind/compare/3.5.0...3.5.1) (2026-02-01)
+
+
+### Bug Fixes
+
+* make setup-repo-standards.ps1 idempotent ([4cc07ff](https://github.com/hiveforge-sh/hivemind/commit/4cc07ff4a7181584967631fe0ed7df8d550cdf5e))
+
 # [3.5.0](https://github.com/hiveforge-sh/hivemind/compare/3.4.0...3.5.0) (2026-02-01)
 
 
