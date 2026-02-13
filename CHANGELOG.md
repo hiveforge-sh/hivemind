@@ -1,3 +1,10 @@
+## [3.6.2](https://github.com/hiveforge-sh/hivemind/compare/3.6.1...3.6.2) (2026-02-13)
+
+
+### Bug Fixes
+
+* prevent ReDoS attacks in frontmatter parsing regex patterns ([6e68f58](https://github.com/hiveforge-sh/hivemind/commit/6e68f58cd2cec3a24da9bbb0bbf399407cb0bd15))
+
 ## [3.6.1](https://github.com/hiveforge-sh/hivemind/compare/3.6.0...3.6.1) (2026-02-13)
 
 
