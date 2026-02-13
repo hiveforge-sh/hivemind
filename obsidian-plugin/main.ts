@@ -840,7 +840,8 @@ export default class HivemindPlugin extends Plugin {
           lines.push(`${indentStr}${key}:`);
         } else if (value.includes(':') || value.includes('#') || value.startsWith('[') || value.includes('\n')) {
           // Escape strings that might need quotes
-          lines.push(`${indentStr}${key}: "${value.replace(/"/g, '\\"')}"`);
+          const escaped = value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+          lines.push(`${indentStr}${key}: "${escaped}"`);
         } else {
           lines.push(`${indentStr}${key}: ${value}`);
         }
