@@ -1,3 +1,10 @@
+## [3.6.1](https://github.com/hiveforge-sh/hivemind/compare/3.6.0...3.6.1) (2026-02-13)
+
+
+### Bug Fixes
+
+* update dependencies to resolve security vulnerabilities ([03d0de5](https://github.com/hiveforge-sh/hivemind/commit/03d0de5c2681edc3a290f75cbd07e7ef25ebf801))
+
 # [3.6.0](https://github.com/hiveforge-sh/hivemind/compare/3.5.1...3.6.0) (2026-02-01)
 
 
