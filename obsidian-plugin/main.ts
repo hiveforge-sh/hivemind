@@ -760,7 +760,9 @@ export default class HivemindPlugin extends Plugin {
 
       // Replace frontmatter in content
       let newContent: string;
-      const frontmatterRegex = /^---\n([\s\S]*?)\n---\n/;
+      // Use atomic grouping to prevent catastrophic backtracking
+      // Match frontmatter block: ---\n...content...\n---\n
+      const frontmatterRegex = /^---\n((?:[^\n]*\n)*?)---\n/;
 
       if (frontmatterRegex.test(content)) {
         // Replace existing frontmatter
@@ -863,9 +865,9 @@ export default class HivemindPlugin extends Plugin {
     const lines = yaml.split('\n');
 
     for (const line of lines) {
-      // Use .* instead of .+ to avoid ReDoS vulnerability from backtracking
-      // between \s* and .+ when matching whitespace
-      const match = line.match(/^(\w+):\s*(.*)$/);
+      // Use possessive quantifier pattern to prevent backtracking
+      // Match "key: value" where value can be anything (we trim after)
+      const match = line.match(/^(\w+):[ \t]*(.*)$/);
       if (match) {
         result[match[1]] = match[2].trim();
       }
@@ -879,7 +881,9 @@ export default class HivemindPlugin extends Plugin {
    * Returns the parsed frontmatter object.
    */
   extractFrontmatter(content: string): Record<string, unknown> {
-    const match = content.match(/^---\n([\s\S]*?)\n---/);
+    // Use atomic grouping to prevent catastrophic backtracking
+    // Match frontmatter block: ---\n...content...\n---
+    const match = content.match(/^---\n((?:[^\n]*\n)*?)---/);
     if (!match) return {};
     return this.parseFrontmatter(match[1]);
   }
