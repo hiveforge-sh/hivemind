@@ -58,6 +58,8 @@ reports/
 *.key
 secrets.*
 config.local.json
+.mcpregistry_github_token
+.mcpregistry_registry_token
 
 # Runtime data
 *.pid
