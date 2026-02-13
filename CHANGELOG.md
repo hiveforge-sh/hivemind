@@ -1,3 +1,10 @@
+## [3.6.3](https://github.com/hiveforge-sh/hivemind/compare/3.6.2...3.6.3) (2026-02-13)
+
+
+### Bug Fixes
+
+* add MCP registry token files to gitignore to prevent credential exposure ([3c66c53](https://github.com/hiveforge-sh/hivemind/commit/3c66c530d801d76f8aa30006348e84657a321f03))
+
 ## [3.6.2](https://github.com/hiveforge-sh/hivemind/compare/3.6.1...3.6.2) (2026-02-13)
 
 
