@@ -88,6 +88,7 @@
     "@stryker-mutator/core": "^9.4.0",
     "@stryker-mutator/vitest-runner": "^9.4.0",
     "@types/better-sqlite3": "^7.6.12",
+    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.0",
     "@types/node": "^25.0.10",
     "@types/picomatch": "^4.0.2",
