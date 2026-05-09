@@ -1,3 +1,19 @@
+---
+gsd_state_version: 1.0
+milestone: v4.0
+milestone_name: Temporal & Graph
+status: executing
+stopped_at: Completed 28-01-PLAN.md (README problem-solution positioning)
+last_updated: "2026-05-09T02:59:13.064Z"
+last_activity: 2026-05-09
+progress:
+  total_phases: 6
+  completed_phases: 5
+  total_plans: 20
+  completed_plans: 19
+  percent: 95
+---
+
 # Project State: Hivemind
 
 **Last updated:** 2026-01-28
@@ -12,12 +28,15 @@
 
 ## Current Position
 
+Phase: 28 (community-plugin-submission) — EXECUTING
+Plan: 1 of 3
 **Phase:** 28 - Community Plugin Submission
 **Plan:** 2 of 4 complete
-**Status:** In progress
-**Last activity:** 2026-01-29 - Completed 28-01-PLAN.md (README problem-solution positioning)
+**Status:** Executing Phase 28
+**Last activity:** 2026-05-09
 
 **Progress:**
+
 ```
 [████████████████████] 46/48 requirements complete (96%)
 ```
@@ -25,6 +44,7 @@
 **Phase Goal:** Submit Hivemind to Obsidian community plugin directory
 
 **Phase Success Criteria:**
+
 1. ✅ GraphView class registered with plugin (27-01 complete)
 2. ✅ Graph loads data from MCP graph tools (27-02 complete)
 3. ✅ Graph interactions: click to open, drag to pan, zoom (27-03 complete)
@@ -35,11 +55,13 @@
 ## Performance Metrics
 
 **v4.0 Progress:**
+
 - Phases complete: 5/6 (83%)
 - Requirements complete: 44/48 (92%)
 - Days elapsed: 2 (started 2026-01-27)
 
 **Historical:**
+
 - v3.1: 6 phases, 8 plans, 1 day (2026-01-27)
 - v3.0: 5 phases, 19 plans, 4 days (2026-01-23 → 2026-01-27)
 - v2.0: 6 phases, 12 plans, 2 days (2026-01-25 → 2026-01-26)
@@ -118,11 +140,13 @@
 ### Active Concerns
 
 **Research flags:**
+
 - Phase 24 (Timeline MCP): HIGH — Date timezone handling requires cross-timezone testing, migration strategy for existing vaults
 - Phase 27 (Graph View): HIGH — Bundle size monitoring critical (sigma.js + graphology ~60KB), template registry integration affects both plugin and server
 - Phase 28 (Submission): LOW — child_process usage now documented with security scope and MCP protocol justification (23-02)
 
 **Technical constraints:**
+
 - Obsidian Sync 5MB per-file limit (current main.js ~150KB, sigma.js adds ~60KB)
 - Timeline queries require date-typed fields in template registry
 - ISO8601 YYYY-MM-DD format required for all date inputs
@@ -141,26 +165,31 @@ None currently.
 ### TODOs
 
 **Phase 23 (Complete):**
+
 - ✅ Plan 01: Template registry deduplication (DEBT-01, DEBT-02)
 - ✅ Plan 02: Stryker exclusions and plugin documentation (DEBT-04, DEBT-05)
 - ✅ Plan 03: CLI init test coverage 91.17% (DEBT-03)
 
 **Phase 24 (Complete):**
+
 - ✅ Plan 01: Date field discovery and validation schemas (24-01)
 - ✅ Plan 02: Timeline database queries (24-02)
 - ✅ Plan 03: Timeline MCP server integration (24-03)
 
 **Phase 25 (Complete):**
+
 - ✅ Plan 01: Graph database traversal methods (25-01)
 - ✅ Plan 02: Graph MCP tool definitions (25-02)
 - ✅ Plan 03: Graph MCP server integration (25-03)
 
 **Phase 26 (Complete):**
+
 - ✅ Plan 01: Timeline view infrastructure (vis-timeline install, TimelineView class)
 - ✅ Plan 02: Timeline data loading (MCP integration, vis-timeline rendering)
 - ✅ Plan 03: Timeline interactions and filtering (click navigation, swim lanes, Okabe-Ito colors)
 
 **Phase 27 (Complete):**
+
 - ✅ Plan 01: Graph view infrastructure (sigma.js install, GraphView class)
 - ✅ Plan 02: Graph data loading (MCP integration, sigma.js rendering)
 - ✅ Plan 03: Graph interactions (click navigation, context menu, hover labels, expand neighbors)
@@ -168,18 +197,21 @@ None currently.
 - ✅ Plan 05: Shortest path, clusters, layout persistence (bidirectional Dijkstra, Louvain, layout save/restore)
 
 **Phase 28 (In progress):**
+
 - ✅ Plan 01: README problem-solution positioning (worldbuilder pain point, AI Firewall, MCP guide)
 - ✅ Plan 02: Release configuration validation (styles.css asset, manifest.json validation, license check)
 - ⬜ Plan 03: Documentation and README
 - ⬜ Plan 04: Plugin manifest and release artifacts
 
 **Future:**
+
 - Add bundle size monitoring to CI (Phase 27)
 - Build cross-timezone test suite for date queries (Phase 24-03)
 
 ## Session Continuity
 
 **Completing v4.0 requires:**
+
 1. Phase 23: Clean tech debt (5 requirements, 5 complete) ✅ PHASE COMPLETE
 2. Phase 24: Timeline MCP tools (6 requirements, 6 complete) ✅ PHASE COMPLETE
 3. Phase 25: Graph MCP tools (5 requirements, 5 complete) ✅ PHASE COMPLETE
@@ -194,6 +226,7 @@ None currently.
 **Next action:** Phase 28 Plan 03 (Documentation and README) - prepare user-facing documentation
 
 **Context for future sessions:**
+
 - Phase 23 complete: Template registry unified, plugin docs added, CLI test coverage 91%
 - Phase 24 complete: Timeline MCP tools fully integrated and tested (814 tests passing)
   - Date field discovery and validation (discoverTemporalTypes, validateDateField)
