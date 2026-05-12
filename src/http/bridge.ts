@@ -374,6 +374,7 @@ export function createHttpBridge(
   context: HttpBridgeContext
 ): express.Application {
   const app = express();
+  const { vaultReader, database } = context;
 
   // Middleware
   app.use(express.json({ limit: '1mb' }));
@@ -388,12 +389,45 @@ export function createHttpBridge(
 
   // Optional API key authentication
   if (config.apiKey) {
-    app.use(createAuthMiddleware(config.apiKey));
+    app.use('/api', createAuthMiddleware(config.apiKey));
   }
 
   // Mount the API router
   const router = createBridgeRouter(context);
-  app.use('/', router);
+  app.get('/health', (_req: Request, res: Response) => {
+    const stats = database.getStats();
+    res.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      stats: {
+        nodes: stats.nodes,
+        relationships: stats.relationships,
+      },
+    });
+  });
+  app.get('/stats', (_req: Request, res: Response) => {
+    try {
+      const vaultStats = vaultReader.getStats();
+      const dbStats = database.getStats();
+
+      res.json({
+        vault: {
+          totalNotes: vaultStats.totalNotes,
+          byType: vaultStats.byType,
+          byStatus: vaultStats.byStatus,
+        },
+        graph: {
+          nodes: dbStats.nodes,
+          relationships: dbStats.relationships,
+        },
+      });
+    } catch (error) {
+      res.status(500).json({
+        error: 'Failed to get stats',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
   app.use('/api', router);
 
   // 404 handler
