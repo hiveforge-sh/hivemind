@@ -82,7 +82,7 @@ The prepared entry above was generated from `obsidian-plugin/manifest.json`:
 {
   "id": "hivemind-mcp",
   "name": "Hivemind",
-  "version": "3.3.1",
+  "version": "3.6.3",
   "description": "MCP server that gives AI tools structured context from your vault, with pluggable templates, HybridRAG search, and ComfyUI image generation.",
   "author": "HiveForge",
   "repo": "hiveforge-sh/hivemind"
