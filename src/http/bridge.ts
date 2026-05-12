@@ -388,11 +388,12 @@ export function createHttpBridge(
 
   // Optional API key authentication
   if (config.apiKey) {
-    app.use('/api', createAuthMiddleware(config.apiKey));
+    app.use(createAuthMiddleware(config.apiKey));
   }
 
   // Mount the API router
   const router = createBridgeRouter(context);
+  app.use('/', router);
   app.use('/api', router);
 
   // 404 handler
