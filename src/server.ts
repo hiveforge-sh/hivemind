@@ -2337,7 +2337,7 @@ File watcher keeps index updated automatically.
     }
 
     // Stop file watcher
-    this.vaultWatcher.stop();
+    await this.vaultWatcher.stop();
     console.error('[Server] File watcher stopped');
 
     // Close database
