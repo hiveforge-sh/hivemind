@@ -125,4 +125,26 @@ describe('HTTP bridge top-level endpoints', () => {
     expect(body.error).toBe('Failed to get stats');
     expect(body.message).toBe('boom');
   });
+
+  it('returns 500 from /health when database stats fail', async () => {
+    const baseUrl = await startTestServer(
+      createContext({
+        database: {
+          getStats: () => {
+            throw new Error('db unavailable');
+          },
+        } as HttpBridgeContext['database'],
+      })
+    );
+
+    const response = await fetch(`${baseUrl}/health`);
+    const body = (await response.json()) as {
+      error: string;
+      message: string;
+    };
+
+    expect(response.status).toBe(500);
+    expect(body.error).toBe('Failed to get health status');
+    expect(body.message).toBe('db unavailable');
+  });
 });

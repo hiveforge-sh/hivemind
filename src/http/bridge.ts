@@ -375,16 +375,23 @@ export function createHttpBridge(
 ): express.Application {
   const app = express();
   const { vaultReader, database } = context;
+  const allowAnyOrigin = config.corsOrigins.includes('*');
 
   // Middleware
   app.use(express.json({ limit: '1mb' }));
 
   // CORS configuration
   app.use(cors({
-    origin: config.corsOrigins,
+    origin: (origin, callback) => {
+      if (!origin || allowAnyOrigin || config.corsOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error('Origin not allowed by CORS'));
+    },
     methods: ['GET', 'POST', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'X-API-Key'],
-    credentials: true,
+    credentials: !allowAnyOrigin,
   }));
 
   // Optional API key authentication
@@ -395,15 +402,22 @@ export function createHttpBridge(
   // Mount the API router
   const router = createBridgeRouter(context);
   app.get('/health', (_req: Request, res: Response) => {
-    const stats = database.getStats();
-    res.json({
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      stats: {
-        nodes: stats.nodes,
-        relationships: stats.relationships,
-      },
-    });
+    try {
+      const stats = database.getStats();
+      res.json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        stats: {
+          nodes: stats.nodes,
+          relationships: stats.relationships,
+        },
+      });
+    } catch (error) {
+      res.status(500).json({
+        error: 'Failed to get health status',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
   });
   app.get('/stats', (_req: Request, res: Response) => {
     try {
