@@ -2332,7 +2332,7 @@ File watcher keeps index updated automatically.
   async stop(): Promise<void> {
     // Stop HTTP bridge if running
     if (this.httpBridge) {
-      this.httpBridge.close();
+      await this.httpBridge.close();
       console.error('[Server] HTTP bridge stopped');
     }
 

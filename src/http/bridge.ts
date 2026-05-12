@@ -355,7 +355,7 @@ function formatNodeForApi(
  */
 export function createAuthMiddleware(apiKey: string) {
   return (req: Request, res: Response, next: NextFunction) => {
-    const providedKey = req.headers['x-api-key'] || req.query.apiKey;
+    const providedKey = req.headers['x-api-key'];
 
     if (providedKey !== apiKey) {
       res.status(401).json({ error: 'Invalid or missing API key' });
@@ -467,7 +467,7 @@ export function createHttpBridge(
 export async function startHttpBridge(
   config: HttpBridgeConfig,
   context: HttpBridgeContext
-): Promise<{ app: express.Application; close: () => void }> {
+): Promise<{ app: express.Application; close: () => Promise<void> }> {
   const app = createHttpBridge(config, context);
 
   return new Promise((resolve, reject) => {
@@ -481,7 +481,15 @@ export async function startHttpBridge(
       resolve({
         app,
         close: () => {
-          server.close();
+          return new Promise<void>((resolveClose, rejectClose) => {
+            server.close((err) => {
+              if (err) {
+                rejectClose(err);
+              } else {
+                resolveClose();
+              }
+            });
+          });
         },
       });
     });
