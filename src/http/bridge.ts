@@ -238,25 +238,25 @@ export function createBridgeRouter(context: HttpBridgeContext): Router {
         entity?: ReturnType<typeof formatNodeForApi>;
         relationships?: unknown[];
         relatedEntities?: ReturnType<typeof formatNodeForApi>[];
-      }> = [];
+      }> = await Promise.all(
+        (ids as string[]).map(async id => {
+          const result = await searchEngine.getNodeWithRelationships(id);
 
-      for (const id of ids as string[]) {
-        const result = await searchEngine.getNodeWithRelationships(id);
+          if (result) {
+            return {
+              id,
+              found: true,
+              entity: formatNodeForApi(result.node, includeContent, contentLimit),
+              relationships: includeRelationships ? result.relationships : [],
+              relatedEntities: includeRelationships
+                ? result.relatedNodes.map(n => formatNodeForApi(n, false, 0))
+                : [],
+            };
+          }
 
-        if (result) {
-          results.push({
-            id,
-            found: true,
-            entity: formatNodeForApi(result.node, includeContent, contentLimit),
-            relationships: includeRelationships ? result.relationships : [],
-            relatedEntities: includeRelationships
-              ? result.relatedNodes.map(n => formatNodeForApi(n, false, 0))
-              : [],
-          });
-        } else {
-          results.push({ id, found: false });
-        }
-      }
+          return { id, found: false };
+        })
+      );
 
       res.json({ results });
     } catch (error) {
