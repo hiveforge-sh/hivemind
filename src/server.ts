@@ -2271,9 +2271,9 @@ File watcher keeps index updated automatically.
     // Start HTTP bridge if enabled
     if (this.config.http?.enabled) {
       const httpConfig: HttpBridgeConfig = {
-        port: this.config.http.port || 3847,
-        host: this.config.http.host || 'localhost',
-        corsOrigins: this.config.http.corsOrigins || ['http://localhost:8000'],
+        port: this.config.http.port ?? 3847,
+        host: this.config.http.host ?? 'localhost',
+        corsOrigins: this.config.http.corsOrigins ?? ['http://localhost:8000'],
         apiKey: this.config.http.apiKey,
       };
 
