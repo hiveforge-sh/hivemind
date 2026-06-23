@@ -77,7 +77,7 @@
     "zod": "^4.3.6"
   },
   "overrides": {
-    "undici": "^6.25.0"
+    "undici": "^6.27.0"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.3.1",
