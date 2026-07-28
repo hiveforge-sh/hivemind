@@ -29,10 +29,16 @@ jobs:
 
       - name: Auto-approve minor/patch updates
         if: |
-          env.APPROVE_TOKEN != '' &&
-          (steps.metadata.outputs.update-type == 'version-update:semver-minor' ||
-           steps.metadata.outputs.update-type == 'version-update:semver-patch')
-        run: gh pr review "$PR_URL" --approve --body "✅ Auto-approved by Dependabot workflow (minor/patch update)"
+          steps.metadata.outputs.update-type == 'version-update:semver-minor' ||
+          steps.metadata.outputs.update-type == 'version-update:semver-patch'
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::warning::DEPENDABOT_APPROVE_TOKEN not set in the Dependabot secret scope; skipping auto-approve."
+            echo "token_present=false"
+            exit 0
+          fi
+          echo "token_present=true (length: ${#GH_TOKEN})"
+          gh pr review "$PR_URL" --approve --body "✅ Auto-approved by Dependabot workflow (minor/patch update)"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.DEPENDABOT_APPROVE_TOKEN }}
