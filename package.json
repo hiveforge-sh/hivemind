@@ -64,7 +64,7 @@
   "dependencies": {
     "@inquirer/prompts": "^8.2.0",
     "@modelcontextprotocol/sdk": "^1.0.4",
-    "better-sqlite3": "^12.6.2",
+    "better-sqlite3": "^13.0.2",
     "chokidar": "^5.0.0",
     "clipboardy": "^5.1.0",
     "express": "^5.2.1",
