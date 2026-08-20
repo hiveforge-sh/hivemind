@@ -19,6 +19,14 @@ export const ServerConfigSchema = z.object({
   apiKey: z.string().optional(),
 });
 
+export const HttpConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  port: z.number().default(3847),
+  host: z.string().default('localhost'),
+  corsOrigins: z.array(z.string()).default(['http://localhost:8000']),
+  apiKey: z.string().optional(),
+});
+
 export const TemplateConfigSchema = z.object({
   activeTemplate: z.string().default('worldbuilding'),
   templates: z.array(z.any()).optional(), // Validated separately by template validator
@@ -53,6 +61,7 @@ export const HivemindConfigSchema = z.object({
   indexing: IndexingConfigSchema.optional(),
   comfyui: ComfyUIConfigSchema.optional(),
   embedding: EmbeddingConfigSchema.optional(),
+  http: HttpConfigSchema.optional(),
 });
 
 export type ValidatedConfig = z.infer<typeof HivemindConfigSchema>;
