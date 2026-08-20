@@ -20,5 +20,11 @@
     "workflowsPath": "workflows",
     "assetsPath": "assets/images",
     "assetsNotesPath": "Assets"
+  },
+  "http": {
+    "enabled": true,
+    "port": 3847,
+    "host": "localhost",
+    "corsOrigins": ["http://localhost:8000", "http://127.0.0.1:8000"]
   }
 }

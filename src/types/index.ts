@@ -330,11 +330,20 @@ export interface ComfyUIConfig {
   assetsNotesPath?: string;
 }
 
+export interface HttpConfig {
+  enabled: boolean;
+  port: number;
+  host: string;
+  corsOrigins: string[];
+  apiKey?: string;
+}
+
 export interface HivemindConfig {
   vault: VaultConfig;
   server: ServerConfig;
   indexing?: IndexConfig;
   comfyui?: ComfyUIConfig;
+  http?: HttpConfig;
   embedding?: {
     model: string;
     provider: 'openai' | 'local';

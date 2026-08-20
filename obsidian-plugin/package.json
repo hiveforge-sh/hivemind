@@ -25,7 +25,7 @@
     "@typescript-eslint/eslint-plugin": "^8.55.0",
     "@typescript-eslint/parser": "^8.55.0",
     "builtin-modules": "^5.0.0",
-    "esbuild": "^0.27.3",
+    "esbuild": "^0.28.1",
     "eslint-plugin-obsidianmd": "^0.1.9",
     "obsidian": "latest",
     "picomatch": "^4.0.4",
@@ -39,7 +39,7 @@
     "graphology-layout-forceatlas2": "^0.10.1",
     "graphology-shortest-path": "^2.1.0",
     "sigma": "^3.0.2",
-    "vis-data": "^8.0.3",
-    "vis-timeline": "^8.5.0"
+    "vis-data": "^8.0.4",
+    "vis-timeline": "^8.5.1"
   }
 }
