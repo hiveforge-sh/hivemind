@@ -210,9 +210,9 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 28-01-PLAN.md — Rewrite README with problem-solution positioning and create MCP setup guide
-- [ ] 28-02-PLAN.md — Add styles.css to release assets and validate manifest/licenses
-- [ ] 28-03-PLAN.md — Prepare submission guide and submit PR to obsidian-releases
+- [x] 28-01-PLAN.md — Rewrite README with problem-solution positioning and create MCP setup guide
+- [x] 28-02-PLAN.md — Add styles.css to release assets and validate manifest/licenses
+- [x] 28-03-PLAN.md — Prepare submission guide and submit PR to obsidian-releases
 
 **Success Criteria:**
 1. README includes purpose, installation, usage instructions, and screenshots of timeline and graph views
@@ -239,4 +239,4 @@ Plans:
 | 25 | v4.0 | 3/3 | Complete | 2026-01-28 |
 | 26 | v4.0 | 3/3 | Complete | 2026-01-28 |
 | 27 | v4.0 | 5/5 | Complete | 2026-01-28 |
-| 28 | v4.0 | 0/3 | Pending | — |
+| 28 | v4.0 | 3/3 | Complete   | 2026-05-09 |

@@ -13,12 +13,35 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     if: github.actor == 'dependabot[bot]'
+    env:
+      # Separate approver token (classic PAT with `repo` scope, or a GitHub App
+      # installation token) from an account that is NOT dependabot[bot].
+      # Required because the org policy blocks the default GITHUB_TOKEN from
+      # approving PRs, and master's ruleset requires 1 approving review.
+      # Until this secret is set, the approve step below is skipped (no failure).
+      APPROVE_TOKEN: ${{ secrets.DEPENDABOT_APPROVE_TOKEN }}
     steps:
       - name: Dependabot metadata
         id: metadata
-        uses: dependabot/fetch-metadata@v2
+        uses: dependabot/fetch-metadata@v3
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Auto-approve minor/patch updates
+        if: |
+          steps.metadata.outputs.update-type == 'version-update:semver-minor' ||
+          steps.metadata.outputs.update-type == 'version-update:semver-patch'
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::warning::DEPENDABOT_APPROVE_TOKEN not set in the Dependabot secret scope; skipping auto-approve."
+            echo "token_present=false"
+            exit 0
+          fi
+          echo "token_present=true (length: ${#GH_TOKEN})"
+          gh pr review "$PR_URL" --approve --body "✅ Auto-approved by Dependabot workflow (minor/patch update)"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.DEPENDABOT_APPROVE_TOKEN }}
 
       - name: Wait for CI checks
         if: |

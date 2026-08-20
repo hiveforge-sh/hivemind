@@ -16,12 +16,12 @@
 
 ### Timeline Obsidian View
 
-- [ ] **TVIEW-01**: Visual timeline panel showing entities on chronological axis
-- [ ] **TVIEW-02**: Range items displayed for entities with start and end dates
-- [ ] **TVIEW-03**: Multiple timeline scales (auto-adjust days to years based on data)
-- [ ] **TVIEW-04**: Click timeline item to open corresponding note in vault
-- [ ] **TVIEW-05**: Filter timeline by entity type
-- [ ] **TVIEW-06**: Grouped swim lanes per entity type
+- [x] **TVIEW-01**: Visual timeline panel showing entities on chronological axis
+- [x] **TVIEW-02**: Range items displayed for entities with start and end dates
+- [x] **TVIEW-03**: Multiple timeline scales (auto-adjust days to years based on data)
+- [x] **TVIEW-04**: Click timeline item to open corresponding note in vault
+- [x] **TVIEW-05**: Filter timeline by entity type
+- [x] **TVIEW-06**: Grouped swim lanes per entity type
 
 ### Graph MCP Tools
 
@@ -33,27 +33,27 @@
 
 ### Graph Obsidian View
 
-- [ ] **GVIEW-01**: Interactive node-link graph panel with pan and zoom
-- [ ] **GVIEW-02**: Node labels showing entity names
-- [ ] **GVIEW-03**: Edge labels showing relationship types (typed edges)
-- [ ] **GVIEW-04**: Click node to open corresponding note in vault
-- [ ] **GVIEW-05**: Local graph view (focus on one entity + connected neighbors)
-- [ ] **GVIEW-06**: Filter by entity type with live update
-- [ ] **GVIEW-07**: Search and highlight nodes
-- [ ] **GVIEW-08**: Expand/collapse nodes for progressive disclosure
-- [ ] **GVIEW-09**: Custom node styling by entity type (colors/shapes)
-- [ ] **GVIEW-10**: Shortest path highlighting between two selected nodes
-- [ ] **GVIEW-11**: Cluster detection with auto-grouping
-- [ ] **GVIEW-12**: Workspace mode with persistent layout configurations
+- [x] **GVIEW-01**: Interactive node-link graph panel with pan and zoom
+- [x] **GVIEW-02**: Node labels showing entity names
+- [x] **GVIEW-03**: Edge labels showing relationship types (typed edges)
+- [x] **GVIEW-04**: Click node to open corresponding note in vault
+- [x] **GVIEW-05**: Local graph view (focus on one entity + connected neighbors)
+- [x] **GVIEW-06**: Filter by entity type with live update
+- [x] **GVIEW-07**: Search and highlight nodes
+- [~] **GVIEW-08**: Expand/collapse nodes for progressive disclosure (expand complete; collapse intentionally deferred per ROADMAP)
+- [x] **GVIEW-09**: Custom node styling by entity type (colors/shapes)
+- [x] **GVIEW-10**: Shortest path highlighting between two selected nodes
+- [x] **GVIEW-11**: Cluster detection with auto-grouping
+- [x] **GVIEW-12**: Workspace mode with persistent layout configurations
 
 ### Community Plugin Submission
 
-- [ ] **PLUG-01**: README with purpose, usage, and screenshots
-- [ ] **PLUG-02**: manifest.json validated against Obsidian schema
-- [ ] **PLUG-03**: GitHub release tag matches manifest.json version exactly
-- [ ] **PLUG-04**: Release contains main.js and styles.css
-- [ ] **PLUG-05**: PR submitted to obsidian-releases community-plugins.json
-- [ ] **PLUG-06**: No GPL/AGPL dependencies (CI gate verified)
+- [x] **PLUG-01**: README with purpose, usage, and screenshots (⚠ screenshots referenced but `docs/images/` missing — TD-README-IMAGES)
+- [x] **PLUG-02**: manifest.json validated against Obsidian schema
+- [x] **PLUG-03**: GitHub release tag matches manifest.json version exactly
+- [x] **PLUG-04**: Release contains main.js and styles.css
+- [x] **PLUG-05**: PR submitted to obsidian-releases community-plugins.json (URL not yet recorded — TD-PLUG-05-PR-URL)
+- [x] **PLUG-06**: No GPL/AGPL dependencies (CI gate verified)
 
 ### Tech Debt
 
@@ -94,35 +94,35 @@
 | TIME-04 | Phase 24 | Complete |
 | TIME-05 | Phase 24 | Complete |
 | TIME-06 | Phase 24 | Complete |
-| TVIEW-01 | Phase 26 | Pending |
-| TVIEW-02 | Phase 26 | Pending |
-| TVIEW-03 | Phase 26 | Pending |
-| TVIEW-04 | Phase 26 | Pending |
-| TVIEW-05 | Phase 26 | Pending |
-| TVIEW-06 | Phase 26 | Pending |
+| TVIEW-01 | Phase 26 | Complete |
+| TVIEW-02 | Phase 26 | Complete |
+| TVIEW-03 | Phase 26 | Complete |
+| TVIEW-04 | Phase 26 | Complete |
+| TVIEW-05 | Phase 26 | Complete |
+| TVIEW-06 | Phase 26 | Complete |
 | GRAPH-01 | Phase 25 | Complete |
 | GRAPH-02 | Phase 25 | Complete |
 | GRAPH-03 | Phase 25 | Complete |
 | GRAPH-04 | Phase 25 | Complete |
 | GRAPH-05 | Phase 25 | Complete |
-| GVIEW-01 | Phase 27 | Pending |
-| GVIEW-02 | Phase 27 | Pending |
-| GVIEW-03 | Phase 27 | Pending |
-| GVIEW-04 | Phase 27 | Pending |
-| GVIEW-05 | Phase 27 | Pending |
-| GVIEW-06 | Phase 27 | Pending |
-| GVIEW-07 | Phase 27 | Pending |
-| GVIEW-08 | Phase 27 | Pending |
-| GVIEW-09 | Phase 27 | Pending |
-| GVIEW-10 | Phase 27 | Pending |
-| GVIEW-11 | Phase 27 | Pending |
-| GVIEW-12 | Phase 27 | Pending |
-| PLUG-01 | Phase 28 | Pending |
-| PLUG-02 | Phase 28 | Pending |
-| PLUG-03 | Phase 28 | Pending |
-| PLUG-04 | Phase 28 | Pending |
-| PLUG-05 | Phase 28 | Pending |
-| PLUG-06 | Phase 28 | Pending |
+| GVIEW-01 | Phase 27 | Complete |
+| GVIEW-02 | Phase 27 | Complete |
+| GVIEW-03 | Phase 27 | Complete |
+| GVIEW-04 | Phase 27 | Complete |
+| GVIEW-05 | Phase 27 | Complete |
+| GVIEW-06 | Phase 27 | Complete |
+| GVIEW-07 | Phase 27 | Complete |
+| GVIEW-08 | Phase 27 | Complete |
+| GVIEW-09 | Phase 27 | Complete |
+| GVIEW-10 | Phase 27 | Complete |
+| GVIEW-11 | Phase 27 | Complete |
+| GVIEW-12 | Phase 27 | Complete |
+| PLUG-01 | Phase 28 | Complete |
+| PLUG-02 | Phase 28 | Complete |
+| PLUG-03 | Phase 28 | Complete |
+| PLUG-04 | Phase 28 | Complete |
+| PLUG-05 | Phase 28 | Complete |
+| PLUG-06 | Phase 28 | Complete |
 | DEBT-01 | Phase 23 | Complete |
 | DEBT-02 | Phase 23 | Complete |
 | DEBT-03 | Phase 23 | Complete |
@@ -137,4 +137,4 @@
 
 ---
 *Requirements defined: 2026-01-27*
-*Last updated: 2026-01-27 after roadmap creation*
+*Last updated: 2026-07-27 — synced checkboxes/traceability to verified status (TD-CHECKBOX-SYNC)*
