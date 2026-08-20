@@ -55,6 +55,7 @@ import type { FieldConfig } from './templates/types.js';
 import type { GraphNode, GraphEdge } from './types/index.js';
 import { ComfyUIClient } from './comfyui/client.js';
 import { WorkflowManager } from './comfyui/workflow.js';
+import { startHttpBridge, type HttpBridgeConfig } from './http/bridge.js';
 import { join } from 'path';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -101,6 +102,7 @@ export class HivemindServer {
   private searchEngine: SearchEngine;
   private comfyuiClient?: ComfyUIClient;
   private workflowManager?: WorkflowManager;
+  private httpBridge?: { app: import('express').Application; close: () => void };
   private isIndexed: boolean = false;
   private queryMetrics = {
     totalQueries: 0,
@@ -2266,16 +2268,36 @@ File watcher keeps index updated automatically.
       this.vaultWatcher.start();
     }
 
-    // Start MCP server
+    // Start HTTP bridge if enabled
+    if (this.config.http?.enabled) {
+      const httpConfig: HttpBridgeConfig = {
+        port: this.config.http.port ?? 3847,
+        host: this.config.http.host ?? 'localhost',
+        corsOrigins: this.config.http.corsOrigins ?? ['http://localhost:8000'],
+        apiKey: this.config.http.apiKey,
+      };
+
+      this.httpBridge = await startHttpBridge(httpConfig, {
+        searchEngine: this.searchEngine,
+        vaultReader: this.vaultReader,
+        database: this.database,
+      });
+    }
+
+    // Start MCP server (stdio transport)
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    
+
     // Print ready banner
     const dbStats = this.database.getStats();
     await this.printReadyBanner(dbStats);
   }
 
   private async printReadyBanner(stats: { nodes: number; relationships: number }) {
+    const httpStatus = this.config.http?.enabled
+      ? `✓ HTTP Bridge: http://${this.config.http.host || 'localhost'}:${this.config.http.port || 3847}`
+      : '○ HTTP Bridge: disabled';
+
     console.error(`
      _______________
     /               \\
@@ -2293,6 +2315,7 @@ File watcher keeps index updated automatically.
 
    ✓ Vault: ${this.config.vault.path}
    ✓ Graph: ${stats.nodes} nodes, ${stats.relationships} edges
+   ${httpStatus}
    ✓ Ready for queries
 `);
 
@@ -2301,5 +2324,24 @@ File watcher keeps index updated automatically.
     if (statsResult.content && statsResult.content[0]) {
       console.error('\n' + statsResult.content[0].text);
     }
+  }
+
+  /**
+   * Stop the server and clean up resources
+   */
+  async stop(): Promise<void> {
+    // Stop HTTP bridge if running
+    if (this.httpBridge) {
+      await this.httpBridge.close();
+      console.error('[Server] HTTP bridge stopped');
+    }
+
+    // Stop file watcher
+    await this.vaultWatcher.stop();
+    console.error('[Server] File watcher stopped');
+
+    // Close database
+    this.database.close();
+    console.error('[Server] Database closed');
   }
 }
