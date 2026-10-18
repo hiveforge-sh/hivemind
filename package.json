@@ -87,7 +87,7 @@
     "@semantic-release/exec": "^7.1.0",
     "@semantic-release/git": "^11.0.1",
     "@stryker-mutator/core": "^9.4.0",
-    "@stryker-mutator/vitest-runner": "^9.4.0",
+    "@stryker-mutator/vitest-runner": "^10.0.0",
     "@types/better-sqlite3": "^7.6.12",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.0",
