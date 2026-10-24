@@ -2275,6 +2275,8 @@ File watcher keeps index updated automatically.
         host: this.config.http.host ?? 'localhost',
         corsOrigins: this.config.http.corsOrigins ?? ['http://localhost:8000'],
         apiKey: this.config.http.apiKey,
+        apiKeyFile: join(this.config.vault.path, '.hivemind', 'http-api-key'),
+        allowedHosts: this.config.http.allowedHosts,
       };
 
       this.httpBridge = await startHttpBridge(httpConfig, {

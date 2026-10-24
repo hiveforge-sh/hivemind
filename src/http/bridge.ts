@@ -7,6 +7,9 @@
 
 import express, { Router, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import { createHash, randomBytes, timingSafeEqual } from 'crypto';
+import { promises as fs } from 'fs';
+import { dirname } from 'path';
 import type { SearchEngine } from '../search/engine.js';
 import type { VaultReader } from '../vault/reader.js';
 import type { HivemindDatabase } from '../graph/database.js';
@@ -16,7 +19,18 @@ export interface HttpBridgeConfig {
   port: number;
   host: string;
   corsOrigins: string[];
+  /**
+   * Required by createHttpBridge. startHttpBridge fills it in from apiKeyFile
+   * (generating a key there if needed) when it is not configured.
+   */
   apiKey?: string;
+  /** Where to load or persist an auto-generated API key when apiKey is unset */
+  apiKeyFile?: string;
+  /**
+   * Extra Host header names to accept besides the loopback names and `host`,
+   * e.g. a LAN hostname when binding to 0.0.0.0.
+   */
+  allowedHosts?: string[];
 }
 
 export interface HttpBridgeContext {
@@ -350,20 +364,136 @@ function formatNodeForApi(
   };
 }
 
+const LOOPBACK_HOSTNAMES = ['localhost', '127.0.0.1', '::1'];
+const WILDCARD_BIND_HOSTS = ['0.0.0.0', '::'];
+
+/**
+ * Raised by the CORS origin check so the error handler can answer 403
+ */
+class CorsOriginError extends Error {
+  constructor(origin: string) {
+    super(`Origin not allowed by CORS: ${origin}`);
+    this.name = 'CorsOriginError';
+  }
+}
+
+/**
+ * Lowercase a hostname and strip IPv6 brackets ("[::1]" -> "::1")
+ */
+function normalizeHostname(hostname: string): string {
+  const lower = hostname.trim().toLowerCase();
+  return lower.startsWith('[') && lower.endsWith(']') ? lower.slice(1, -1) : lower;
+}
+
+/**
+ * Host header names the bridge answers to: loopback names, the configured
+ * bind host (unless it is a wildcard address) and any allowedHosts.
+ */
+export function getAllowedHostnames(config: HttpBridgeConfig): Set<string> {
+  const allowed = new Set(LOOPBACK_HOSTNAMES);
+  for (const host of [config.host, ...(config.allowedHosts ?? [])]) {
+    const normalized = normalizeHostname(host ?? '');
+    if (normalized && !WILDCARD_BIND_HOSTS.includes(normalized)) {
+      allowed.add(normalized);
+    }
+  }
+  return allowed;
+}
+
+/**
+ * Host header validation middleware. Blocks DNS rebinding: a page on
+ * attacker.example that re-resolves to 127.0.0.1 still sends
+ * "Host: attacker.example", which is rejected here.
+ */
+export function createHostValidationMiddleware(allowedHostnames: Set<string>) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const hostname = normalizeHostname(req.hostname ?? '');
+
+    if (!allowedHostnames.has(hostname)) {
+      res.status(403).json({ error: 'Host not allowed' });
+      return;
+    }
+
+    next();
+  };
+}
+
+function digestKey(key: string): Buffer {
+  return createHash('sha256').update(key, 'utf8').digest();
+}
+
 /**
  * API key authentication middleware
  */
 export function createAuthMiddleware(apiKey: string) {
+  // Hashing both sides gives timingSafeEqual equal-length buffers, so the
+  // comparison leaks neither the key's contents nor its length.
+  const expected = digestKey(apiKey);
+
   return (req: Request, res: Response, next: NextFunction) => {
     const providedKey = req.headers['x-api-key'];
 
-    if (providedKey !== apiKey) {
+    if (typeof providedKey !== 'string' || !timingSafeEqual(digestKey(providedKey), expected)) {
       res.status(401).json({ error: 'Invalid or missing API key' });
       return;
     }
 
     next();
   };
+}
+
+/**
+ * Return the configured API key, or load one from apiKeyFile, generating and
+ * persisting a new key there (mode 0o600) on first run.
+ */
+export async function resolveApiKey(
+  config: HttpBridgeConfig
+): Promise<{ apiKey: string; source: 'config' | 'file' | 'generated' }> {
+  if (config.apiKey) {
+    return { apiKey: config.apiKey, source: 'config' };
+  }
+
+  if (!config.apiKeyFile) {
+    throw new Error('[HTTP Bridge] Refusing to start without an API key: set http.apiKey');
+  }
+
+  const existing = await readKeyFile(config.apiKeyFile);
+  if (existing) {
+    return { apiKey: existing, source: 'file' };
+  }
+
+  const apiKey = randomBytes(32).toString('hex');
+  await fs.mkdir(dirname(config.apiKeyFile), { recursive: true });
+  try {
+    await fs.writeFile(config.apiKeyFile, `${apiKey}\n`, { mode: 0o600, flag: 'wx' });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
+      throw error;
+    }
+    // Another process created the file first; use its key
+    const raced = await readKeyFile(config.apiKeyFile);
+    if (raced) {
+      return { apiKey: raced, source: 'file' };
+    }
+    // The file exists but is empty: replace it. mode only applies when a
+    // file is created, so tighten the existing one explicitly.
+    await fs.writeFile(config.apiKeyFile, `${apiKey}\n`, { mode: 0o600 });
+    await fs.chmod(config.apiKeyFile, 0o600);
+  }
+
+  return { apiKey, source: 'generated' };
+}
+
+async function readKeyFile(path: string): Promise<string | undefined> {
+  try {
+    const key = (await fs.readFile(path, 'utf-8')).trim();
+    return key || undefined;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return undefined;
+    }
+    throw error;
+  }
 }
 
 /**
@@ -375,29 +505,37 @@ export function createHttpBridge(
 ): express.Application {
   const app = express();
   const { vaultReader, database } = context;
-  const allowAnyOrigin = config.corsOrigins.includes('*');
+
+  if (!config.apiKey) {
+    throw new Error('[HTTP Bridge] Refusing to start without an API key: set http.apiKey');
+  }
+  if (config.corsOrigins.includes('*')) {
+    throw new Error('[HTTP Bridge] corsOrigins must list explicit origins; "*" is not allowed');
+  }
+
+  // Reject unexpected Host headers before doing any other work
+  app.use(createHostValidationMiddleware(getAllowedHostnames(config)));
+
+  // CORS configuration. Requests without an Origin (curl, server-side
+  // clients, same-origin GETs) still have to pass the API key check below.
+  app.use(cors({
+    origin: (origin, callback) => {
+      if (!origin || config.corsOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(new CorsOriginError(origin));
+    },
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'X-API-Key'],
+    credentials: true,
+  }));
 
   // Middleware
   app.use(express.json({ limit: '1mb' }));
 
-  // CORS configuration
-  app.use(cors({
-    origin: (origin, callback) => {
-      if (!origin || allowAnyOrigin || config.corsOrigins.includes(origin)) {
-        callback(null, true);
-        return;
-      }
-      callback(new Error('Origin not allowed by CORS'));
-    },
-    methods: ['GET', 'POST', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'X-API-Key'],
-    credentials: !allowAnyOrigin,
-  }));
-
-  // Optional API key authentication
-  if (config.apiKey) {
-    app.use('/api', createAuthMiddleware(config.apiKey));
-  }
+  const requireApiKey = createAuthMiddleware(config.apiKey);
+  app.use('/api', requireApiKey);
 
   // Mount the API router
   const router = createBridgeRouter(context);
@@ -419,7 +557,7 @@ export function createHttpBridge(
       });
     }
   });
-  app.get('/stats', (_req: Request, res: Response) => {
+  app.get('/stats', requireApiKey, (_req: Request, res: Response) => {
     try {
       const vaultStats = vaultReader.getStats();
       const dbStats = database.getStats();
@@ -451,6 +589,10 @@ export function createHttpBridge(
 
   // Error handler
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+    if (err instanceof CorsOriginError) {
+      res.status(403).json({ error: 'Origin not allowed' });
+      return;
+    }
     console.error('[HTTP Bridge] Error:', err);
     res.status(500).json({
       error: 'Internal server error',
@@ -468,14 +610,19 @@ export async function startHttpBridge(
   config: HttpBridgeConfig,
   context: HttpBridgeContext
 ): Promise<{ app: express.Application; close: () => Promise<void> }> {
-  const app = createHttpBridge(config, context);
+  const { apiKey, source } = await resolveApiKey(config);
+  const app = createHttpBridge({ ...config, apiKey }, context);
 
   return new Promise((resolve, reject) => {
     const server = app.listen(config.port, config.host, () => {
       console.error(`[HTTP Bridge] Listening on http://${config.host}:${config.port}`);
       console.error(`[HTTP Bridge] CORS origins: ${config.corsOrigins.join(', ')}`);
-      if (config.apiKey) {
+      if (source === 'config') {
         console.error('[HTTP Bridge] API key authentication enabled');
+      } else {
+        const verb = source === 'generated' ? 'Generated' : 'Using';
+        console.error(`[HTTP Bridge] ${verb} API key stored in ${config.apiKeyFile}`);
+        console.error('[HTTP Bridge] Send it as the X-API-Key header, or set http.apiKey');
       }
 
       resolve({
