@@ -7,7 +7,7 @@
 
 import express, { Router, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
-import { createHash, randomBytes, timingSafeEqual } from 'crypto';
+import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
 import { promises as fs } from 'fs';
 import { dirname } from 'path';
 import type { SearchEngine } from '../search/engine.js';
@@ -418,22 +418,21 @@ export function createHostValidationMiddleware(allowedHostnames: Set<string>) {
   };
 }
 
-function digestKey(key: string): Buffer {
-  return createHash('sha256').update(key, 'utf8').digest();
-}
-
 /**
  * API key authentication middleware
  */
 export function createAuthMiddleware(apiKey: string) {
-  // Hashing both sides gives timingSafeEqual equal-length buffers, so the
-  // comparison leaks neither the key's contents nor its length.
-  const expected = digestKey(apiKey);
+  // MACing both sides under a per-process random key gives timingSafeEqual
+  // equal-length buffers, so the comparison leaks neither the key's contents
+  // nor its length. Nothing is stored, so this is not password hashing.
+  const macKey = randomBytes(32);
+  const mac = (value: string): Buffer => createHmac('sha256', macKey).update(value, 'utf8').digest();
+  const expected = mac(apiKey);
 
   return (req: Request, res: Response, next: NextFunction) => {
     const providedKey = req.headers['x-api-key'];
 
-    if (typeof providedKey !== 'string' || !timingSafeEqual(digestKey(providedKey), expected)) {
+    if (typeof providedKey !== 'string' || !timingSafeEqual(mac(providedKey), expected)) {
       res.status(401).json({ error: 'Invalid or missing API key' });
       return;
     }
