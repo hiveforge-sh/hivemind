@@ -336,6 +336,7 @@ export interface HttpConfig {
   host: string;
   corsOrigins: string[];
   apiKey?: string;
+  allowedHosts?: string[];
 }
 
 export interface HivemindConfig {

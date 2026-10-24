@@ -23,8 +23,15 @@ export const HttpConfigSchema = z.object({
   enabled: z.boolean().default(false),
   port: z.number().default(3847),
   host: z.string().default('localhost'),
-  corsOrigins: z.array(z.string()).default(['http://localhost:8000']),
+  corsOrigins: z
+    .array(z.string())
+    .refine(origins => !origins.includes('*'), {
+      message: 'corsOrigins must list explicit origins; "*" is not allowed',
+    })
+    .default(['http://localhost:8000']),
+  // When unset, a key is generated and stored in <vault>/.hivemind/http-api-key
   apiKey: z.string().optional(),
+  allowedHosts: z.array(z.string()).optional(),
 });
 
 export const TemplateConfigSchema = z.object({

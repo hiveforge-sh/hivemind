@@ -48,6 +48,29 @@ Hivemind is designed to be **local-first**:
 3. **Review ComfyUI settings** if enabled - ensure endpoint is localhost
 4. **Use environment variables** for sensitive configuration
 
+### HTTP Bridge
+
+The optional REST bridge (`http.enabled: true`) is hardened against other local
+processes and malicious web pages:
+
+- **An API key is always required.** If `http.apiKey` is not set, a random key is
+  generated on first start and stored in `<vault>/.hivemind/http-api-key` (mode
+  `0600` on POSIX systems). Clients send it in the `X-API-Key` header. It
+  protects `/api/*` and `/stats`; only `/health` is public. Keys are compared in
+  constant time.
+- **Host header validation** blocks DNS rebinding. Only `localhost`,
+  `127.0.0.1`, `[::1]`, the configured `http.host` and any names listed in
+  `http.allowedHosts` are accepted; anything else gets `403`. If you bind to
+  `0.0.0.0` for LAN access, add the hostname or IP clients use to
+  `http.allowedHosts`.
+- **`corsOrigins` must list explicit origins.** `"*"` is rejected at config
+  validation and at startup. Requests from an unlisted `Origin` get `403`.
+
+**Upgrading from versions before these checks:** a bridge that ran without
+`apiKey` now requires one (the generated key, or set your own), and a config with
+`"*"` in `corsOrigins` no longer starts. Clients reaching the bridge by a
+hostname other than the bind host need that name in `http.allowedHosts`.
+
 ## Dependencies
 
 We actively monitor dependencies for vulnerabilities using:
